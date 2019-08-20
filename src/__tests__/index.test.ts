@@ -1,5 +1,5 @@
 import * as express from "express";
-import { SPID_RELOAD_ERROR, SpidPassport } from "../index";
+import { SPID_RELOAD_ERROR, SpidPassportBuilder } from "../index";
 import { ISpidStrategyConfig, SamlAttribute } from "../strategies/spidStrategy";
 import * as spid from "../strategies/spidStrategy";
 import { matchRoute } from "../utils/express";
@@ -107,7 +107,7 @@ describe("index", () => {
     if (app === undefined) {
       return done(appInitError);
     }
-    const spidPassport = new SpidPassport(
+    const spidPassport = new SpidPassportBuilder(
       app,
       expectedLoginPath,
       spidStrategyConfig
@@ -125,7 +125,7 @@ describe("index", () => {
       throw appInitError;
     }
 
-    const spidPassport = new SpidPassport(
+    const spidPassport = new SpidPassportBuilder(
       app,
       expectedLoginPath,
       spidStrategyConfig
@@ -145,7 +145,7 @@ describe("index", () => {
     if (app === undefined) {
       throw appInitError;
     }
-    const spidPassport = new SpidPassport(
+    const spidPassport = new SpidPassportBuilder(
       app,
       expectedLoginPath,
       spidStrategyConfig
@@ -163,7 +163,7 @@ describe("index", () => {
     if (app === undefined) {
       throw appInitError;
     }
-    const spidPassport = new SpidPassport(
+    const spidPassport = new SpidPassportBuilder(
       app,
       expectedLoginPath,
       spidStrategyConfig

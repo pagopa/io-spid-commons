@@ -13,7 +13,7 @@ export const SPID_RELOAD_ERROR = new Error(
   "Error while initializing SPID strategy"
 );
 
-export class SpidPassport<T> {
+export class SpidPassportBuilder<T> {
   public spidStrategy?: SpidStrategy<T>;
   private loginPath: string;
   private config: ISpidStrategyConfig;
