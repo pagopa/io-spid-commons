@@ -124,6 +124,7 @@ describe("index", () => {
     if (app === undefined) {
       throw appInitError;
     }
+
     const spidPassport = new SpidPassport(
       app,
       expectedLoginPath,
