@@ -3,7 +3,7 @@
  * different SPID IDPs.
  */
 import { distanceInWordsToNow, isAfter, subDays } from "date-fns";
-import { SpidStrategy } from "spid-passport";
+import * as SpidStrategy from "spid-passport";
 import * as x509 from "x509";
 import { SpidUser } from "../types/user";
 import {
@@ -56,7 +56,9 @@ export interface ISpidStrategyConfig {
   IDPMetadataUrl: string;
 }
 
-const spidStrategy = async (config: ISpidStrategyConfig) => {
+export const loadSpidStrategy = async (
+  config: ISpidStrategyConfig
+): Promise<SpidStrategy<SpidUser>> => {
   const idpsMetadataOption = await loadFromRemote(config.IDPMetadataUrl);
 
   logSamlCertExpiration(config.samlCert);
@@ -124,7 +126,7 @@ const spidStrategy = async (config: ISpidStrategyConfig) => {
     }
   };
 
-  return new SpidStrategy<SpidUser>(
+  return new SpidStrategy(
     config.spidAutologin === "" ? options : optionsWithAutoLoginInfo,
     (
       profile: SpidUser,
@@ -160,5 +162,3 @@ function logSamlCertExpiration(samlCert: string): void {
     log.error("Error calculating saml cert expiration: %s", e);
   }
 }
-
-export default spidStrategy;

@@ -9,7 +9,7 @@
     "prebuild": "rimraf dist",
     "build": "tsc",
     "postversion": "git push && git push --tags",
-    "test": "jest",
+    "test": "jest -i",
     "lint": "tslint --project .",
     "generate:api-models": "rimraf generated/backend && mkdir -p generated/backend && gen-api-models --api-spec api_backend.yaml --out-dir generated/backend"
   },

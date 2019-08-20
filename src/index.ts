@@ -2,11 +2,17 @@ import { Express } from "express";
 import { not } from "fp-ts/lib/function";
 import * as passport from "passport";
 import { SpidStrategy } from "spid-passport";
-import loadSpidStrategy, {
-  ISpidStrategyConfig
+import {
+  ISpidStrategyConfig,
+  loadSpidStrategy
 } from "./strategies/spidStrategy";
 import { SpidUser } from "./types/user";
+import { matchRoute } from "./utils/express";
 import { log } from "./utils/logger";
+
+export const SPID_RELOAD_ERROR = new Error(
+  "Error while initializing SPID strategy"
+);
 
 export class SpidPassport {
   public spidStrategy?: SpidStrategy<SpidUser>;
@@ -43,26 +49,23 @@ export class SpidPassport {
       }
       passport.unuse("spid");
       // tslint:disable-next-line: no-any
-      const isLoginRoute = (route: any) =>
-        route.route &&
-        route.route.path === this.loginPath &&
-        route.route.methods &&
-        route.route.methods.get;
 
       // Remove login route from Express router stack
       // tslint:disable-next-line: no-object-mutation
-      this.app._router.stack = this.app._router.stack.filter(not(isLoginRoute));
+      this.app._router.stack = this.app._router.stack.filter(
+        not(matchRoute(this.loginPath, "get"))
+      );
       this.registerLoginRoute(newSpidStrategy);
       log.info("Spid strategy re-initialization complete.");
       return newSpidStrategy;
     } catch (err) {
       log.error("Error on update spid strategy: %s", err);
-      throw new Error("Error while initializing SPID strategy");
+      throw SPID_RELOAD_ERROR;
     }
   }
 
   private registerLoginRoute(spidStrategy: SpidStrategy<SpidUser>): void {
-    passport.use("spid", spidStrategy);
+    passport.use("spid", (spidStrategy as unknown) as passport.Strategy);
     const spidAuth = passport.authenticate("spid", { session: false });
     this.app.get(this.loginPath, spidAuth);
   }
