@@ -1,6 +1,6 @@
 import * as express from "express";
 import { SPID_RELOAD_ERROR, SpidPassport } from "../index";
-import { ISpidStrategyConfig } from "../strategies/spidStrategy";
+import { ISpidStrategyConfig, SamlAttribute } from "../strategies/spidStrategy";
 import * as spid from "../strategies/spidStrategy";
 import { matchRoute } from "../utils/express";
 
@@ -78,12 +78,26 @@ const spidStrategyConfig: ISpidStrategyConfig = {
   samlAttributeConsumingServiceIndex,
   spidAutologin,
   spidTestEnvUrl,
-  IDPMetadataUrl
+  IDPMetadataUrl,
+  requiredAttributes: [
+    SamlAttribute.NAME,
+    SamlAttribute.FAMILY_NAME,
+    SamlAttribute.FISCAL_NUMBER,
+    SamlAttribute.EMAIL,
+    SamlAttribute.MOBILE_PHONE
+  ],
+  organization: {
+    URL: "https://io.italia.it",
+    displayName: "IO - l'app dei servizi pubblici BETA",
+    name:
+      "Team per la Trasformazione Digitale - Presidenza Del Consiglio dei Ministri"
+  }
 };
 
 describe("index", () => {
   // tslint:disable-next-line: no-let
   let app: express.Express | undefined;
+  const appInitError = new Error("App not initialized");
   beforeEach(done => {
     // Create new Express app
     app = express();
@@ -91,7 +105,7 @@ describe("index", () => {
   });
   it("Class contructor", done => {
     if (app === undefined) {
-      return done(new Error("App not initialized"));
+      return done(appInitError);
     }
     const spidPassport = new SpidPassport(
       app,
@@ -108,7 +122,7 @@ describe("index", () => {
 
   it("Run initialization of spidStrategy", async () => {
     if (app === undefined) {
-      throw new Error("App not initialized");
+      throw appInitError;
     }
     const spidPassport = new SpidPassport(
       app,
@@ -128,7 +142,7 @@ describe("index", () => {
       samlAttributeConsumingServiceIndex: samlAttributeConsumingServiceIndex + 1
     };
     if (app === undefined) {
-      throw new Error("App not initialized");
+      throw appInitError;
     }
     const spidPassport = new SpidPassport(
       app,
@@ -146,7 +160,7 @@ describe("index", () => {
 
   it("Fail reload Spid strategy", async () => {
     if (app === undefined) {
-      throw new Error("App not initialized");
+      throw appInitError;
     }
     const spidPassport = new SpidPassport(
       app,

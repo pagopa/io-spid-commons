@@ -5,7 +5,6 @@
 import { distanceInWordsToNow, isAfter, subDays } from "date-fns";
 import * as SpidStrategy from "spid-passport";
 import * as x509 from "x509";
-import { SpidUser } from "../types/user";
 import {
   fetchIdpMetadata,
   IDPOption,
@@ -44,6 +43,27 @@ export async function loadFromRemote(
   return mapIpdMetadata(idpMetadata, IDP_IDS);
 }
 
+/*
+ * @see https://www.agid.gov.it/sites/default/files/repository_files/regole_tecniche/tabella_attributi_idp.pdf
+ */
+export enum SamlAttribute {
+  FAMILY_NAME = "familyName",
+  NAME = "name",
+  SPID_CODE = "spidCode",
+  GENDER = "gender",
+  FISCAL_NUMBER = "fiscalNumber",
+  DATE_OF_BIRTH = "dateOfBirth",
+  PLACE_OF_BIRTH = "placeOfBirth",
+  COMPANY_NAME = "companyName",
+  REGISTERED_OFFICE = "registeredOffice",
+  IVA_CODE = "ivaCode",
+  ID_CARD = "idCard",
+  MOBILE_PHONE = "mobilePhone",
+  EMAIL = "email",
+  ADDRESS = "address",
+  DIGITAL_ADDRESS = "digitalAddress"
+}
+
 export interface ISpidStrategyConfig {
   samlKey: string;
   samlCert: string;
@@ -54,11 +74,21 @@ export interface ISpidStrategyConfig {
   spidAutologin: string;
   spidTestEnvUrl: string;
   IDPMetadataUrl: string;
+  requiredAttributes: ReadonlyArray<SamlAttribute>;
+  organization: {
+    URL: string;
+    displayName: string;
+    name: string;
+  };
 }
 
-export const loadSpidStrategy = async (
+interface IAuthUserAssertion {
+  getAssertionXml: () => string;
+}
+
+export const loadSpidStrategy = async <T extends IAuthUserAssertion>(
   config: ISpidStrategyConfig
-): Promise<SpidStrategy<SpidUser>> => {
+): Promise<SpidStrategy<T>> => {
   const idpsMetadataOption = await loadFromRemote(config.IDPMetadataUrl);
 
   logSamlCertExpiration(config.samlCert);
@@ -92,25 +122,14 @@ export const loadSpidStrategy = async (
       acceptedClockSkewMs: config.samlAcceptedClockSkewMs,
       attributeConsumingServiceIndex: config.samlAttributeConsumingServiceIndex,
       attributes: {
-        attributes: [
-          "fiscalNumber",
-          "name",
-          "familyName",
-          "email",
-          "mobilePhone"
-        ],
+        attributes: config.requiredAttributes,
         name: "Required attributes"
       },
       callbackUrl: config.samlCallbackUrl,
       decryptionPvk: config.samlKey,
       identifierFormat: "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
       issuer: config.samlIssuer,
-      organization: {
-        URL: "https://io.italia.it",
-        displayName: "IO - l'app dei servizi pubblici BETA",
-        name:
-          "Team per la Trasformazione Digitale - Presidenza Del Consiglio dei Ministri"
-      },
+      organization: config.organization,
       privateCert: config.samlKey,
       signatureAlgorithm: "sha256"
     }
@@ -128,10 +147,7 @@ export const loadSpidStrategy = async (
 
   return new SpidStrategy(
     config.spidAutologin === "" ? options : optionsWithAutoLoginInfo,
-    (
-      profile: SpidUser,
-      done: (err: Error | undefined, info: SpidUser) => void
-    ) => {
+    (profile: T, done: (err: Error | undefined, info: T) => void) => {
       log.info(profile.getAssertionXml());
       done(undefined, profile);
     }

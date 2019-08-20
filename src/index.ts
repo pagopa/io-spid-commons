@@ -6,7 +6,6 @@ import {
   ISpidStrategyConfig,
   loadSpidStrategy
 } from "./strategies/spidStrategy";
-import { SpidUser } from "./types/user";
 import { matchRoute } from "./utils/express";
 import { log } from "./utils/logger";
 
@@ -14,8 +13,8 @@ export const SPID_RELOAD_ERROR = new Error(
   "Error while initializing SPID strategy"
 );
 
-export class SpidPassport {
-  public spidStrategy?: SpidStrategy<SpidUser>;
+export class SpidPassport<T> {
+  public spidStrategy?: SpidStrategy<T>;
   private loginPath: string;
   private config: ISpidStrategyConfig;
   private app: Express;
@@ -37,10 +36,10 @@ export class SpidPassport {
 
   public async clearAndReloadSpidStrategy(
     newConfig?: ISpidStrategyConfig
-  ): Promise<SpidStrategy<SpidUser>> {
+  ): Promise<SpidStrategy<T>> {
     log.info("Started Spid strategy re-initialization ...");
     try {
-      const newSpidStrategy: SpidStrategy<SpidUser> = await loadSpidStrategy(
+      const newSpidStrategy: SpidStrategy<T> = await loadSpidStrategy(
         newConfig || this.config
       );
       if (newConfig) {
@@ -64,7 +63,7 @@ export class SpidPassport {
     }
   }
 
-  private registerLoginRoute(spidStrategy: SpidStrategy<SpidUser>): void {
+  private registerLoginRoute(spidStrategy: SpidStrategy<T>): void {
     passport.use("spid", (spidStrategy as unknown) as passport.Strategy);
     const spidAuth = passport.authenticate("spid", { session: false });
     this.app.get(this.loginPath, spidAuth);
