@@ -18,7 +18,7 @@ interface ISpidStrategyOptions {
   sp: any;
 }
 
-declare class SpidStrategy<T> {
+declare class SpidStrategy {
   public spidOptions: {
     idp: { [key: string]: IDPOption | undefined };
     // tslint:disable-next-line: no-any
@@ -26,7 +26,8 @@ declare class SpidStrategy<T> {
   };
   constructor(
     config: ISpidStrategyOptions,
-    _: (profile: T, done: (err: Error | undefined, info: T) => void) => void
+    // tslint:disable-next-line: no-any
+    _: (profile: any, done: (err: Error | undefined, info: any) => void) => void
   );
   // tslint:disable-next-line:no-any
   public logout(req: any, callback?: (err: any, request: any) => void): void;

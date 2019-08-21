@@ -13,8 +13,8 @@ export const SPID_RELOAD_ERROR = new Error(
   "Error while initializing SPID strategy"
 );
 
-export class SpidPassportBuilder<T> {
-  public spidStrategy?: IIoSpidStrategy<T>;
+export class SpidPassportBuilder {
+  public spidStrategy?: IIoSpidStrategy;
   private loginPath: string;
   private config: ISpidStrategyConfig;
   private app: Express;
@@ -36,10 +36,10 @@ export class SpidPassportBuilder<T> {
 
   public async clearAndReloadSpidStrategy(
     newConfig?: ISpidStrategyConfig
-  ): Promise<IIoSpidStrategy<T>> {
+  ): Promise<IIoSpidStrategy> {
     log.info("Started Spid strategy re-initialization ...");
     try {
-      const newSpidStrategy: IIoSpidStrategy<T> = await loadSpidStrategy(
+      const newSpidStrategy: IIoSpidStrategy = await loadSpidStrategy(
         newConfig || this.config
       );
       if (newConfig) {
@@ -63,7 +63,7 @@ export class SpidPassportBuilder<T> {
     }
   }
 
-  private registerLoginRoute(spidStrategy: IIoSpidStrategy<T>): void {
+  private registerLoginRoute(spidStrategy: IIoSpidStrategy): void {
     passport.use("spid", spidStrategy);
     const spidAuth = passport.authenticate("spid", { session: false });
     this.app.get(this.loginPath, spidAuth);

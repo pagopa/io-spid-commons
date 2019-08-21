@@ -6,6 +6,7 @@ import { distanceInWordsToNow, isAfter, subDays } from "date-fns";
 import { Strategy } from "passport";
 import * as SpidStrategy from "spid-passport";
 import * as x509 from "x509";
+import { SpidUser } from "../types/spidUser";
 import {
   fetchIdpMetadata,
   IDPOption,
@@ -26,7 +27,7 @@ const IDP_IDS: { [key: string]: string | undefined } = {
   "https://spid.register.it": "spiditalia"
 };
 
-export interface IIoSpidStrategy<T> extends Strategy {
+export interface IIoSpidStrategy extends Strategy {
   spidOptions: {
     idp: { [key: string]: IDPOption | undefined };
     // tslint:disable-next-line: no-any
@@ -94,13 +95,9 @@ export interface ISpidStrategyConfig {
   };
 }
 
-interface IAuthUserAssertion {
-  getAssertionXml: () => string;
-}
-
-export const loadSpidStrategy = async <T extends IAuthUserAssertion>(
+export const loadSpidStrategy = async (
   config: ISpidStrategyConfig
-): Promise<IIoSpidStrategy<T>> => {
+): Promise<IIoSpidStrategy> => {
   const idpsMetadataOption = await loadFromRemote(config.IDPMetadataUrl);
 
   logSamlCertExpiration(config.samlCert);
@@ -159,7 +156,10 @@ export const loadSpidStrategy = async <T extends IAuthUserAssertion>(
 
   return new SpidStrategy(
     config.spidAutologin === "" ? options : optionsWithAutoLoginInfo,
-    (profile: T, done: (err: Error | undefined, info: T) => void) => {
+    (
+      profile: SpidUser,
+      done: (err: Error | undefined, info: SpidUser) => void
+    ) => {
       log.info(profile.getAssertionXml());
       done(undefined, profile);
     }
