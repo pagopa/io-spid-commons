@@ -26,7 +26,7 @@ const IDP_IDS: { [key: string]: string | undefined } = {
   "https://spid.register.it": "spiditalia"
 };
 
-export interface IIoSpidStrategy<T> extends Strategy, SpidStrategy<T> {
+export interface IIoSpidStrategy<T> extends Strategy {
   spidOptions: {
     idp: { [key: string]: IDPOption | undefined };
     // tslint:disable-next-line: no-any
