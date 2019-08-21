@@ -5,8 +5,8 @@
   "repository": "https://github.com/teamdigitale/io-spid-commons",
   "author": "https://teamdigitale.governo.it",
   "license": "MIT",
-  "main": "src/index.ts",
-  "types": "src/index.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "prebuild": "rimraf dist",
     "build": "tsc",

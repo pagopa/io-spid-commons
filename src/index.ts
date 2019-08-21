@@ -1,8 +1,8 @@
 import { Express } from "express";
 import { not } from "fp-ts/lib/function";
 import * as passport from "passport";
-import { SpidStrategy } from "spid-passport";
 import {
+  IIoSpidStrategy,
   ISpidStrategyConfig,
   loadSpidStrategy
 } from "./strategies/spidStrategy";
@@ -14,7 +14,7 @@ export const SPID_RELOAD_ERROR = new Error(
 );
 
 export class SpidPassportBuilder<T> {
-  public spidStrategy?: SpidStrategy<T>;
+  public spidStrategy?: IIoSpidStrategy<T>;
   private loginPath: string;
   private config: ISpidStrategyConfig;
   private app: Express;
@@ -36,10 +36,10 @@ export class SpidPassportBuilder<T> {
 
   public async clearAndReloadSpidStrategy(
     newConfig?: ISpidStrategyConfig
-  ): Promise<SpidStrategy<T>> {
+  ): Promise<IIoSpidStrategy<T>> {
     log.info("Started Spid strategy re-initialization ...");
     try {
-      const newSpidStrategy: SpidStrategy<T> = await loadSpidStrategy(
+      const newSpidStrategy: IIoSpidStrategy<T> = await loadSpidStrategy(
         newConfig || this.config
       );
       if (newConfig) {
@@ -63,8 +63,8 @@ export class SpidPassportBuilder<T> {
     }
   }
 
-  private registerLoginRoute(spidStrategy: SpidStrategy<T>): void {
-    passport.use("spid", (spidStrategy as unknown) as passport.Strategy);
+  private registerLoginRoute(spidStrategy: IIoSpidStrategy<T>): void {
+    passport.use("spid", spidStrategy);
     const spidAuth = passport.authenticate("spid", { session: false });
     this.app.get(this.loginPath, spidAuth);
   }

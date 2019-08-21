@@ -3,6 +3,7 @@
  * different SPID IDPs.
  */
 import { distanceInWordsToNow, isAfter, subDays } from "date-fns";
+import { Strategy } from "passport";
 import * as SpidStrategy from "spid-passport";
 import * as x509 from "x509";
 import {
@@ -24,6 +25,17 @@ const IDP_IDS: { [key: string]: string | undefined } = {
   "https://spid.intesa.it": "intesaid",
   "https://spid.register.it": "spiditalia"
 };
+
+export interface IIoSpidStrategy<T> extends Strategy, SpidStrategy<T> {
+  spidOptions: {
+    idp: { [key: string]: IDPOption | undefined };
+    // tslint:disable-next-line: no-any
+    sp: any;
+  };
+  // tslint:disable-next-line:no-any
+  logout: (req: any, callback?: (err: any, request: any) => void) => void;
+  generateServiceProviderMetadata: (samlCert: string) => string;
+}
 
 /**
  * Load idp Metadata from a remote url, parse infomations and return a mapped and whitelisted idp options
@@ -88,7 +100,7 @@ interface IAuthUserAssertion {
 
 export const loadSpidStrategy = async <T extends IAuthUserAssertion>(
   config: ISpidStrategyConfig
-): Promise<SpidStrategy<T>> => {
+): Promise<IIoSpidStrategy<T>> => {
   const idpsMetadataOption = await loadFromRemote(config.IDPMetadataUrl);
 
   logSamlCertExpiration(config.samlCert);
