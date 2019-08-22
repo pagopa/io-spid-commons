@@ -13,6 +13,7 @@ import {
   loadSpidStrategy,
   SamlAttribute
 } from "./strategies/spidStrategy";
+import { isSpidL, SpidLevel } from "./types/spidLevel";
 import { matchRoute } from "./utils/express";
 import { log } from "./utils/logger";
 
@@ -24,7 +25,13 @@ export const SPID_STRATEGY_NOT_DEFINED = new Error(
   "Spid Strategy not defined."
 );
 
-export { IIoSpidStrategy, ISpidStrategyConfig, SamlAttribute };
+export {
+  isSpidL,
+  IIoSpidStrategy,
+  ISpidStrategyConfig,
+  SamlAttribute,
+  SpidLevel
+};
 
 export class SpidPassportBuilder {
   private spidStrategy?: IIoSpidStrategy;
