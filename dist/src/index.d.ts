@@ -1,6 +1,7 @@
 import { Express } from "express";
-import { IIoSpidStrategy, ISpidStrategyConfig } from "./strategies/spidStrategy";
+import { IIoSpidStrategy, ISpidStrategyConfig, SamlAttribute } from "./strategies/spidStrategy";
 export declare const SPID_RELOAD_ERROR: Error;
+export { IIoSpidStrategy, ISpidStrategyConfig, SamlAttribute };
 export declare class SpidPassportBuilder {
     spidStrategy?: IIoSpidStrategy;
     private loginPath;

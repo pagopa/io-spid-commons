@@ -4,7 +4,8 @@ import * as passport from "passport";
 import {
   IIoSpidStrategy,
   ISpidStrategyConfig,
-  loadSpidStrategy
+  loadSpidStrategy,
+  SamlAttribute
 } from "./strategies/spidStrategy";
 import { matchRoute } from "./utils/express";
 import { log } from "./utils/logger";
@@ -12,6 +13,8 @@ import { log } from "./utils/logger";
 export const SPID_RELOAD_ERROR = new Error(
   "Error while initializing SPID strategy"
 );
+
+export { IIoSpidStrategy, ISpidStrategyConfig, SamlAttribute };
 
 export class SpidPassportBuilder {
   public spidStrategy?: IIoSpidStrategy;

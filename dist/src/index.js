@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const function_1 = require("fp-ts/lib/function");
 const passport = require("passport");
 const spidStrategy_1 = require("./strategies/spidStrategy");
+exports.SamlAttribute = spidStrategy_1.SamlAttribute;
 const express_1 = require("./utils/express");
 const logger_1 = require("./utils/logger");
 exports.SPID_RELOAD_ERROR = new Error("Error while initializing SPID strategy");
