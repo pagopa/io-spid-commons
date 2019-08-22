@@ -57,7 +57,7 @@ export class SpidPassportBuilder {
 
   public async clearAndReloadSpidStrategy(
     newConfig?: ISpidStrategyConfig
-  ): Promise<IIoSpidStrategy> {
+  ): Promise<void> {
     log.info("Started Spid strategy re-initialization ...");
     try {
       const newSpidStrategy: IIoSpidStrategy = await loadSpidStrategy(
@@ -79,7 +79,6 @@ export class SpidPassportBuilder {
       this.metadataXml = undefined;
       this.registerLoginRoute(newSpidStrategy);
       log.info("Spid strategy re-initialization complete.");
-      return newSpidStrategy;
     } catch (err) {
       log.error("Error on update spid strategy: %s", err);
       throw SPID_RELOAD_ERROR;

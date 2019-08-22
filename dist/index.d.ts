@@ -15,7 +15,7 @@ export declare class SpidPassportBuilder {
      * Initializes SpidStrategy for passport and setup login route.
      */
     init(): Promise<void>;
-    clearAndReloadSpidStrategy(newConfig?: ISpidStrategyConfig): Promise<IIoSpidStrategy>;
+    clearAndReloadSpidStrategy(newConfig?: ISpidStrategyConfig): Promise<void>;
     private registerLoginRoute;
     private toExpressHandler;
     /**

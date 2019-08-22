@@ -41,7 +41,6 @@ class SpidPassportBuilder {
             this.metadataXml = undefined;
             this.registerLoginRoute(newSpidStrategy);
             logger_1.log.info("Spid strategy re-initialization complete.");
-            return newSpidStrategy;
         }
         catch (err) {
             logger_1.log.error("Error on update spid strategy: %s", err);
