@@ -1,9 +1,9 @@
 import * as t from "io-ts";
 import { NonEmptyString } from "italia-ts-commons/lib/strings";
 //
-import { EmailAddress } from "../../generated/backend/EmailAddress";
-import { FiscalCode } from "../../generated/backend/FiscalCode";
-import { SpidLevel } from "../../generated/backend/SpidLevel";
+import { EmailString } from "italia-ts-commons/lib/strings";
+import { FiscalCode } from "italia-ts-commons/lib/strings";
+import { SpidLevel } from "../types/spidLevel";
 
 import { Issuer } from "./issuer";
 
@@ -14,7 +14,7 @@ export const SpidUser = t.intersection([
     issuer: Issuer
   }),
   t.partial({
-    email: EmailAddress,
+    email: EmailString,
     familyName: t.string,
     fiscalNumber: FiscalCode,
     mobilePhone: NonEmptyString,

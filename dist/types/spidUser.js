@@ -3,20 +3,20 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const t = require("io-ts");
 const strings_1 = require("italia-ts-commons/lib/strings");
 //
-const EmailAddress_1 = require("../../generated/backend/EmailAddress");
-const FiscalCode_1 = require("../../generated/backend/FiscalCode");
-const SpidLevel_1 = require("../../generated/backend/SpidLevel");
+const strings_2 = require("italia-ts-commons/lib/strings");
+const strings_3 = require("italia-ts-commons/lib/strings");
+const spidLevel_1 = require("../types/spidLevel");
 const issuer_1 = require("./issuer");
 exports.SpidUser = t.intersection([
     t.interface({
-        authnContextClassRef: SpidLevel_1.SpidLevel,
+        authnContextClassRef: spidLevel_1.SpidLevel,
         getAssertionXml: t.Function,
         issuer: issuer_1.Issuer
     }),
     t.partial({
-        email: EmailAddress_1.EmailAddress,
+        email: strings_2.EmailString,
         familyName: t.string,
-        fiscalNumber: FiscalCode_1.FiscalCode,
+        fiscalNumber: strings_3.FiscalCode,
         mobilePhone: strings_1.NonEmptyString,
         name: t.string,
         nameID: t.string,

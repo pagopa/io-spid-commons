@@ -1,6 +1,6 @@
 import * as t from "io-ts";
 export declare const SpidUser: t.IntersectionC<[t.TypeC<{
-    authnContextClassRef: t.Type<import("../../generated/backend/SpidLevel").SpidLevelEnum, import("../../generated/backend/SpidLevel").SpidLevelEnum, unknown>;
+    authnContextClassRef: t.Type<import("./spidLevel").SpidLevelEnum, import("./spidLevel").SpidLevelEnum, unknown>;
     getAssertionXml: t.FunctionC;
     issuer: t.TypeC<{
         _: t.StringC;
