@@ -5,7 +5,7 @@ const strings_1 = require("italia-ts-commons/lib/strings");
 //
 const strings_2 = require("italia-ts-commons/lib/strings");
 const strings_3 = require("italia-ts-commons/lib/strings");
-const spidLevel_1 = require("../types/spidLevel");
+const spidLevel_1 = require("./spidLevel");
 const issuer_1 = require("./issuer");
 exports.SpidUser = t.intersection([
     t.interface({

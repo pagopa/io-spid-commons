@@ -3,7 +3,7 @@ import { NonEmptyString } from "italia-ts-commons/lib/strings";
 //
 import { EmailString } from "italia-ts-commons/lib/strings";
 import { FiscalCode } from "italia-ts-commons/lib/strings";
-import { SpidLevel } from "../types/spidLevel";
+import { SpidLevel } from "./spidLevel";
 
 import { Issuer } from "./issuer";
 

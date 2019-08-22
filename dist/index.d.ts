@@ -1,9 +1,10 @@
 import { Express } from "express";
 import { IIoSpidStrategy, ISpidStrategyConfig, SamlAttribute } from "./strategies/spidStrategy";
 import { isSpidL, SpidLevel } from "./types/spidLevel";
+import getErrorCodeFromResponse from "./utils/getErrorCodeFromResponse";
 export declare const SPID_RELOAD_ERROR: Error;
 export declare const SPID_STRATEGY_NOT_DEFINED: Error;
-export { isSpidL, IIoSpidStrategy, ISpidStrategyConfig, SamlAttribute, SpidLevel };
+export { getErrorCodeFromResponse, isSpidL, IIoSpidStrategy, ISpidStrategyConfig, SamlAttribute, SpidLevel };
 export declare class SpidPassportBuilder {
     private spidStrategy?;
     private loginPath;
