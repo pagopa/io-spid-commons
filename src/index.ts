@@ -15,6 +15,7 @@ import {
 } from "./strategies/spidStrategy";
 import { isSpidL, SpidLevel } from "./types/spidLevel";
 import { matchRoute } from "./utils/express";
+import { getErrorCodeFromResponse } from "./utils/getErrorCodeFromResponse";
 import { log } from "./utils/logger";
 
 export const SPID_RELOAD_ERROR = new Error(
@@ -26,6 +27,7 @@ export const SPID_STRATEGY_NOT_DEFINED = new Error(
 );
 
 export {
+  getErrorCodeFromResponse,
   isSpidL,
   IIoSpidStrategy,
   ISpidStrategyConfig,
