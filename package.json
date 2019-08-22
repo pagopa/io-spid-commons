@@ -21,6 +21,7 @@
     "@types/node-fetch": "^2.1.2",
     "@types/passport": "^0.4.6",
     "@types/passport-strategy": "^0.2.35",
+    "@types/supertest": "^2.0.8",
     "@types/xmldom": "^0.1.29",
     "danger": "^8.0.0",
     "danger-plugin-digitalcitizenship": "*",
@@ -28,6 +29,7 @@
     "jest": "^24.8.0",
     "prettier": "^1.12.1",
     "rimraf": "^2.6.2",
+    "supertest": "^4.0.2",
     "ts-jest": "^24.0.2",
     "tslint": "^5.1.0",
     "typescript": "^3.5.0"
@@ -41,9 +43,9 @@
     "italia-ts-commons": "^5.1.4",
     "italia-utils": "^4.1.0",
     "node-fetch": "^2.2.0",
-    "spid-passport": "git://github.com/teamdigitale/spid-passport.git#v1.1.7",
     "passport": "^0.4.0",
     "passport-strategy": "^1.0.0",
+    "spid-passport": "git://github.com/teamdigitale/spid-passport.git#v1.1.7",
     "winston": "^3.0.0",
     "x509": "^0.3.4",
     "xmldom": "^0.1.27"

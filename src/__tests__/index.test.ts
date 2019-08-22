@@ -1,5 +1,10 @@
 import * as express from "express";
-import { SPID_RELOAD_ERROR, SpidPassportBuilder } from "../index";
+import * as request from "supertest";
+import {
+  SPID_RELOAD_ERROR,
+  SPID_STRATEGY_NOT_DEFINED,
+  SpidPassportBuilder
+} from "../index";
 import { ISpidStrategyConfig, SamlAttribute } from "../strategies/spidStrategy";
 import * as spid from "../strategies/spidStrategy";
 import { matchRoute } from "../utils/express";
@@ -68,6 +73,7 @@ const IDPMetadataUrl =
   "https://raw.githubusercontent.com/teamdigitale/io-backend/164984224-download-idp-metadata/test_idps/spid-entities-idps.xml";
 
 const expectedLoginPath = "/login";
+const metadataPath = "/metadata";
 const spidStrategyConfig: ISpidStrategyConfig = {
   samlKey,
   // tslint:disable-next-line: object-literal-sort-keys
@@ -110,13 +116,14 @@ describe("index", () => {
     const spidPassport = new SpidPassportBuilder(
       app,
       expectedLoginPath,
+      metadataPath,
       spidStrategyConfig
     );
     // tslint:disable: no-string-literal
     expect(spidPassport["config"]).toEqual(spidStrategyConfig);
     expect(spidPassport["app"]).toEqual(app);
     expect(spidPassport["loginPath"]).toEqual(expectedLoginPath);
-    expect(spidPassport.spidStrategy).toEqual(undefined);
+    expect(spidPassport["spidStrategy"]).toEqual(undefined);
     done();
   });
 
@@ -128,13 +135,49 @@ describe("index", () => {
     const spidPassport = new SpidPassportBuilder(
       app,
       expectedLoginPath,
+      metadataPath,
       spidStrategyConfig
     );
     await spidPassport.init();
-    expect(spidPassport.spidStrategy).not.toEqual(undefined);
+    expect(spidPassport["spidStrategy"]).not.toEqual(undefined);
     expect(
       app._router.stack.filter(matchRoute(expectedLoginPath, "get"))
     ).toHaveLength(1);
+  });
+
+  it("Get spid metadata", async () => {
+    if (app === undefined) {
+      throw appInitError;
+    }
+    const spidPassport = new SpidPassportBuilder(
+      app,
+      expectedLoginPath,
+      metadataPath,
+      spidStrategyConfig
+    );
+    await spidPassport.init();
+    const generatedMetadata = await spidPassport["metadata"]();
+    await request(app)
+      .get(metadataPath)
+      .expect(200, generatedMetadata.value);
+  });
+
+  it("Spid metadata with spid strategy not defined", async () => {
+    if (app === undefined) {
+      throw appInitError;
+    }
+    const spidPassport = new SpidPassportBuilder(
+      app,
+      expectedLoginPath,
+      metadataPath,
+      spidStrategyConfig
+    );
+    try {
+      await spidPassport["metadata"]();
+      expect(false);
+    } catch (e) {
+      expect(e).toEqual(SPID_STRATEGY_NOT_DEFINED);
+    }
   });
 
   it("Clear and reload new spid strategy", async () => {
@@ -148,11 +191,12 @@ describe("index", () => {
     const spidPassport = new SpidPassportBuilder(
       app,
       expectedLoginPath,
+      metadataPath,
       spidStrategyConfig
     );
     await spidPassport.init();
     await spidPassport.clearAndReloadSpidStrategy(newSpidStrategyConfig);
-    expect(spidPassport.spidStrategy).not.toEqual(undefined);
+    expect(spidPassport["spidStrategy"]).not.toEqual(undefined);
     expect(spidPassport["config"]).toEqual(newSpidStrategyConfig);
     expect(
       app._router.stack.filter(matchRoute(expectedLoginPath, "get"))
@@ -166,6 +210,7 @@ describe("index", () => {
     const spidPassport = new SpidPassportBuilder(
       app,
       expectedLoginPath,
+      metadataPath,
       spidStrategyConfig
     );
     await spidPassport.init();
@@ -176,12 +221,12 @@ describe("index", () => {
       ...spidStrategyConfig,
       samlAttributeConsumingServiceIndex: samlAttributeConsumingServiceIndex + 1
     };
-    const originalSpidStrategy = spidPassport.spidStrategy;
+    const originalSpidStrategy = spidPassport["spidStrategy"];
     try {
       await spidPassport.clearAndReloadSpidStrategy(newSpidStrategyConfig);
     } catch (e) {
       expect(e).toBe(SPID_RELOAD_ERROR);
-      expect(spidPassport.spidStrategy).toEqual(originalSpidStrategy);
+      expect(spidPassport["spidStrategy"]).toEqual(originalSpidStrategy);
       expect(spidPassport["config"]).not.toEqual(newSpidStrategyConfig);
       expect(spidPassport["config"]).toEqual(spidStrategyConfig);
     }

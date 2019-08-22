@@ -1,5 +1,11 @@
-import { Express } from "express";
+import { Express, Request, Response } from "express";
 import { not } from "fp-ts/lib/function";
+import {
+  IResponse,
+  IResponseSuccessXml,
+  ResponseErrorInternal,
+  ResponseSuccessXml
+} from "italia-ts-commons/lib/responses";
 import * as passport from "passport";
 import {
   IIoSpidStrategy,
@@ -14,16 +20,28 @@ export const SPID_RELOAD_ERROR = new Error(
   "Error while initializing SPID strategy"
 );
 
+export const SPID_STRATEGY_NOT_DEFINED = new Error(
+  "Spid Strategy not defined."
+);
+
 export { IIoSpidStrategy, ISpidStrategyConfig, SamlAttribute };
 
 export class SpidPassportBuilder {
-  public spidStrategy?: IIoSpidStrategy;
+  private spidStrategy?: IIoSpidStrategy;
   private loginPath: string;
+  private metadataPath: string;
+  private metadataXml?: string;
   private config: ISpidStrategyConfig;
   private app: Express;
 
-  constructor(app: Express, path: string, config: ISpidStrategyConfig) {
-    this.loginPath = path;
+  constructor(
+    app: Express,
+    loginPath: string,
+    metadataPath: string,
+    config: ISpidStrategyConfig
+  ) {
+    this.loginPath = loginPath;
+    this.metadataPath = metadataPath;
     this.config = config;
     this.app = app;
   }
@@ -57,6 +75,8 @@ export class SpidPassportBuilder {
       this.app._router.stack = this.app._router.stack.filter(
         not(matchRoute(this.loginPath, "get"))
       );
+      // tslint:disable-next-line: no-object-mutation
+      this.metadataXml = undefined;
       this.registerLoginRoute(newSpidStrategy);
       log.info("Spid strategy re-initialization complete.");
       return newSpidStrategy;
@@ -70,5 +90,37 @@ export class SpidPassportBuilder {
     passport.use("spid", spidStrategy);
     const spidAuth = passport.authenticate("spid", { session: false });
     this.app.get(this.loginPath, spidAuth);
+    this.app.get(this.metadataPath, this.toExpressHandler(this.metadata, this));
+  }
+
+  private toExpressHandler<T, P>(
+    handler: (req: Request) => Promise<IResponse<T>>,
+    object?: P
+  ): (req: Request, res: Response) => void {
+    return (req, res) =>
+      handler
+        .call(object, req)
+        .catch(ResponseErrorInternal)
+        .then(response => {
+          // tslint:disable-next-line:no-object-mutation
+          res.locals.detail = response.detail;
+          response.apply(res);
+        });
+  }
+
+  /**
+   * The metadata for this Service Provider.
+   */
+  private async metadata(): Promise<IResponseSuccessXml<string>> {
+    if (this.spidStrategy === undefined) {
+      return Promise.reject(SPID_STRATEGY_NOT_DEFINED);
+    }
+    if (this.metadataXml === undefined) {
+      // tslint:disable-next-line: no-object-mutation
+      this.metadataXml = this.spidStrategy.generateServiceProviderMetadata(
+        this.config.samlCert
+      );
+    }
+    return ResponseSuccessXml(this.metadataXml);
   }
 }
