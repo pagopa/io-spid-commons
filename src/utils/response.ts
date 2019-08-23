@@ -1,6 +1,6 @@
 import { DOMParser } from "xmldom";
 
-import { none, Option, some, tryCatch } from "fp-ts/lib/Option";
+import { fromNullable, none, Option, some, tryCatch } from "fp-ts/lib/Option";
 
 /**
  * Extract StatusMessage from SAML response
@@ -29,4 +29,27 @@ export function getErrorCodeFromResponse(xml: string): Option<string> {
       );
       return errorCode ? some(errorCode) : none;
     });
+}
+
+/**
+ * Extract AuthnContextClassRef from SAML response
+ *
+ * ie. for <saml2:AuthnContextClassRef>https://www.spid.gov.it/SpidL2</saml2:AuthnContextClassRef>
+ * returns "https://www.spid.gov.it/SpidL2"
+ */
+export function getAuthnContextFromResponse(xml: string): Option<string> {
+  return fromNullable(xml)
+    .chain(xmlStr => tryCatch(() => new DOMParser().parseFromString(xmlStr)))
+    .chain(xmlResponse =>
+      xmlResponse
+        ? some(xmlResponse.getElementsByTagName("saml:AuthnContextClassRef"))
+        : none
+    )
+    .chain(responseAuthLevelEl =>
+      responseAuthLevelEl &&
+      responseAuthLevelEl[0] &&
+      responseAuthLevelEl[0].textContent
+        ? some(responseAuthLevelEl[0].textContent.trim())
+        : none
+    );
 }
