@@ -13,10 +13,13 @@ import {
   loadSpidStrategy,
   SamlAttribute
 } from "./strategies/spidStrategy";
-import { isSpidL, SpidLevel } from "./types/spidLevel";
+import { isSpidL, SpidLevel, SpidLevelEnum } from "./types/spidLevel";
 import { matchRoute } from "./utils/express";
-import { getErrorCodeFromResponse } from "./utils/getErrorCodeFromResponse";
 import { log } from "./utils/logger";
+import {
+  getAuthnContextFromResponse,
+  getErrorCodeFromResponse
+} from "./utils/response";
 
 export const SPID_RELOAD_ERROR = new Error(
   "Error while initializing SPID strategy"
@@ -27,12 +30,14 @@ export const SPID_STRATEGY_NOT_DEFINED = new Error(
 );
 
 export {
+  getAuthnContextFromResponse,
   getErrorCodeFromResponse,
   isSpidL,
   IIoSpidStrategy,
   ISpidStrategyConfig,
   SamlAttribute,
-  SpidLevel
+  SpidLevel,
+  SpidLevelEnum
 };
 
 export class SpidPassportBuilder {

@@ -8,10 +8,12 @@ exports.SamlAttribute = spidStrategy_1.SamlAttribute;
 const spidLevel_1 = require("./types/spidLevel");
 exports.isSpidL = spidLevel_1.isSpidL;
 exports.SpidLevel = spidLevel_1.SpidLevel;
+exports.SpidLevelEnum = spidLevel_1.SpidLevelEnum;
 const express_1 = require("./utils/express");
-const getErrorCodeFromResponse_1 = require("./utils/getErrorCodeFromResponse");
-exports.getErrorCodeFromResponse = getErrorCodeFromResponse_1.getErrorCodeFromResponse;
 const logger_1 = require("./utils/logger");
+const response_1 = require("./utils/response");
+exports.getAuthnContextFromResponse = response_1.getAuthnContextFromResponse;
+exports.getErrorCodeFromResponse = response_1.getErrorCodeFromResponse;
 exports.SPID_RELOAD_ERROR = new Error("Error while initializing SPID strategy");
 exports.SPID_STRATEGY_NOT_DEFINED = new Error("Spid Strategy not defined.");
 class SpidPassportBuilder {
