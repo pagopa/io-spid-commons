@@ -1,7 +1,11 @@
-import { Express, Request, Response } from "express";
+import { Express, NextFunction, Request, Response } from "express";
 import { not } from "fp-ts/lib/function";
+import { fromNullable } from "fp-ts/lib/Option";
 import {
   IResponse,
+  IResponseErrorInternal,
+  IResponseErrorValidation,
+  IResponsePermanentRedirect,
   IResponseSuccessXml,
   ResponseErrorInternal,
   ResponseSuccessXml
@@ -20,6 +24,7 @@ import {
   getAuthnContextFromResponse,
   getErrorCodeFromResponse
 } from "./utils/response";
+import { getSamlIssuer } from "./utils/saml";
 
 export const SPID_RELOAD_ERROR = new Error(
   "Error while initializing SPID strategy"
@@ -28,6 +33,17 @@ export const SPID_RELOAD_ERROR = new Error(
 export const SPID_STRATEGY_NOT_DEFINED = new Error(
   "Spid Strategy not defined."
 );
+
+export interface IAuthenticationController {
+  acs: (
+    userPayload: unknown
+  ) => Promise<
+    | IResponseErrorInternal
+    | IResponseErrorValidation
+    | IResponsePermanentRedirect
+  >;
+  slo: () => Promise<IResponsePermanentRedirect>;
+}
 
 export {
   getAuthnContextFromResponse,
@@ -43,6 +59,8 @@ export {
 export class SpidPassportBuilder {
   private spidStrategy?: IIoSpidStrategy;
   private loginPath: string;
+  private sloPath: string;
+  private assertionConsumerServicePath: string;
   private metadataPath: string;
   private metadataXml?: string;
   private config: ISpidStrategyConfig;
@@ -51,22 +69,35 @@ export class SpidPassportBuilder {
   constructor(
     app: Express,
     loginPath: string,
+    sloPath: string,
+    assertionConsumerServicePath: string,
     metadataPath: string,
     config: ISpidStrategyConfig
   ) {
     this.loginPath = loginPath;
     this.metadataPath = metadataPath;
+    this.sloPath = sloPath;
+    this.assertionConsumerServicePath = assertionConsumerServicePath;
     this.config = config;
     this.app = app;
   }
 
   /**
-   * Initializes SpidStrategy for passport and setup login route.
+   * Initializes SpidStrategy for passport and setup login and auth routes.
    */
-  public async init(): Promise<void> {
+  public async init(
+    authenticationController: IAuthenticationController,
+    clientErrorRedirectionUrl: string,
+    clientLoginRedirectionUrl: string
+  ): Promise<void> {
     // tslint:disable-next-line: no-object-mutation
     this.spidStrategy = await loadSpidStrategy(this.config);
     this.registerLoginRoute(this.spidStrategy);
+    this.registerAuthRoutes(
+      authenticationController,
+      clientErrorRedirectionUrl,
+      clientLoginRedirectionUrl
+    );
   }
 
   public async clearAndReloadSpidStrategy(
@@ -104,6 +135,65 @@ export class SpidPassportBuilder {
     const spidAuth = passport.authenticate("spid", { session: false });
     this.app.get(this.loginPath, spidAuth);
     this.app.get(this.metadataPath, this.toExpressHandler(this.metadata, this));
+  }
+
+  private registerAuthRoutes(
+    acsController: IAuthenticationController,
+    clientErrorRedirectionUrl: string,
+    clientLoginRedirectionUrl: string
+  ): void {
+    this.app.post(
+      this.assertionConsumerServicePath,
+      this.withSpidAuth(
+        acsController,
+        clientErrorRedirectionUrl,
+        clientLoginRedirectionUrl
+      )
+    );
+
+    this.app.post(
+      this.sloPath,
+      this.toExpressHandler(acsController.slo, acsController)
+    );
+  }
+
+  /**
+   * Catch SPID authentication errors and redirect the client to
+   * clientErrorRedirectionUrl.
+   */
+  private withSpidAuth(
+    controller: IAuthenticationController,
+    clientErrorRedirectionUrl: string,
+    clientLoginRedirectionUrl: string
+  ): (req: Request, res: Response, next: NextFunction) => void {
+    return (req: Request, res: Response, next: NextFunction) => {
+      passport.authenticate("spid", async (err, user) => {
+        const issuer = getSamlIssuer(req.body);
+        if (err) {
+          log.error(
+            "Spid Authentication|Authentication Error|ERROR=%s|ISSUER=%s",
+            err,
+            issuer
+          );
+          return res.redirect(
+            clientErrorRedirectionUrl +
+              fromNullable(err.statusXml)
+                .chain(statusXml => getErrorCodeFromResponse(statusXml))
+                .map(errorCode => `?errorCode=${errorCode}`)
+                .getOrElse("")
+          );
+        }
+        if (!user) {
+          log.error(
+            "Spid Authentication|Authentication Error|ERROR=user_not_found|ISSUER=%s",
+            issuer
+          );
+          return res.redirect(clientLoginRedirectionUrl);
+        }
+        const response = await controller.acs(user);
+        response.apply(res);
+      })(req, res, next);
+    };
   }
 
   private toExpressHandler<T, P>(

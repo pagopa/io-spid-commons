@@ -1,13 +1,17 @@
 import * as express from "express";
+import { ResponsePermanentRedirect } from "italia-ts-commons/lib/responses";
 import * as request from "supertest";
 import {
+  IAuthenticationController,
   SPID_RELOAD_ERROR,
   SPID_STRATEGY_NOT_DEFINED,
   SpidPassportBuilder
 } from "../index";
 import { ISpidStrategyConfig, SamlAttribute } from "../strategies/spidStrategy";
 import * as spid from "../strategies/spidStrategy";
+import { samlResponse } from "../utils/__tests__/saml.test";
 import { matchRoute } from "../utils/express";
+import { SAMLResponse } from "../utils/saml";
 
 // saml configuration vars
 const samlCert = `
@@ -73,6 +77,8 @@ const IDPMetadataUrl =
   "https://raw.githubusercontent.com/teamdigitale/io-backend/164984224-download-idp-metadata/test_idps/spid-entities-idps.xml";
 
 const expectedLoginPath = "/login";
+const expectedSloPath = "/logout";
+const expectedAssertionConsumerServicePath = "/assertionConsumerService";
 const metadataPath = "/metadata";
 const spidStrategyConfig: ISpidStrategyConfig = {
   samlKey,
@@ -100,15 +106,32 @@ const spidStrategyConfig: ISpidStrategyConfig = {
   }
 };
 
+const acsMock = jest.fn();
+const sloMock = jest.fn();
+
+const authenticationControllerMock: IAuthenticationController = {
+  acs: acsMock,
+  slo: sloMock
+};
+
+const clientErrorRedirectionUrl = "https://error";
+const clientLoginRedirectionUrl = "https://login";
+
 describe("index", () => {
   // tslint:disable-next-line: no-let
   let app: express.Express | undefined;
   const appInitError = new Error("App not initialized");
   beforeEach(done => {
     // Create new Express app
+    jest.clearAllMocks();
     app = express();
     done();
   });
+
+  afterEach(() => {
+    jest.spyOn(spid, "loadSpidStrategy").mockRestore();
+  });
+
   it("Class contructor", done => {
     if (app === undefined) {
       return done(appInitError);
@@ -116,6 +139,8 @@ describe("index", () => {
     const spidPassport = new SpidPassportBuilder(
       app,
       expectedLoginPath,
+      expectedSloPath,
+      expectedAssertionConsumerServicePath,
       metadataPath,
       spidStrategyConfig
     );
@@ -135,13 +160,27 @@ describe("index", () => {
     const spidPassport = new SpidPassportBuilder(
       app,
       expectedLoginPath,
+      expectedSloPath,
+      expectedAssertionConsumerServicePath,
       metadataPath,
       spidStrategyConfig
     );
-    await spidPassport.init();
+    await spidPassport.init(
+      authenticationControllerMock,
+      clientErrorRedirectionUrl,
+      clientLoginRedirectionUrl
+    );
     expect(spidPassport["spidStrategy"]).not.toEqual(undefined);
     expect(
       app._router.stack.filter(matchRoute(expectedLoginPath, "get"))
+    ).toHaveLength(1);
+    expect(
+      app._router.stack.filter(matchRoute(expectedSloPath, "post"))
+    ).toHaveLength(1);
+    expect(
+      app._router.stack.filter(
+        matchRoute(expectedAssertionConsumerServicePath, "post")
+      )
     ).toHaveLength(1);
   });
 
@@ -152,10 +191,16 @@ describe("index", () => {
     const spidPassport = new SpidPassportBuilder(
       app,
       expectedLoginPath,
+      expectedSloPath,
+      expectedAssertionConsumerServicePath,
       metadataPath,
       spidStrategyConfig
     );
-    await spidPassport.init();
+    await spidPassport.init(
+      authenticationControllerMock,
+      clientErrorRedirectionUrl,
+      clientLoginRedirectionUrl
+    );
     const generatedMetadata = await spidPassport["metadata"]();
     await request(app)
       .get(metadataPath)
@@ -169,6 +214,8 @@ describe("index", () => {
     const spidPassport = new SpidPassportBuilder(
       app,
       expectedLoginPath,
+      expectedSloPath,
+      expectedAssertionConsumerServicePath,
       metadataPath,
       spidStrategyConfig
     );
@@ -191,10 +238,16 @@ describe("index", () => {
     const spidPassport = new SpidPassportBuilder(
       app,
       expectedLoginPath,
+      expectedSloPath,
+      expectedAssertionConsumerServicePath,
       metadataPath,
       spidStrategyConfig
     );
-    await spidPassport.init();
+    await spidPassport.init(
+      authenticationControllerMock,
+      clientErrorRedirectionUrl,
+      clientLoginRedirectionUrl
+    );
     await spidPassport.clearAndReloadSpidStrategy(newSpidStrategyConfig);
     expect(spidPassport["spidStrategy"]).not.toEqual(undefined);
     expect(spidPassport["config"]).toEqual(newSpidStrategyConfig);
@@ -210,10 +263,16 @@ describe("index", () => {
     const spidPassport = new SpidPassportBuilder(
       app,
       expectedLoginPath,
+      expectedSloPath,
+      expectedAssertionConsumerServicePath,
       metadataPath,
       spidStrategyConfig
     );
-    await spidPassport.init();
+    await spidPassport.init(
+      authenticationControllerMock,
+      clientErrorRedirectionUrl,
+      clientLoginRedirectionUrl
+    );
     jest.spyOn(spid, "loadSpidStrategy").mockImplementation(() => {
       return Promise.reject(new Error("Error on load spid strategy"));
     });
@@ -230,5 +289,108 @@ describe("index", () => {
       expect(spidPassport["config"]).not.toEqual(newSpidStrategyConfig);
       expect(spidPassport["config"]).toEqual(spidStrategyConfig);
     }
+  });
+});
+
+describe("SpidPassportBuilder#withSpidAuth", () => {
+  // tslint:disable-next-line: no-let
+  let app: express.Express | undefined;
+  const appInitError = new Error("App not initialized");
+  const body: SAMLResponse = {
+    SAMLResponse: Buffer.from(samlResponse).toString("base64")
+  };
+  const passport = require("passport");
+  const authenticateMock = jest.spyOn(passport, "authenticate");
+  beforeAll(async () => {
+    // Create new Express app
+    app = express();
+    const spidPassport = new SpidPassportBuilder(
+      app,
+      expectedLoginPath,
+      expectedSloPath,
+      expectedAssertionConsumerServicePath,
+      metadataPath,
+      spidStrategyConfig
+    );
+    await spidPassport.init(
+      authenticationControllerMock,
+      clientErrorRedirectionUrl,
+      clientLoginRedirectionUrl
+    );
+  });
+  beforeEach(done => {
+    jest.clearAllMocks();
+    done();
+  });
+  afterAll(() => {
+    authenticateMock.mockRestore();
+  });
+  it("should return a permanent redirect to the user profile page ", async () => {
+    if (app === undefined) {
+      throw appInitError;
+    }
+    authenticateMock.mockImplementation((..._: ReadonlyArray<unknown>) => {
+      return () => {
+        (_[1] as (error: unknown, user: unknown) => void)(undefined, {});
+      };
+    });
+    const expectedProfileRedirectionUrl = "https://example.com/profile.html";
+    acsMock.mockImplementation(_ =>
+      Promise.resolve(
+        ResponsePermanentRedirect({ href: expectedProfileRedirectionUrl })
+      )
+    );
+    const response = await request(app)
+      .post(expectedAssertionConsumerServicePath)
+      .send(body)
+      .expect(301);
+    expect(response).toBeDefined();
+    expect(response.text).toBe(
+      `Moved Permanently. Redirecting to ${expectedProfileRedirectionUrl}`
+    );
+  });
+
+  it("should return a redirect to login page", async () => {
+    if (app === undefined) {
+      throw appInitError;
+    }
+    authenticateMock.mockImplementation((..._: ReadonlyArray<unknown>) => {
+      return () => {
+        (_[1] as (error: unknown, user: unknown) => void)(undefined, false);
+      };
+    });
+    const response = await request(app)
+      .post(expectedAssertionConsumerServicePath)
+      .send(body)
+      .expect(302);
+    expect(response).toBeDefined();
+    expect(response.text).toBe(
+      `Found. Redirecting to ${clientLoginRedirectionUrl}`
+    );
+    expect(acsMock).not.toBeCalled();
+  });
+
+  it("should return a redirect to error page", async () => {
+    if (app === undefined) {
+      throw appInitError;
+    }
+    const expectedErrorCode = 22;
+    const expectedError = {
+      statusXml: `<Status>\n  <StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:AuthnFailed"/>\n  <StatusMessage>ErrorCode nr${expectedErrorCode}</StatusMessage>\n</Status>`
+    };
+    authenticateMock.mockImplementation((..._: ReadonlyArray<unknown>) => {
+      return () => {
+        (_[1] as (error: unknown, user: unknown) => void)(expectedError, null);
+      };
+    });
+    const response = await request(app)
+      .post(expectedAssertionConsumerServicePath)
+      .send(body)
+      .expect(302);
+    expect(response).toBeDefined();
+    expect(response.text).toBe(
+      `Found. Redirecting to ${clientErrorRedirectionUrl}?errorCode=${expectedErrorCode}`
+    );
+    expect(acsMock).not.toBeCalled();
   });
 });
