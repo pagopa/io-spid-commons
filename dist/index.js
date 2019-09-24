@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const function_1 = require("fp-ts/lib/function");
+const Option_1 = require("fp-ts/lib/Option");
 const responses_1 = require("italia-ts-commons/lib/responses");
 const passport = require("passport");
 const spidStrategy_1 = require("./strategies/spidStrategy");
@@ -14,22 +15,26 @@ const logger_1 = require("./utils/logger");
 const response_1 = require("./utils/response");
 exports.getAuthnContextFromResponse = response_1.getAuthnContextFromResponse;
 exports.getErrorCodeFromResponse = response_1.getErrorCodeFromResponse;
+const saml_1 = require("./utils/saml");
 exports.SPID_RELOAD_ERROR = new Error("Error while initializing SPID strategy");
 exports.SPID_STRATEGY_NOT_DEFINED = new Error("Spid Strategy not defined.");
 class SpidPassportBuilder {
-    constructor(app, loginPath, metadataPath, config) {
+    constructor(app, loginPath, sloPath, assertionConsumerServicePath, metadataPath, config) {
         this.loginPath = loginPath;
         this.metadataPath = metadataPath;
+        this.sloPath = sloPath;
+        this.assertionConsumerServicePath = assertionConsumerServicePath;
         this.config = config;
         this.app = app;
     }
     /**
-     * Initializes SpidStrategy for passport and setup login route.
+     * Initializes SpidStrategy for passport and setup login and auth routes.
      */
-    async init() {
+    async init(authenticationController, clientErrorRedirectionUrl, clientLoginRedirectionUrl) {
         // tslint:disable-next-line: no-object-mutation
         this.spidStrategy = await spidStrategy_1.loadSpidStrategy(this.config);
         this.registerLoginRoute(this.spidStrategy);
+        this.registerAuthRoutes(authenticationController, clientErrorRedirectionUrl, clientLoginRedirectionUrl);
     }
     async clearAndReloadSpidStrategy(newConfig) {
         logger_1.log.info("Started Spid strategy re-initialization ...");
@@ -59,6 +64,35 @@ class SpidPassportBuilder {
         const spidAuth = passport.authenticate("spid", { session: false });
         this.app.get(this.loginPath, spidAuth);
         this.app.get(this.metadataPath, this.toExpressHandler(this.metadata, this));
+    }
+    registerAuthRoutes(acsController, clientErrorRedirectionUrl, clientLoginRedirectionUrl) {
+        this.app.post(this.assertionConsumerServicePath, this.withSpidAuth(acsController, clientErrorRedirectionUrl, clientLoginRedirectionUrl));
+        this.app.post(this.sloPath, this.toExpressHandler(acsController.slo, acsController));
+    }
+    /**
+     * Catch SPID authentication errors and redirect the client to
+     * clientErrorRedirectionUrl.
+     */
+    withSpidAuth(controller, clientErrorRedirectionUrl, clientLoginRedirectionUrl) {
+        return (req, res, next) => {
+            passport.authenticate("spid", async (err, user) => {
+                const issuer = saml_1.getSamlIssuer(req.body);
+                if (err) {
+                    logger_1.log.error("Spid Authentication|Authentication Error|ERROR=%s|ISSUER=%s", err, issuer);
+                    return res.redirect(clientErrorRedirectionUrl +
+                        Option_1.fromNullable(err.statusXml)
+                            .chain(statusXml => response_1.getErrorCodeFromResponse(statusXml))
+                            .map(errorCode => `?errorCode=${errorCode}`)
+                            .getOrElse(""));
+                }
+                if (!user) {
+                    logger_1.log.error("Spid Authentication|Authentication Error|ERROR=user_not_found|ISSUER=%s", issuer);
+                    return res.redirect(clientLoginRedirectionUrl);
+                }
+                const response = await controller.acs(user);
+                response.apply(res);
+            })(req, res, next);
+        };
     }
     toExpressHandler(handler, object) {
         return (req, res) => handler
