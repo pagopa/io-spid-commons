@@ -117,47 +117,18 @@ const authenticationControllerMock: IAuthenticationController = {
 const clientErrorRedirectionUrl = "https://error";
 const clientLoginRedirectionUrl = "https://login";
 
+// tslint:disable-next-line: no-let
+let app: express.Express | undefined;
+// tslint:disable-next-line: no-let
+let spidPassport: SpidPassportBuilder;
+const appInitError = new Error("App not initialized");
+
 describe("index", () => {
-  // tslint:disable-next-line: no-let
-  let app: express.Express | undefined;
-  const appInitError = new Error("App not initialized");
-  beforeEach(done => {
-    // Create new Express app
+  beforeEach(async () => {
     jest.clearAllMocks();
+    // Create new Express app
     app = express();
-    done();
-  });
-
-  afterEach(() => {
-    jest.spyOn(spid, "loadSpidStrategy").mockRestore();
-  });
-
-  it("Class contructor", done => {
-    if (app === undefined) {
-      return done(appInitError);
-    }
-    const spidPassport = new SpidPassportBuilder(
-      app,
-      expectedLoginPath,
-      expectedSloPath,
-      expectedAssertionConsumerServicePath,
-      metadataPath,
-      spidStrategyConfig
-    );
-    // tslint:disable: no-string-literal
-    expect(spidPassport["config"]).toEqual(spidStrategyConfig);
-    expect(spidPassport["app"]).toEqual(app);
-    expect(spidPassport["loginPath"]).toEqual(expectedLoginPath);
-    expect(spidPassport["spidStrategy"]).toEqual(undefined);
-    done();
-  });
-
-  it("Run initialization of spidStrategy", async () => {
-    if (app === undefined) {
-      throw appInitError;
-    }
-
-    const spidPassport = new SpidPassportBuilder(
+    spidPassport = new SpidPassportBuilder(
       app,
       expectedLoginPath,
       expectedSloPath,
@@ -170,6 +141,35 @@ describe("index", () => {
       clientErrorRedirectionUrl,
       clientLoginRedirectionUrl
     );
+  });
+
+  afterEach(() => {
+    jest.spyOn(spid, "loadSpidStrategy").mockRestore();
+  });
+
+  it("Class contructor", done => {
+    // Create new app and new SpidStrategy to test not initilized SpidStrategy
+    const newApp = express();
+    const newSpidPassport = new SpidPassportBuilder(
+      newApp,
+      expectedLoginPath,
+      expectedSloPath,
+      expectedAssertionConsumerServicePath,
+      metadataPath,
+      spidStrategyConfig
+    );
+    // tslint:disable: no-string-literal
+    expect(newSpidPassport["config"]).toEqual(spidStrategyConfig);
+    expect(newSpidPassport["app"]).toEqual(newApp);
+    expect(newSpidPassport["loginPath"]).toEqual(expectedLoginPath);
+    expect(newSpidPassport["spidStrategy"]).toEqual(undefined);
+    done();
+  });
+
+  it("Run initialization of spidStrategy", async () => {
+    if (app === undefined) {
+      throw appInitError;
+    }
     expect(spidPassport["spidStrategy"]).not.toEqual(undefined);
     expect(
       app._router.stack.filter(matchRoute(expectedLoginPath, "get"))
@@ -188,19 +188,6 @@ describe("index", () => {
     if (app === undefined) {
       throw appInitError;
     }
-    const spidPassport = new SpidPassportBuilder(
-      app,
-      expectedLoginPath,
-      expectedSloPath,
-      expectedAssertionConsumerServicePath,
-      metadataPath,
-      spidStrategyConfig
-    );
-    await spidPassport.init(
-      authenticationControllerMock,
-      clientErrorRedirectionUrl,
-      clientLoginRedirectionUrl
-    );
     const generatedMetadata = await spidPassport["metadata"]();
     await request(app)
       .get(metadataPath)
@@ -208,11 +195,10 @@ describe("index", () => {
   });
 
   it("Spid metadata with spid strategy not defined", async () => {
-    if (app === undefined) {
-      throw appInitError;
-    }
-    const spidPassport = new SpidPassportBuilder(
-      app,
+    // Create new app and new SpidStrategy to test not initilized SpidStrategy
+    const newApp = express();
+    const newSpidPassport = new SpidPassportBuilder(
+      newApp,
       expectedLoginPath,
       expectedSloPath,
       expectedAssertionConsumerServicePath,
@@ -220,7 +206,7 @@ describe("index", () => {
       spidStrategyConfig
     );
     try {
-      await spidPassport["metadata"]();
+      await newSpidPassport["metadata"]();
       expect(false);
     } catch (e) {
       expect(e).toEqual(SPID_STRATEGY_NOT_DEFINED);
@@ -235,19 +221,6 @@ describe("index", () => {
     if (app === undefined) {
       throw appInitError;
     }
-    const spidPassport = new SpidPassportBuilder(
-      app,
-      expectedLoginPath,
-      expectedSloPath,
-      expectedAssertionConsumerServicePath,
-      metadataPath,
-      spidStrategyConfig
-    );
-    await spidPassport.init(
-      authenticationControllerMock,
-      clientErrorRedirectionUrl,
-      clientLoginRedirectionUrl
-    );
     await spidPassport.clearAndReloadSpidStrategy(newSpidStrategyConfig);
     expect(spidPassport["spidStrategy"]).not.toEqual(undefined);
     expect(spidPassport["config"]).toEqual(newSpidStrategyConfig);
@@ -257,22 +230,6 @@ describe("index", () => {
   });
 
   it("Fail reload Spid strategy", async () => {
-    if (app === undefined) {
-      throw appInitError;
-    }
-    const spidPassport = new SpidPassportBuilder(
-      app,
-      expectedLoginPath,
-      expectedSloPath,
-      expectedAssertionConsumerServicePath,
-      metadataPath,
-      spidStrategyConfig
-    );
-    await spidPassport.init(
-      authenticationControllerMock,
-      clientErrorRedirectionUrl,
-      clientLoginRedirectionUrl
-    );
     jest.spyOn(spid, "loadSpidStrategy").mockImplementation(() => {
       return Promise.reject(new Error("Error on load spid strategy"));
     });
@@ -293,9 +250,6 @@ describe("index", () => {
 });
 
 describe("SpidPassportBuilder#withSpidAuth", () => {
-  // tslint:disable-next-line: no-let
-  let app: express.Express | undefined;
-  const appInitError = new Error("App not initialized");
   const body: SAMLResponse = {
     SAMLResponse: Buffer.from(samlResponse).toString("base64")
   };
@@ -304,7 +258,7 @@ describe("SpidPassportBuilder#withSpidAuth", () => {
   beforeAll(async () => {
     // Create new Express app
     app = express();
-    const spidPassport = new SpidPassportBuilder(
+    spidPassport = new SpidPassportBuilder(
       app,
       expectedLoginPath,
       expectedSloPath,
@@ -318,9 +272,8 @@ describe("SpidPassportBuilder#withSpidAuth", () => {
       clientLoginRedirectionUrl
     );
   });
-  beforeEach(done => {
+  beforeEach(() => {
     jest.clearAllMocks();
-    done();
   });
   afterAll(() => {
     authenticateMock.mockRestore();
