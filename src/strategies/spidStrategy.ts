@@ -54,6 +54,10 @@ export async function loadFromRemote(
   const idpMetadataXML = await fetchIdpMetadata(idpMetadataUrl);
   log.info("Parsing SPID metadata...");
   const idpMetadata = parseIdpMetadata(idpMetadataXML);
+  if (idpMetadata.length === 0) {
+    log.error("No SPID metadata found from the url: %s", idpMetadataUrl);
+    throw new Error("No SPID metadata found");
+  }
   if (idpMetadata.length < Object.keys(idpIds).length) {
     log.warn("Missing SPID metadata on [%s]", idpMetadataUrl);
   }
