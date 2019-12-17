@@ -419,7 +419,8 @@ describe("spidStrategy#loadFromRemote", () => {
   it("load idp options with missing idps configurations", async () => {
     const loadFromRemote = require("../../strategies/spidStrategy")
       .loadFromRemote;
-    const idpOptions = await loadFromRemote(IDPMetadataUrl);
+    const IDP_IDS = require("../../strategies/spidStrategy").IDP_IDS;
+    const idpOptions = await loadFromRemote(IDPMetadataUrl, IDP_IDS);
     expect(mockFetchIdpMetadata).toHaveBeenCalledWith(IDPMetadataUrl);
     expect(mockWarn).toHaveBeenCalledWith(
       "Missing SPID metadata on [%s]",

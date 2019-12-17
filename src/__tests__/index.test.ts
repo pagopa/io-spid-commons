@@ -75,6 +75,7 @@ const spidAutologin = "";
 const spidTestEnvUrl = "https://localhost:8088";
 const IDPMetadataUrl =
   "https://raw.githubusercontent.com/teamdigitale/io-backend/164984224-download-idp-metadata/test_idps/spid-entities-idps.xml";
+const hasSpidValidatorEnabled = false;
 
 const expectedLoginPath = "/login";
 const expectedSloPath = "/logout";
@@ -103,7 +104,8 @@ const spidStrategyConfig: ISpidStrategyConfig = {
     displayName: "IO - l'app dei servizi pubblici BETA",
     name:
       "Team per la Trasformazione Digitale - Presidenza Del Consiglio dei Ministri"
-  }
+  },
+  hasSpidValidatorEnabled
 };
 
 const acsMock = jest.fn();
