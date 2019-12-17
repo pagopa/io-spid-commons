@@ -9,7 +9,7 @@ const SpidStrategy = require("spid-passport");
 const x509 = require("x509");
 const idpLoader_1 = require("../utils/idpLoader");
 const logger_1 = require("../utils/logger");
-const IDP_IDS = {
+exports.IDP_IDS = {
     "https://id.lepida.it/idp/shibboleth": "lepidaid",
     "https://identity.infocert.it": "infocertid",
     "https://identity.sieltecloud.it": "sielteid",
@@ -24,16 +24,16 @@ const IDP_IDS = {
  * Load idp Metadata from a remote url, parse infomations and return a mapped and whitelisted idp options
  * for spidStrategy object.
  */
-async function loadFromRemote(idpMetadataUrl) {
+async function loadFromRemote(idpMetadataUrl, idpIds) {
     logger_1.log.info("Fetching SPID metadata from [%s]...", idpMetadataUrl);
     const idpMetadataXML = await idpLoader_1.fetchIdpMetadata(idpMetadataUrl);
     logger_1.log.info("Parsing SPID metadata...");
     const idpMetadata = idpLoader_1.parseIdpMetadata(idpMetadataXML);
-    if (idpMetadata.length < Object.keys(IDP_IDS).length) {
+    if (idpMetadata.length < Object.keys(idpIds).length) {
         logger_1.log.warn("Missing SPID metadata on [%s]", idpMetadataUrl);
     }
     logger_1.log.info("Configuring IdPs...");
-    return idpLoader_1.mapIpdMetadata(idpMetadata, IDP_IDS);
+    return idpLoader_1.mapIpdMetadata(idpMetadata, idpIds);
 }
 exports.loadFromRemote = loadFromRemote;
 /*
@@ -58,10 +58,15 @@ var SamlAttribute;
     SamlAttribute["DIGITAL_ADDRESS"] = "digitalAddress";
 })(SamlAttribute = exports.SamlAttribute || (exports.SamlAttribute = {}));
 exports.loadSpidStrategy = async (config) => {
-    const idpsMetadataOption = await loadFromRemote(config.IDPMetadataUrl);
+    const idpsMetadataOption = await loadFromRemote(config.IDPMetadataUrl, exports.IDP_IDS);
+    const spidValidatorIdpMetadataOption = config.hasSpidValidatorEnabled
+        ? await loadFromRemote("https://validator.spid.gov.it/metadata.xml", {
+            "https://validator.spid.gov.it": "validator"
+        })
+        : {};
     logSamlCertExpiration(config.samlCert);
     const options = {
-        idp: Object.assign({}, idpsMetadataOption, { xx_servizicie_test: {
+        idp: Object.assign({}, idpsMetadataOption, spidValidatorIdpMetadataOption, { xx_servizicie_test: {
                 cert: [
                     "MIIDdTCCAl2gAwIBAgIUU79XEfveueyClDtLkqUlSPZ2o8owDQYJKoZIhvcNAQELBQAwLTErMCkGA1UEAwwiaWRzZXJ2ZXIuc2Vydml6aWNpZS5pbnRlcm5vLmdvdi5pdDAeFw0xODEwMTkwODM1MDVaFw0zODEwMTkwODM1MDVaMC0xKzApBgNVBAMMImlkc2VydmVyLnNlcnZpemljaWUuaW50ZXJuby5nb3YuaXQwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDHraj3iOTCIILTlOzicSEuFt03kKvQDqGWRd5o7s1W7SP2EtcTmg3xron/sbrLEL/eMUQV/Biz6J4pEGoFpMZQHGxOVypmO7Nc8pkFot7yUTApr6Ikuy4cUtbx0g5fkQLNb3upIg0Vg1jSnRXEvUCygr/9EeKCUOi/2ptmOVSLad+dT7TiRsZTwY3FvRWcleDfyYwcIMgz5dLSNLMZqwzQZK1DzvWeD6aGtBKCYPRftacHoESD+6bhukHZ6w95foRMJLOaBpkp+XfugFQioYvrM0AB1YQZ5DCQRhhc8jejwdY+bOB3eZ1lJY7Oannfu6XPW2fcknelyPt7PGf22rNfAgMBAAGjgYwwgYkwHQYDVR0OBBYEFK3Ah+Do3/zB9XjZ66i4biDpUEbAMGgGA1UdEQRhMF+CImlkc2VydmVyLnNlcnZpemljaWUuaW50ZXJuby5nb3YuaXSGOWh0dHBzOi8vaWRzZXJ2ZXIuc2Vydml6aWNpZS5pbnRlcm5vLmdvdi5pdC9pZHAvc2hpYmJvbGV0aDANBgkqhkiG9w0BAQsFAAOCAQEAVtpn/s+lYVf42pAtdgJnGTaSIy8KxHeZobKNYNFEY/XTaZEt9QeV5efUMBVVhxKTTHN0046DR96WFYXs4PJ9Fpyq6Hmy3k/oUdmHJ1c2bwWF/nZ82CwOO081Yg0GBcfPEmKLUGOBK8T55ncW+RSZadvWTyhTtQhLUtLKcWyzKB5aS3kEE5LSzR8sw3owln9P41Mz+QtL3WeNESRHW0qoQkFotYXXW6Rvh69+GyzJLxvq2qd7D1qoJgOMrarshBKKPk+ABaLYoEf/cru4e0RDIp2mD0jkGOGDkn9XUl+3ddALq/osTki6CEawkhiZEo6ABEAjEWNkH9W3/ZzvJnWo6Q=="
                 ],

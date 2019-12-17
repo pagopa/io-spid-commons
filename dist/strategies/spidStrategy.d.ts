@@ -1,5 +1,9 @@
 import { Strategy } from "passport";
 import { IDPOption } from "../utils/idpLoader";
+interface IIdpIds {
+    [key: string]: string | undefined;
+}
+export declare const IDP_IDS: IIdpIds;
 export interface IIoSpidStrategy extends Strategy {
     spidOptions: {
         idp: {
@@ -14,7 +18,7 @@ export interface IIoSpidStrategy extends Strategy {
  * Load idp Metadata from a remote url, parse infomations and return a mapped and whitelisted idp options
  * for spidStrategy object.
  */
-export declare function loadFromRemote(idpMetadataUrl: string): Promise<{
+export declare function loadFromRemote(idpMetadataUrl: string, idpIds: IIdpIds): Promise<{
     [key: string]: IDPOption | undefined;
 }>;
 export declare enum SamlAttribute {
@@ -50,5 +54,7 @@ export interface ISpidStrategyConfig {
         displayName: string;
         name: string;
     };
+    hasSpidValidatorEnabled: boolean;
 }
 export declare const loadSpidStrategy: (config: ISpidStrategyConfig) => Promise<IIoSpidStrategy>;
+export {};
