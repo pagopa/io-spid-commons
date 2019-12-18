@@ -65,7 +65,7 @@ exports.loadSpidStrategy = async (config) => {
     const idpsMetadataOption = await loadFromRemote(config.IDPMetadataUrl, exports.IDP_IDS);
     const spidValidatorIdpMetadataOption = config.hasSpidValidatorEnabled
         ? await loadFromRemote("https://validator.spid.gov.it/metadata.xml", {
-            "https://validator.spid.gov.it": "validator"
+            "https://validator.spid.gov.it": "xx_validator"
         })
         : {};
     logSamlCertExpiration(config.samlCert);
