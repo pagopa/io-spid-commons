@@ -114,7 +114,7 @@ export const loadSpidStrategy = async (
   );
   const spidValidatorIdpMetadataOption = config.hasSpidValidatorEnabled
     ? await loadFromRemote("https://validator.spid.gov.it/metadata.xml", {
-        "https://validator.spid.gov.it": "validator"
+        "https://validator.spid.gov.it": "xx_validator"
       })
     : {};
 
