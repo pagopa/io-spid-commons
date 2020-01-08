@@ -15,11 +15,7 @@ import {
 } from "../utils/idpLoader";
 import { log } from "../utils/logger";
 
-interface IIdpIds {
-  [key: string]: string | undefined;
-}
-
-export const IDP_IDS: IIdpIds = {
+export const IDP_IDS: Record<string, string> = {
   "https://id.lepida.it/idp/shibboleth": "lepidaid",
   "https://identity.infocert.it": "infocertid",
   "https://identity.sieltecloud.it": "sielteid",
@@ -48,7 +44,7 @@ export interface IIoSpidStrategy extends Strategy {
  */
 export async function loadFromRemote(
   idpMetadataUrl: string,
-  idpIds: IIdpIds
+  idpIds: Record<string, string>
 ): Promise<{ [key: string]: IDPOption | undefined }> {
   log.info("Fetching SPID metadata from [%s]...", idpMetadataUrl);
   const idpMetadataXML = await fetchIdpMetadata(idpMetadataUrl);
