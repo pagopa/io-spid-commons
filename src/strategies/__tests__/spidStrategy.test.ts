@@ -15,7 +15,7 @@ describe("loadFromRemote", () => {
 
   it("should resolve with the fetched IdP options", () => {
     const validIdpMetadataUrl =
-      "https://registry.spid.gov.it/metadata/idp/spid-entities-idps.xml";
+      "https://raw.githubusercontent.com/teamdigitale/io-backend/164984224-download-idp-metadata/test_idps/spid-entities-idps.xml";
     const result = loadFromRemote(validIdpMetadataUrl, IDP_IDS);
     return expect(result).resolves.toBeTruthy();
   });
