@@ -1,6 +1,8 @@
 import * as express from "express";
 import { ResponsePermanentRedirect } from "italia-ts-commons/lib/responses";
+import * as nock from "nock";
 import * as request from "supertest";
+import spidEntitiesIdps from "../__mocks__/spid-entities-idps";
 import {
   IAuthenticationController,
   SPID_RELOAD_ERROR,
@@ -73,8 +75,9 @@ const samlAcceptedClockSkewMs = -1;
 const samlAttributeConsumingServiceIndex = 0;
 const spidAutologin = "";
 const spidTestEnvUrl = "https://localhost:8088";
-const IDPMetadataUrl =
-  "https://raw.githubusercontent.com/teamdigitale/io-backend/164984224-download-idp-metadata/test_idps/spid-entities-idps.xml";
+const mockedIdpsRegistryHost = "https://mocked.registry.net";
+const mockedIdpsRegistryPath = "/idps/registry/path";
+const IDPMetadataUrl = mockedIdpsRegistryHost + mockedIdpsRegistryPath;
 const hasSpidValidatorEnabled = false;
 
 const expectedLoginPath = "/login";
@@ -124,6 +127,13 @@ let app: express.Express | undefined;
 // tslint:disable-next-line: no-let
 let spidPassport: SpidPassportBuilder;
 const appInitError = new Error("App not initialized");
+
+beforeAll(() => {
+  nock(mockedIdpsRegistryHost)
+    .get(mockedIdpsRegistryPath)
+    .reply(200, spidEntitiesIdps)
+    .persist();
+});
 
 describe("index", () => {
   beforeEach(async () => {

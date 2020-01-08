@@ -1,22 +1,43 @@
+import * as nock from "nock";
+import spidEntitiesIdps from "../../__mocks__/spid-entities-idps";
 import { IDP_IDS, loadFromRemote } from "../spidStrategy";
+
+const mockedIdpsRegistryHost = "https://mocked.registry.net";
 
 describe("loadFromRemote", () => {
   it("should reject if the fetch of IdP metadata fails", () => {
-    const notExistingUrl = "http://0.1.2.3/index.html";
-    const result = loadFromRemote(notExistingUrl, IDP_IDS);
+    const notExistingPath = "/not-existing-path";
+    nock(mockedIdpsRegistryHost)
+      .get(notExistingPath)
+      .reply(404);
+    const result = loadFromRemote(
+      mockedIdpsRegistryHost + notExistingPath,
+      IDP_IDS
+    );
     return expect(result).rejects.toEqual(expect.any(Error));
   });
 
   it("should reject an error if the fetch of IdP metadata returns no useful data", () => {
-    const wrongIdpMetadataUrl = "http://www.example.com";
-    const result = loadFromRemote(wrongIdpMetadataUrl, IDP_IDS);
+    const wrongIdpMetadataPath = "/wrong-path";
+    nock(mockedIdpsRegistryHost)
+      .get(wrongIdpMetadataPath)
+      .reply(200, { property: "same value" });
+    const result = loadFromRemote(
+      mockedIdpsRegistryHost + wrongIdpMetadataPath,
+      IDP_IDS
+    );
     return expect(result).rejects.toEqual(expect.any(Error));
   });
 
   it("should resolve with the fetched IdP options", () => {
-    const validIdpMetadataUrl =
-      "https://raw.githubusercontent.com/teamdigitale/io-backend/164984224-download-idp-metadata/test_idps/spid-entities-idps.xml";
-    const result = loadFromRemote(validIdpMetadataUrl, IDP_IDS);
+    const validIdpMetadataPath = "/correct-path";
+    nock(mockedIdpsRegistryHost)
+      .get(validIdpMetadataPath)
+      .reply(200, spidEntitiesIdps);
+    const result = loadFromRemote(
+      mockedIdpsRegistryHost + validIdpMetadataPath,
+      IDP_IDS
+    );
     return expect(result).resolves.toBeTruthy();
   });
 });

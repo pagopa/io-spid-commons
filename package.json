@@ -28,6 +28,7 @@
     "express": "4.17.0",
     "italia-tslint-rules": "*",
     "jest": "^24.8.0",
+    "nock": "^11.7.1",
     "prettier": "^1.12.1",
     "rimraf": "^2.6.2",
     "supertest": "^4.0.2",
@@ -50,8 +51,8 @@
     "xmldom": "^0.1.27"
   },
   "peerDependencies": {
-    "passport": "^0.4.0",
-    "express": "^4.17.0"
+    "express": "^4.17.0",
+    "passport": "^0.4.0"
   },
   "jest": {
     "testEnvironment": "node",
