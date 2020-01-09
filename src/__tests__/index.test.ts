@@ -1,4 +1,5 @@
 import * as express from "express";
+import { fromLeft } from "fp-ts/lib/TaskEither";
 import { ResponsePermanentRedirect } from "italia-ts-commons/lib/responses";
 import * as nock from "nock";
 import * as request from "supertest";
@@ -148,11 +149,13 @@ describe("index", () => {
       metadataPath,
       spidStrategyConfig
     );
-    await spidPassport.init(
-      authenticationControllerMock,
-      clientErrorRedirectionUrl,
-      clientLoginRedirectionUrl
-    );
+    await spidPassport
+      .init(
+        authenticationControllerMock,
+        clientErrorRedirectionUrl,
+        clientLoginRedirectionUrl
+      )
+      .run();
   });
 
   afterEach(() => {
@@ -233,7 +236,7 @@ describe("index", () => {
     if (app === undefined) {
       throw appInitError;
     }
-    await spidPassport.clearAndReloadSpidStrategy(newSpidStrategyConfig);
+    await spidPassport.clearAndReloadSpidStrategy(newSpidStrategyConfig).run();
     expect(spidPassport["spidStrategy"]).not.toEqual(undefined);
     expect(spidPassport["config"]).toEqual(newSpidStrategyConfig);
     expect(
@@ -243,7 +246,7 @@ describe("index", () => {
 
   it("Fail reload Spid strategy", async () => {
     jest.spyOn(spid, "loadSpidStrategy").mockImplementation(() => {
-      return Promise.reject(new Error("Error on load spid strategy"));
+      return fromLeft(new Error("Error on load spid strategy"));
     });
     const newSpidStrategyConfig: ISpidStrategyConfig = {
       ...spidStrategyConfig,
@@ -251,7 +254,9 @@ describe("index", () => {
     };
     const originalSpidStrategy = spidPassport["spidStrategy"];
     try {
-      await spidPassport.clearAndReloadSpidStrategy(newSpidStrategyConfig);
+      await spidPassport
+        .clearAndReloadSpidStrategy(newSpidStrategyConfig)
+        .run();
     } catch (e) {
       expect(e).toBe(SPID_RELOAD_ERROR);
       expect(spidPassport["spidStrategy"]).toEqual(originalSpidStrategy);
@@ -278,11 +283,13 @@ describe("SpidPassportBuilder#withSpidAuth", () => {
       metadataPath,
       spidStrategyConfig
     );
-    await spidPassport.init(
-      authenticationControllerMock,
-      clientErrorRedirectionUrl,
-      clientLoginRedirectionUrl
-    );
+    await spidPassport
+      .init(
+        authenticationControllerMock,
+        clientErrorRedirectionUrl,
+        clientLoginRedirectionUrl
+      )
+      .run();
   });
   beforeEach(() => {
     jest.clearAllMocks();

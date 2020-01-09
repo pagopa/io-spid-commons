@@ -1,3 +1,4 @@
+import { isRight } from "fp-ts/lib/Either";
 import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
 import { IDPOption, mapIpdMetadata, parseIdpMetadata } from "../idpLoader";
 
@@ -420,13 +421,14 @@ describe("spidStrategy#loadFromRemote", () => {
     const loadFromRemote = require("../../strategies/spidStrategy")
       .loadFromRemote;
     const IDP_IDS = require("../../strategies/spidStrategy").IDP_IDS;
-    const idpOptions = await loadFromRemote(IDPMetadataUrl, IDP_IDS);
+    const idpOptions = await loadFromRemote(IDPMetadataUrl, IDP_IDS).run();
     expect(mockFetchIdpMetadata).toHaveBeenCalledWith(IDPMetadataUrl);
     expect(mockWarn).toHaveBeenCalledWith(
       "Missing SPID metadata on [%s]",
       IDPMetadataUrl
     );
-    expect(idpOptions).toEqual({
+    expect(isRight(idpOptions)).toBeTruthy();
+    expect(idpOptions.value).toEqual({
       posteid: expectedIDPOption
     });
   });
