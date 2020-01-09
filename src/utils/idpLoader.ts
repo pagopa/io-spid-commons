@@ -18,6 +18,10 @@ export function parseIdpMetadata(
   ipdMetadataPage: string
 ): ReadonlyArray<IDPEntityDescriptor> {
   const domParser = new DOMParser().parseFromString(ipdMetadataPage);
+  if (!domParser) {
+    log.error(Error("Parsing of XML string containing IdP metadata failed"));
+    return [];
+  }
   const entityDescriptors = domParser.getElementsByTagName(EntityDescriptorTAG);
   return Array.from(entityDescriptors).reduce(
     (idps: ReadonlyArray<IDPEntityDescriptor>, element: Element) => {
