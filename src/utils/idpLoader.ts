@@ -1,3 +1,4 @@
+import { Either, left, right } from "fp-ts/lib/Either";
 import { errorsToReadableMessages } from "italia-ts-commons/lib/reporters";
 import nodeFetch from "node-fetch";
 import { DOMParser } from "xmldom";
@@ -16,63 +17,66 @@ const SingleLogoutServiceTAG = "md:SingleLogoutService";
  */
 export function parseIdpMetadata(
   ipdMetadataPage: string
-): ReadonlyArray<IDPEntityDescriptor> {
+): Either<Error, ReadonlyArray<IDPEntityDescriptor>> {
   const domParser = new DOMParser().parseFromString(ipdMetadataPage);
   if (!domParser) {
-    log.error(Error("Parsing of XML string containing IdP metadata failed"));
-    return [];
+    const error = Error("Parsing of XML string containing IdP metadata failed");
+    log.error("parseIdpMetadata() | %s", error);
+    return left(error);
   }
   const entityDescriptors = domParser.getElementsByTagName(EntityDescriptorTAG);
-  return Array.from(entityDescriptors).reduce(
-    (idps: ReadonlyArray<IDPEntityDescriptor>, element: Element) => {
-      const certs = Array.from(
-        element.getElementsByTagName(X509CertificateTAG)
-      ).map(_ => {
-        if (_.textContent) {
-          return _.textContent.replace(/[\n\s]/g, "");
-        }
-        return "";
-      });
-      try {
-        const elementInfoOrErrors = IDPEntityDescriptor.decode({
-          cert: certs,
-          entityID: element.getAttribute("entityID"),
-          entryPoint: Array.from(
-            element.getElementsByTagName(SingleSignOnServiceTAG)
-          )
-            .filter(
-              _ =>
-                _.getAttribute("Binding") ===
-                "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
-            )[0]
-            .getAttribute("Location"),
-          logoutUrl: Array.from(
-            element.getElementsByTagName(SingleLogoutServiceTAG)
-          )
-            .filter(
-              _ =>
-                _.getAttribute("Binding") ===
-                "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
-            )[0]
-            .getAttribute("Location")
+  return right(
+    Array.from(entityDescriptors).reduce(
+      (idps: ReadonlyArray<IDPEntityDescriptor>, element: Element) => {
+        const certs = Array.from(
+          element.getElementsByTagName(X509CertificateTAG)
+        ).map(_ => {
+          if (_.textContent) {
+            return _.textContent.replace(/[\n\s]/g, "");
+          }
+          return "";
         });
-        if (elementInfoOrErrors.isLeft()) {
+        try {
+          const elementInfoOrErrors = IDPEntityDescriptor.decode({
+            cert: certs,
+            entityID: element.getAttribute("entityID"),
+            entryPoint: Array.from(
+              element.getElementsByTagName(SingleSignOnServiceTAG)
+            )
+              .filter(
+                _ =>
+                  _.getAttribute("Binding") ===
+                  "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
+              )[0]
+              .getAttribute("Location"),
+            logoutUrl: Array.from(
+              element.getElementsByTagName(SingleLogoutServiceTAG)
+            )
+              .filter(
+                _ =>
+                  _.getAttribute("Binding") ===
+                  "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
+              )[0]
+              .getAttribute("Location")
+          });
+          if (elementInfoOrErrors.isLeft()) {
+            log.warn(
+              "Invalid md:EntityDescriptor. %s",
+              errorsToReadableMessages(elementInfoOrErrors.value).join(" / ")
+            );
+            return idps;
+          }
+          return [...idps, elementInfoOrErrors.value];
+        } catch {
           log.warn(
             "Invalid md:EntityDescriptor. %s",
-            errorsToReadableMessages(elementInfoOrErrors.value).join(" / ")
+            new Error("Unable to parse element info")
           );
           return idps;
         }
-        return [...idps, elementInfoOrErrors.value];
-      } catch {
-        log.warn(
-          "Invalid md:EntityDescriptor. %s",
-          new Error("Unable to parse element info")
-        );
-        return idps;
-      }
-    },
-    []
+      },
+      []
+    )
   );
 }
 
