@@ -16,7 +16,7 @@ import { Strategy } from "passport";
 import * as SpidStrategy from "spid-passport";
 import * as x509 from "x509";
 import getCieIpdOption from "../testIdpConfigs/xx_servizicie_test";
-import getSpidIpdOption from "../testIdpConfigs/xx_testenv2";
+import getSpidTestIpdOption from "../testIdpConfigs/xx_testenv2";
 import { SpidUser } from "../types/spidUser";
 import {
   fetchIdpMetadata,
@@ -152,7 +152,7 @@ export const loadSpidStrategy = (
         idp: {
           ...idpOptionsRecord,
           xx_servizicie_test: getCieIpdOption(),
-          xx_testenv2: getSpidIpdOption(config.spidTestEnvUrl)
+          xx_testenv2: getSpidTestIpdOption(config.spidTestEnvUrl)
         },
         sp: {
           acceptedClockSkewMs: config.samlAcceptedClockSkewMs,
