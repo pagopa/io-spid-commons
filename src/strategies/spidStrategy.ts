@@ -4,6 +4,7 @@
  */
 import { distanceInWordsToNow, isAfter, subDays } from "date-fns";
 import { array } from "fp-ts/lib/Array";
+import { toError } from "fp-ts/lib/Either";
 import {
   fromPredicate,
   taskEither,
@@ -53,13 +54,10 @@ export function loadFromRemote(
   idpMetadataUrl: string,
   idpIds: Record<string, string>
 ): TaskEither<Error, Record<string, IDPOption>> {
-  return tryCatch(
-    () => {
-      log.info("Fetching SPID metadata from [%s]...", idpMetadataUrl);
-      return fetchIdpMetadata(idpMetadataUrl);
-    },
-    error => error as Error
-  )
+  return tryCatch(() => {
+    log.info("Fetching SPID metadata from [%s]...", idpMetadataUrl);
+    return fetchIdpMetadata(idpMetadataUrl);
+  }, toError)
     .map(idpMetadataXML => {
       log.info("Parsing SPID metadata...");
       return parseIdpMetadata(idpMetadataXML);
