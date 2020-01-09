@@ -1,6 +1,6 @@
 {
   "name": "io-spid-commons",
-  "version": "0.0.3",
+  "version": "1.0.0",
   "description": "Common code for integrating SPID authentication",
   "repository": "https://github.com/teamdigitale/io-spid-commons",
   "author": "https://teamdigitale.governo.it",
