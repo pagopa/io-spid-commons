@@ -1,6 +1,7 @@
 import { Express, NextFunction, Request, Response } from "express";
 import { not } from "fp-ts/lib/function";
 import { fromNullable } from "fp-ts/lib/Option";
+import { TaskEither } from "fp-ts/lib/TaskEither";
 import {
   IResponse,
   IResponseErrorInternal,
@@ -85,49 +86,51 @@ export class SpidPassportBuilder {
   /**
    * Initializes SpidStrategy for passport and setup login and auth routes.
    */
-  public async init(
+  public init(
     authenticationController: IAuthenticationController,
     clientErrorRedirectionUrl: string,
     clientLoginRedirectionUrl: string
-  ): Promise<void> {
-    // tslint:disable-next-line: no-object-mutation
-    this.spidStrategy = await loadSpidStrategy(this.config);
-    this.registerLoginRoute(this.spidStrategy);
-    this.registerAuthRoutes(
-      authenticationController,
-      clientErrorRedirectionUrl,
-      clientLoginRedirectionUrl
-    );
+  ): TaskEither<Error, void> {
+    return loadSpidStrategy(this.config).map(ioSpidStrategy => {
+      // tslint:disable-next-line: no-object-mutation
+      this.spidStrategy = ioSpidStrategy;
+      this.registerLoginRoute(this.spidStrategy);
+      this.registerAuthRoutes(
+        authenticationController,
+        clientErrorRedirectionUrl,
+        clientLoginRedirectionUrl
+      );
+    });
   }
 
-  public async clearAndReloadSpidStrategy(
+  public clearAndReloadSpidStrategy(
     newConfig?: ISpidStrategyConfig
-  ): Promise<void> {
+  ): TaskEither<Error, void> {
     log.info("Started Spid strategy re-initialization ...");
-    try {
-      const newSpidStrategy: IIoSpidStrategy = await loadSpidStrategy(
-        newConfig || this.config
-      );
-      if (newConfig) {
-        // tslint:disable-next-line: no-object-mutation
-        this.config = newConfig;
-      }
-      passport.unuse("spid");
-      // tslint:disable-next-line: no-any
+    return loadSpidStrategy(newConfig || this.config)
+      .map(spidStrategy => {
+        const newSpidStrategy: IIoSpidStrategy = spidStrategy;
+        if (newConfig) {
+          // tslint:disable-next-line: no-object-mutation
+          this.config = newConfig;
+        }
+        passport.unuse("spid");
+        // tslint:disable-next-line: no-any
 
-      // Remove login route from Express router stack
-      // tslint:disable-next-line: no-object-mutation
-      this.app._router.stack = this.app._router.stack.filter(
-        not(matchRoute(this.loginPath, "get"))
-      );
-      // tslint:disable-next-line: no-object-mutation
-      this.metadataXml = undefined;
-      this.registerLoginRoute(newSpidStrategy);
-      log.info("Spid strategy re-initialization complete.");
-    } catch (err) {
-      log.error("Error on update spid strategy: %s", err);
-      throw SPID_RELOAD_ERROR;
-    }
+        // Remove login route from Express router stack
+        // tslint:disable-next-line: no-object-mutation
+        this.app._router.stack = this.app._router.stack.filter(
+          not(matchRoute(this.loginPath, "get"))
+        );
+        // tslint:disable-next-line: no-object-mutation
+        this.metadataXml = undefined;
+        this.registerLoginRoute(newSpidStrategy);
+        log.info("Spid strategy re-initialization complete.");
+      })
+      .mapLeft(error => {
+        log.error("Error on update spid strategy: %s", error);
+        return SPID_RELOAD_ERROR;
+      });
   }
 
   private registerLoginRoute(spidStrategy: IIoSpidStrategy): void {

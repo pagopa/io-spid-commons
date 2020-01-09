@@ -1,3 +1,4 @@
+import { isLeft, isRight } from "fp-ts/lib/Either";
 import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
 import { IDPOption, mapIpdMetadata, parseIdpMetadata } from "../idpLoader";
 
@@ -320,12 +321,12 @@ const expectedIDPOption = {
 describe("idpLoader#parseIdpMetadata", () => {
   it("parsing valid metadata xml file", () => {
     const parsedMetadata = parseIdpMetadata(mockMetadata);
-    expect(parsedMetadata).toEqual([expectedMetadata]);
+    expect(parsedMetadata.value).toEqual([expectedMetadata]);
   });
 
   it("parsing invalid metadata xml file", () => {
     const parsedMetadata = parseIdpMetadata(invalidMockMetadata);
-    expect(parsedMetadata).toEqual([
+    expect(parsedMetadata.value).toEqual([
       {
         cert: new NonEmptyArray(
           "MIIDjDCCAnQCCQDrwdpdNHQoozANBgkqhkiG9w0BAQsFADCBhzELMAkGA1UEBhMCSVQxDTALBgNVBAgMBFJvbWExDTALBgNVBAcMBFJvbWExDTALBgNVBAoMBEFnSUQxDTALBgNVBAsMBFNQSUQxGTAXBgNVBAMMEHNwaWQuYWdpZC5nb3YuaXQxITAfBgkqhkiG9w0BCQEWEnJvc2luaUBhZ2lkLmdvdi5pdDAeFw0xODEyMjExNTE5NTdaFw0xOTEyMjExNTE5NTdaMIGHMQswCQYDVQQGEwJJVDENMAsGA1UECAwEUm9tYTENMAsGA1UEBwwEUm9tYTENMAsGA1UECgwEQWdJRDENMAsGA1UECwwEU1BJRDEZMBcGA1UEAwwQc3BpZC5hZ2lkLmdvdi5pdDEhMB8GCSqGSIb3DQEJARYScm9zaW5pQGFnaWQuZ292Lml0MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4HVbuVj/NajswD7LrDXg73FRxtFrTJZkIBrnxCt6NzhWAOdH2DjQ0qjDoY6XIGPMyTI5YLGCZhDY6g8jEh4yKsz2bLGvkz4rYzqODqkYJZysoYgnZ8oPdYkJON+2oqGewarcbXeeO1eKUNnbU8IzPffrSb4LReFOQpUrvUjFcjTkIyBYoxR79SGjCtlLuL55FpY4+N4/IOjVkiZcPudhbFhYY8G7yFFOsXgWlqB5RBCzMtmcIQeamWJkWb/Z8K4MnPjhBAuJoMf5fSRLrsmQlcjSnFGAY97lAxFnySb/mmtGoFh11aFEsi3WihlMpoTfHuVin1o2P4KAg+3yN5kgrwIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQCVgOxgPxVQhqzKTmBPMcTFQph4LWo89tAACR44oXvMqT5u1Qyi8cpYu7IOg3VWYMgsoTxExXC4sicWfQJa+aGBtSXv4jB1ZQ7HEXaJxVQuguahJBwQ5Y61ebWyNmiUPySbRNbpQlinL8ulTjE6uPSSydMvleOxpF9uyUH7gLvzfgkovLr8MZtNCNUaEfJsYoudvxtwmpv1yKvvkGpExGK99fsp60mHHdQDsbRq9ymH8GzY8vmbVVK63QFYdG5aJdGg8sCA/0thlMDbdL6Ec/0xAljQSOFpozFduGoYTKF6Ig2Z5NleHPuYVyWLmBhw0lGfyvKGyk9Ev55WxTwHapQB",
@@ -342,7 +343,10 @@ describe("idpLoader#parseIdpMetadata", () => {
 describe("idpLoader#remapIpdMetadata", () => {
   it("remap valid metadata xml file", async () => {
     const parsedMetadata = parseIdpMetadata(mockMetadata);
-    const idpsMetadataOption = mapIpdMetadata(parsedMetadata, {
+    if (isLeft(parsedMetadata)) {
+      return fail("Error on IdP metadata parse");
+    }
+    const idpsMetadataOption = mapIpdMetadata(parsedMetadata.value, {
       [posteEntityId]: "posteid"
     });
     const options: {
@@ -365,7 +369,10 @@ describe("idpLoader#remapIpdMetadata", () => {
 
   it("remap invalid metadata xml file", async () => {
     const parsedMetadata = parseIdpMetadata(invalidMockMetadata);
-    const idpsMetadataOption = mapIpdMetadata(parsedMetadata, {
+    if (isLeft(parsedMetadata)) {
+      return fail("Error on IdP metadata parse");
+    }
+    const idpsMetadataOption = mapIpdMetadata(parsedMetadata.value, {
       [posteEntityId]: "posteid"
     });
     const options: {
@@ -419,13 +426,15 @@ describe("spidStrategy#loadFromRemote", () => {
   it("load idp options with missing idps configurations", async () => {
     const loadFromRemote = require("../../strategies/spidStrategy")
       .loadFromRemote;
-    const idpOptions = await loadFromRemote(IDPMetadataUrl);
+    const IDP_IDS = require("../../strategies/spidStrategy").IDP_IDS;
+    const idpOptions = await loadFromRemote(IDPMetadataUrl, IDP_IDS).run();
     expect(mockFetchIdpMetadata).toHaveBeenCalledWith(IDPMetadataUrl);
     expect(mockWarn).toHaveBeenCalledWith(
       "Missing SPID metadata on [%s]",
       IDPMetadataUrl
     );
-    expect(idpOptions).toEqual({
+    expect(isRight(idpOptions)).toBeTruthy();
+    expect(idpOptions.value).toEqual({
       posteid: expectedIDPOption
     });
   });

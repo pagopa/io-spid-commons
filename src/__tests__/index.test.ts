@@ -1,6 +1,9 @@
 import * as express from "express";
+import { fromLeft } from "fp-ts/lib/TaskEither";
 import { ResponsePermanentRedirect } from "italia-ts-commons/lib/responses";
+import * as nock from "nock";
 import * as request from "supertest";
+import spidEntitiesIdps from "../__mocks__/spid-entities-idps";
 import {
   IAuthenticationController,
   SPID_RELOAD_ERROR,
@@ -73,8 +76,10 @@ const samlAcceptedClockSkewMs = -1;
 const samlAttributeConsumingServiceIndex = 0;
 const spidAutologin = "";
 const spidTestEnvUrl = "https://localhost:8088";
-const IDPMetadataUrl =
-  "https://raw.githubusercontent.com/teamdigitale/io-backend/164984224-download-idp-metadata/test_idps/spid-entities-idps.xml";
+const mockedIdpsRegistryHost = "https://mocked.registry.net";
+const mockedIdpsRegistryPath = "/idps/registry/path";
+const IDPMetadataUrl = mockedIdpsRegistryHost + mockedIdpsRegistryPath;
+const hasSpidValidatorEnabled = false;
 
 const expectedLoginPath = "/login";
 const expectedSloPath = "/logout";
@@ -103,7 +108,8 @@ const spidStrategyConfig: ISpidStrategyConfig = {
     displayName: "IO - l'app dei servizi pubblici BETA",
     name:
       "Team per la Trasformazione Digitale - Presidenza Del Consiglio dei Ministri"
-  }
+  },
+  hasSpidValidatorEnabled
 };
 
 const acsMock = jest.fn();
@@ -123,6 +129,13 @@ let app: express.Express | undefined;
 let spidPassport: SpidPassportBuilder;
 const appInitError = new Error("App not initialized");
 
+beforeAll(() => {
+  nock(mockedIdpsRegistryHost)
+    .get(mockedIdpsRegistryPath)
+    .reply(200, spidEntitiesIdps)
+    .persist();
+});
+
 describe("index", () => {
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -136,11 +149,13 @@ describe("index", () => {
       metadataPath,
       spidStrategyConfig
     );
-    await spidPassport.init(
-      authenticationControllerMock,
-      clientErrorRedirectionUrl,
-      clientLoginRedirectionUrl
-    );
+    await spidPassport
+      .init(
+        authenticationControllerMock,
+        clientErrorRedirectionUrl,
+        clientLoginRedirectionUrl
+      )
+      .run();
   });
 
   afterEach(() => {
@@ -221,7 +236,7 @@ describe("index", () => {
     if (app === undefined) {
       throw appInitError;
     }
-    await spidPassport.clearAndReloadSpidStrategy(newSpidStrategyConfig);
+    await spidPassport.clearAndReloadSpidStrategy(newSpidStrategyConfig).run();
     expect(spidPassport["spidStrategy"]).not.toEqual(undefined);
     expect(spidPassport["config"]).toEqual(newSpidStrategyConfig);
     expect(
@@ -231,7 +246,7 @@ describe("index", () => {
 
   it("Fail reload Spid strategy", async () => {
     jest.spyOn(spid, "loadSpidStrategy").mockImplementation(() => {
-      return Promise.reject(new Error("Error on load spid strategy"));
+      return fromLeft(new Error("Error on load spid strategy"));
     });
     const newSpidStrategyConfig: ISpidStrategyConfig = {
       ...spidStrategyConfig,
@@ -239,7 +254,9 @@ describe("index", () => {
     };
     const originalSpidStrategy = spidPassport["spidStrategy"];
     try {
-      await spidPassport.clearAndReloadSpidStrategy(newSpidStrategyConfig);
+      await spidPassport
+        .clearAndReloadSpidStrategy(newSpidStrategyConfig)
+        .run();
     } catch (e) {
       expect(e).toBe(SPID_RELOAD_ERROR);
       expect(spidPassport["spidStrategy"]).toEqual(originalSpidStrategy);
@@ -266,11 +283,13 @@ describe("SpidPassportBuilder#withSpidAuth", () => {
       metadataPath,
       spidStrategyConfig
     );
-    await spidPassport.init(
-      authenticationControllerMock,
-      clientErrorRedirectionUrl,
-      clientLoginRedirectionUrl
-    );
+    await spidPassport
+      .init(
+        authenticationControllerMock,
+        clientErrorRedirectionUrl,
+        clientLoginRedirectionUrl
+      )
+      .run();
   });
   beforeEach(() => {
     jest.clearAllMocks();
