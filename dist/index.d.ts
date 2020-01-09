@@ -1,4 +1,5 @@
 import { Express } from "express";
+import { TaskEither } from "fp-ts/lib/TaskEither";
 import { IResponseErrorInternal, IResponseErrorValidation, IResponsePermanentRedirect } from "italia-ts-commons/lib/responses";
 import { IIoSpidStrategy, ISpidStrategyConfig, SamlAttribute } from "./strategies/spidStrategy";
 import { isSpidL, SpidLevel, SpidLevelEnum } from "./types/spidLevel";
@@ -23,8 +24,8 @@ export declare class SpidPassportBuilder {
     /**
      * Initializes SpidStrategy for passport and setup login and auth routes.
      */
-    init(authenticationController: IAuthenticationController, clientErrorRedirectionUrl: string, clientLoginRedirectionUrl: string): Promise<void>;
-    clearAndReloadSpidStrategy(newConfig?: ISpidStrategyConfig): Promise<void>;
+    init(authenticationController: IAuthenticationController, clientErrorRedirectionUrl: string, clientLoginRedirectionUrl: string): TaskEither<Error, void>;
+    clearAndReloadSpidStrategy(newConfig?: ISpidStrategyConfig): TaskEither<Error, void>;
     private registerLoginRoute;
     private registerAuthRoutes;
     /**

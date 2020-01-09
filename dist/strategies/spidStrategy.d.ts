@@ -1,9 +1,7 @@
+import { TaskEither } from "fp-ts/lib/TaskEither";
 import { Strategy } from "passport";
 import { IDPOption } from "../utils/idpLoader";
-interface IIdpIds {
-    [key: string]: string | undefined;
-}
-export declare const IDP_IDS: IIdpIds;
+export declare const IDP_IDS: Record<string, string>;
 export interface IIoSpidStrategy extends Strategy {
     spidOptions: {
         idp: {
@@ -15,12 +13,10 @@ export interface IIoSpidStrategy extends Strategy {
     generateServiceProviderMetadata: (samlCert: string) => string;
 }
 /**
- * Load idp Metadata from a remote url, parse infomations and return a mapped and whitelisted idp options
+ * Load idp Metadata from a remote url, parse infos and return a mapped and whitelisted idp options
  * for spidStrategy object.
  */
-export declare function loadFromRemote(idpMetadataUrl: string, idpIds: IIdpIds): Promise<{
-    [key: string]: IDPOption | undefined;
-}>;
+export declare function loadFromRemote(idpMetadataUrl: string, idpIds: Record<string, string>): TaskEither<Error, Record<string, IDPOption>>;
 export declare enum SamlAttribute {
     FAMILY_NAME = "familyName",
     NAME = "name",
@@ -56,5 +52,4 @@ export interface ISpidStrategyConfig {
     };
     hasSpidValidatorEnabled: boolean;
 }
-export declare const loadSpidStrategy: (config: ISpidStrategyConfig) => Promise<IIoSpidStrategy>;
-export {};
+export declare const loadSpidStrategy: (config: ISpidStrategyConfig) => TaskEither<Error, IIoSpidStrategy>;

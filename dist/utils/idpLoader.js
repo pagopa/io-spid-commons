@@ -16,6 +16,10 @@ const SingleLogoutServiceTAG = "md:SingleLogoutService";
  */
 function parseIdpMetadata(ipdMetadataPage) {
     const domParser = new xmldom_1.DOMParser().parseFromString(ipdMetadataPage);
+    if (!domParser) {
+        logger_1.log.error(Error("Parsing of XML string containing IdP metadata failed"));
+        return [];
+    }
     const entityDescriptors = domParser.getElementsByTagName(EntityDescriptorTAG);
     return Array.from(entityDescriptors).reduce((idps, element) => {
         const certs = Array.from(element.getElementsByTagName(X509CertificateTAG)).map(_ => {

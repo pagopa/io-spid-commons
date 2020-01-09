@@ -30,16 +30,19 @@ class SpidPassportBuilder {
     /**
      * Initializes SpidStrategy for passport and setup login and auth routes.
      */
-    async init(authenticationController, clientErrorRedirectionUrl, clientLoginRedirectionUrl) {
-        // tslint:disable-next-line: no-object-mutation
-        this.spidStrategy = await spidStrategy_1.loadSpidStrategy(this.config);
-        this.registerLoginRoute(this.spidStrategy);
-        this.registerAuthRoutes(authenticationController, clientErrorRedirectionUrl, clientLoginRedirectionUrl);
+    init(authenticationController, clientErrorRedirectionUrl, clientLoginRedirectionUrl) {
+        return spidStrategy_1.loadSpidStrategy(this.config).map(ioSpidStrategy => {
+            // tslint:disable-next-line: no-object-mutation
+            this.spidStrategy = ioSpidStrategy;
+            this.registerLoginRoute(this.spidStrategy);
+            this.registerAuthRoutes(authenticationController, clientErrorRedirectionUrl, clientLoginRedirectionUrl);
+        });
     }
-    async clearAndReloadSpidStrategy(newConfig) {
+    clearAndReloadSpidStrategy(newConfig) {
         logger_1.log.info("Started Spid strategy re-initialization ...");
-        try {
-            const newSpidStrategy = await spidStrategy_1.loadSpidStrategy(newConfig || this.config);
+        return spidStrategy_1.loadSpidStrategy(newConfig || this.config)
+            .map(spidStrategy => {
+            const newSpidStrategy = spidStrategy;
             if (newConfig) {
                 // tslint:disable-next-line: no-object-mutation
                 this.config = newConfig;
@@ -53,11 +56,11 @@ class SpidPassportBuilder {
             this.metadataXml = undefined;
             this.registerLoginRoute(newSpidStrategy);
             logger_1.log.info("Spid strategy re-initialization complete.");
-        }
-        catch (err) {
-            logger_1.log.error("Error on update spid strategy: %s", err);
-            throw exports.SPID_RELOAD_ERROR;
-        }
+        })
+            .mapLeft(error => {
+            logger_1.log.error("Error on update spid strategy: %s", error);
+            return exports.SPID_RELOAD_ERROR;
+        });
     }
     registerLoginRoute(spidStrategy) {
         passport.use("spid", spidStrategy);

@@ -24,8 +24,4 @@ export declare const mapIpdMetadata: (idpMetadata: readonly {
     entityID: string;
     entryPoint: string;
     logoutUrl: string;
-}[], idpIds: {
-    [key: string]: string | undefined;
-}) => {
-    [key: string]: IDPOption | undefined;
-};
+}[], idpIds: Record<string, string>) => Record<string, IDPOption>;
