@@ -96,22 +96,17 @@ export interface IDPOption {
  */
 export const mapIpdMetadata = (
   idpMetadata: ReadonlyArray<IDPEntityDescriptor>,
-  idpIds: { [key: string]: string | undefined }
+  idpIds: Record<string, string>
 ) =>
-  idpMetadata.reduce(
-    (prev, idp) => {
-      const idpKey = idpIds[idp.entityID];
-      const idpOption = {
-        ...idp,
-        cert: idp.cert.toArray()
-      };
-      if (idpKey) {
-        return { ...prev, [idpKey]: idpOption };
-      }
-      log.warn(
-        `Unsupported SPID idp from metadata repository [${idp.entityID}]`
-      );
-      return prev;
-    },
-    {} as { [key: string]: IDPOption | undefined }
-  );
+  idpMetadata.reduce<Record<string, IDPOption>>((prev, idp) => {
+    const idpKey = idpIds[idp.entityID];
+    const idpOption = {
+      ...idp,
+      cert: idp.cert.toArray()
+    };
+    if (idpKey) {
+      return { ...prev, [idpKey]: idpOption };
+    }
+    log.warn(`Unsupported SPID idp from metadata repository [${idp.entityID}]`);
+    return prev;
+  }, {});
