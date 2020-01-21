@@ -1,0 +1,37 @@
+version: "2.2"
+
+services:
+  io-spid-commons:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=dev
+      - REDIS_URL=redis://redis
+    expose:
+      - "3000"
+    ports:
+      - "3000:3000"
+    image: node:10.14.2-alpine
+    volumes:
+      - .:/usr/src/app
+    command: ["yarn", "hot-reload"]
+
+  spid-testenv2:
+    image: italia/spid-testenv2:fix-c14n-issue-169
+    ports:
+      - "8088:8088"
+    volumes:
+      - "./testenv2/conf:/app/conf"
+
+  redis:
+    image: wodby/redis:3.2-2.1.5
+    environment:
+      REDIS_TIMEOUT: 300
+      REDIS_TCP_KEEPALIVE: 60
+      REDIS_MAXMEMORY: 182m
+
+  spid-saml-check:
+    image: spid-saml-check
+    ports:
+      - "8080:8080"

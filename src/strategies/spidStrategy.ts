@@ -1,32 +1,39 @@
+// tslint:disable: no-console
 /**
- * Builds and configure a Passport strategy to authenticate the proxy to the
- * different SPID IDPs.
+ * SPID Passport strategy.
  */
 import { distanceInWordsToNow, isAfter, subDays } from "date-fns";
 import { array } from "fp-ts/lib/Array";
-import { toError } from "fp-ts/lib/Either";
-import {
-  fromEither,
-  fromPredicate,
-  taskEither,
-  TaskEither,
-  tryCatch
-} from "fp-ts/lib/TaskEither";
-import { Strategy } from "passport";
-import * as SpidStrategy from "spid-passport";
+import { fromNullable, isNone, isSome } from "fp-ts/lib/Option";
+import { taskEither, TaskEither } from "fp-ts/lib/TaskEither";
+import { Profile, SamlConfig, VerifiedCallback } from "passport-saml";
+// tslint:disable-next-line: no-submodule-imports
+import * as MultiSamlStrategy from "passport-saml/multiSamlStrategy";
 import * as x509 from "x509";
 import getCieIpdOption from "../testIdpConfigs/xx_servizicie_test";
 import getSpidTestIpdOption from "../testIdpConfigs/xx_testenv2";
-import { SpidUser } from "../types/spidUser";
-import {
-  fetchIdpMetadata,
-  IDPOption,
-  mapIpdMetadata,
-  parseIdpMetadata
-} from "../utils/idpLoader";
-import { log } from "../utils/logger";
+import { IDPEntityDescriptor } from "../types/IDPEntityDescriptor";
+import { fetchIdpsMetadata } from "../utils/idpLoader";
 
-export const IDP_IDS: Record<string, string> = {
+export const SAML_USER_ATTRIBUTES = {
+  ADDRESS: "address",
+  COMPANY_NAME: "companyName",
+  DATE_OF_BIRTH: "dateOfBirth",
+  DIGITAL_ADDRESS: "digitalAddress",
+  EMAIL: "email",
+  FAMILY_NAME: "familyName",
+  FISCAL_NUMBER: "fiscalNumber",
+  GENDER: "gender",
+  ID_CARD: "idCard",
+  IVA_CODE: "ivaCode",
+  MOBILE_PHONE: "mobilePhone",
+  NAME: "name",
+  PLACE_OF_BIRTH: "placeOfBirth",
+  REGISTERED_OFFICE: "registeredOffice",
+  SPID_CODE: "spidCode"
+};
+
+export const IDP_IDENTIFIERS = {
   "https://id.lepida.it/idp/shibboleth": "lepidaid",
   "https://identity.infocert.it": "infocertid",
   "https://identity.sieltecloud.it": "sielteid",
@@ -38,101 +45,52 @@ export const IDP_IDS: Record<string, string> = {
   "https://spid.register.it": "spiditalia"
 };
 
-export interface IIoSpidStrategy extends Strategy {
-  spidOptions: {
-    idp: { [key: string]: IDPOption | undefined };
-    // tslint:disable-next-line: no-any
-    sp: any;
-  };
-  // tslint:disable-next-line:no-any
-  logout: (req: any, callback?: (err: any, request: any) => void) => void;
-  generateServiceProviderMetadata: (samlCert: string) => string;
-}
+export type SamlAttributeT = keyof typeof SAML_USER_ATTRIBUTES;
 
-/**
- * Load idp Metadata from a remote url, parse infos and return a mapped and whitelisted idp options
- * for spidStrategy object.
- */
-export function loadFromRemote(
-  idpMetadataUrl: string,
-  idpIds: Record<string, string>
-): TaskEither<Error, Record<string, IDPOption>> {
-  return tryCatch(() => {
-    log.info("Fetching SPID metadata from [%s]...", idpMetadataUrl);
-    return fetchIdpMetadata(idpMetadataUrl);
-  }, toError)
-    .chain(idpMetadataXML => {
-      log.info("Parsing SPID metadata...");
-      return fromEither(parseIdpMetadata(idpMetadataXML));
-    })
-    .chain(
-      fromPredicate(
-        idpMetadata => idpMetadata.length > 0,
-        () => {
-          log.error("No SPID metadata found from the url: %s", idpMetadataUrl);
-          return new Error("No SPID metadata found");
-        }
-      )
-    )
-    .map(idpMetadata => {
-      if (idpMetadata.length < Object.keys(idpIds).length) {
-        log.warn("Missing SPID metadata on [%s]", idpMetadataUrl);
-      }
-      log.info("Configuring IdPs...");
-      return mapIpdMetadata(idpMetadata, idpIds);
-    });
+export interface ISpidSamlConfig extends SamlConfig {
+  // needed only when generating metadata for the
+  // AttributeConsumerService
+  attributes: {
+    attributes: ReadonlyArray<SamlAttributeT>;
+    name: string;
+  };
 }
 
 /*
  * @see https://www.agid.gov.it/sites/default/files/repository_files/regole_tecniche/tabella_attributi_idp.pdf
  */
-export enum SamlAttribute {
-  FAMILY_NAME = "familyName",
-  NAME = "name",
-  SPID_CODE = "spidCode",
-  GENDER = "gender",
-  FISCAL_NUMBER = "fiscalNumber",
-  DATE_OF_BIRTH = "dateOfBirth",
-  PLACE_OF_BIRTH = "placeOfBirth",
-  COMPANY_NAME = "companyName",
-  REGISTERED_OFFICE = "registeredOffice",
-  IVA_CODE = "ivaCode",
-  ID_CARD = "idCard",
-  MOBILE_PHONE = "mobilePhone",
-  EMAIL = "email",
-  ADDRESS = "address",
-  DIGITAL_ADDRESS = "digitalAddress"
-}
-
-export interface ISpidStrategyConfig {
-  samlKey: string;
-  samlCert: string;
-  samlCallbackUrl: string;
-  samlIssuer: string;
-  samlAcceptedClockSkewMs: number;
-  samlAttributeConsumingServiceIndex: number;
-  spidAutologin: string;
+export interface IServiceProviderConfig {
   spidTestEnvUrl: string;
   IDPMetadataUrl: string;
-  requiredAttributes: ReadonlyArray<SamlAttribute>;
+  requiredAttributes: ReadonlyArray<SamlAttributeT>;
   organization: {
     URL: string;
     displayName: string;
     name: string;
   };
+  publicCert: string;
   hasSpidValidatorEnabled: boolean;
 }
 
-export const loadSpidStrategy = (
-  config: ISpidStrategyConfig
-): TaskEither<Error, IIoSpidStrategy> => {
+export interface ISpidStrategyOptions {
+  idp: { [key: string]: IDPEntityDescriptor | undefined };
+  // tslint:disable-next-line: no-any
+  sp: ISpidSamlConfig;
+}
+
+export const getLoadSpidStrategyOptions = (
+  samlConfig: SamlConfig,
+  serviceProviderConfig: IServiceProviderConfig
+): (() => TaskEither<Error, ISpidStrategyOptions>) => () => {
   const idpOptionsTasks = [
-    loadFromRemote(config.IDPMetadataUrl, IDP_IDS)
+    fetchIdpsMetadata(serviceProviderConfig.IDPMetadataUrl, IDP_IDENTIFIERS)
   ].concat(
-    config.hasSpidValidatorEnabled
+    serviceProviderConfig.hasSpidValidatorEnabled
       ? [
-          loadFromRemote("https://validator.spid.gov.it/metadata.xml", {
-            "https://validator.spid.gov.it": "xx_validator"
+          fetchIdpsMetadata("http://spid-saml-check:8080/metadata.xml", {
+            // TODO: must be a configuration param
+            // "https://validator.spid.gov.it": "xx_validator"
+            "http://localhost:8080": "xx_validator"
           })
         ]
       : []
@@ -143,55 +101,82 @@ export const loadSpidStrategy = (
       idpOptionsRecords.reduce((prev, current) => ({ ...prev, ...current }), {})
     )
     .map(idpOptionsRecord => {
-      logSamlCertExpiration(config.samlCert);
-      const options: {
-        idp: { [key: string]: IDPOption | undefined };
-        // tslint:disable-next-line: no-any
-        sp: any;
-      } = {
+      logSamlCertExpiration(serviceProviderConfig.publicCert);
+      return {
         idp: {
           ...idpOptionsRecord,
           xx_servizicie_test: getCieIpdOption(),
-          xx_testenv2: getSpidTestIpdOption(config.spidTestEnvUrl)
+          xx_testenv2: getSpidTestIpdOption(
+            serviceProviderConfig.spidTestEnvUrl
+          )
         },
         sp: {
-          acceptedClockSkewMs: config.samlAcceptedClockSkewMs,
-          attributeConsumingServiceIndex:
-            config.samlAttributeConsumingServiceIndex,
+          ...samlConfig,
           attributes: {
-            attributes: config.requiredAttributes,
+            attributes: serviceProviderConfig.requiredAttributes,
             name: "Required attributes"
           },
-          callbackUrl: config.samlCallbackUrl,
-          decryptionPvk: config.samlKey,
           identifierFormat:
             "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
-          issuer: config.samlIssuer,
-          organization: config.organization,
-          privateCert: config.samlKey,
+          organization: serviceProviderConfig.organization,
           signatureAlgorithm: "sha256"
         }
       };
-      const optionsWithAutoLoginInfo = {
-        ...options,
-        sp: {
-          ...options.sp,
-          additionalParams: {
-            auto_login: config.spidAutologin
-          }
-        }
-      };
-      return new SpidStrategy(
-        config.spidAutologin === "" ? options : optionsWithAutoLoginInfo,
-        (
-          profile: SpidUser,
-          done: (err: Error | undefined, info: SpidUser) => void
-        ) => {
-          log.info(profile.getAssertionXml());
-          done(undefined, profile);
-        }
-      ) as IIoSpidStrategy;
     });
+};
+
+const getSamlOptions: MultiSamlStrategy.MultiSamlConfig["getSamlOptions"] = async (
+  req,
+  done
+) => {
+  // Get SPID strategy options
+  const spidStrategyOptions: ISpidStrategyOptions = await req.app.get(
+    "spidStrategyOptions"
+  );
+  const idps = spidStrategyOptions.idp;
+
+  // extract IDP from request
+  return fromNullable(req.query.entityID)
+    .map(entityID => {
+      const idp = idps[entityID];
+      if (idp === undefined) {
+        return done(
+          Error(
+            `SPID cannot find a valid idp in spidOptions for given entityID: ${entityID}`
+          )
+        );
+      }
+      return done(null, {
+        ...spidStrategyOptions.sp,
+        cert: idp.cert.toArray(),
+        entryPoint: idp.entryPoint
+      });
+    })
+    .getOrElseL(() =>
+      // check against all memorized certificates
+      done(null, {
+        ...spidStrategyOptions.sp,
+        cert: Object.keys(idps).reduce(
+          (prev, k) => [
+            ...prev,
+            ...(idps[k] && idps[k]!.cert ? idps[k]!.cert.toArray() : [])
+          ],
+          // tslint:disable-next-line: readonly-array
+          [] as string[]
+        )
+      })
+    );
+};
+
+export const makeSpidStrategy = (options: ISpidStrategyOptions) => {
+  return new MultiSamlStrategy(
+    { ...options, getSamlOptions },
+    (profile: Profile, done: VerifiedCallback) => {
+      console.log(profile.getAssertionXml());
+      console.log("logged", JSON.stringify(profile));
+      done(null, profile);
+    }
+  );
 };
 
 /**
@@ -205,16 +190,16 @@ function logSamlCertExpiration(samlCert: string): void {
       const timeDiff = distanceInWordsToNow(out.notAfter);
       const warningDate = subDays(new Date(), 60);
       if (isAfter(out.notAfter, warningDate)) {
-        log.info("samlCert expire in %s", timeDiff);
+        console.log("samlCert expire in %s", timeDiff);
       } else if (isAfter(out.notAfter, new Date())) {
-        log.warn("samlCert expire in %s", timeDiff);
+        console.warn("samlCert expire in %s", timeDiff);
       } else {
-        log.error("samlCert expired from %s", timeDiff);
+        console.error("samlCert expired from %s", timeDiff);
       }
     } else {
-      log.error("Missing expiration date on saml certificate.");
+      console.error("Missing expiration date on saml certificate.");
     }
   } catch (e) {
-    log.error("Error calculating saml cert expiration: %s", e);
+    console.error("Error calculating saml cert expiration: %s", e);
   }
 }

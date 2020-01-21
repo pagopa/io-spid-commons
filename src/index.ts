@@ -1,232 +1,234 @@
-import { Express, NextFunction, Request, Response } from "express";
-import { not } from "fp-ts/lib/function";
+// tslint:disable no-commented-code no-console
+
+import * as express from "express";
 import { fromNullable } from "fp-ts/lib/Option";
-import { TaskEither } from "fp-ts/lib/TaskEither";
+import { TaskEither, taskify } from "fp-ts/lib/TaskEither";
+import * as fs from "fs";
+import { toExpressHandler } from "italia-ts-commons/lib/express";
 import {
-  IResponse,
   IResponseErrorInternal,
   IResponseErrorValidation,
   IResponsePermanentRedirect,
   IResponseSuccessXml,
   ResponseErrorInternal,
+  ResponseErrorNotFound,
+  ResponsePermanentRedirect,
   ResponseSuccessXml
 } from "italia-ts-commons/lib/responses";
+import { UrlFromString } from "italia-ts-commons/lib/url";
 import * as passport from "passport";
+// tslint:disable-next-line: no-submodule-imports
+import * as MultiSamlStrategy from "passport-saml/multiSamlStrategy";
 import {
-  IIoSpidStrategy,
-  ISpidStrategyConfig,
-  loadSpidStrategy,
-  SamlAttribute
+  getLoadSpidStrategyOptions,
+  IServiceProviderConfig,
+  ISpidSamlConfig,
+  makeSpidStrategy
 } from "./strategies/spidStrategy";
-import { isSpidL, SpidLevel, SpidLevelEnum } from "./types/spidLevel";
-import { matchRoute } from "./utils/express";
-import { log } from "./utils/logger";
-import {
-  getAuthnContextFromResponse,
-  getErrorCodeFromResponse
-} from "./utils/response";
+import { SpidUser } from "./types/spidUser";
+import { getErrorCodeFromResponse } from "./utils/response";
 import { getSamlIssuer } from "./utils/saml";
 
-export const SPID_RELOAD_ERROR = new Error(
-  "Error while initializing SPID strategy"
-);
-
-export const SPID_STRATEGY_NOT_DEFINED = new Error(
-  "Spid Strategy not defined."
-);
-
-export interface IAuthenticationController {
-  acs: (
-    userPayload: unknown
-  ) => Promise<
-    | IResponseErrorInternal
-    | IResponseErrorValidation
-    | IResponsePermanentRedirect
-  >;
-  slo: () => Promise<IResponsePermanentRedirect>;
+export interface ISpidLogger {
+  // tslint:disable-next-line: ban-types
+  log: Function;
+  // tslint:disable-next-line: ban-types
+  error: Function;
 }
 
-export {
-  getAuthnContextFromResponse,
-  getErrorCodeFromResponse,
-  isSpidL,
-  IIoSpidStrategy,
-  ISpidStrategyConfig,
-  SamlAttribute,
-  SpidLevel,
-  SpidLevelEnum
-};
+export type AssertionConsumerServiceT = (
+  userPayload: SpidUser
+) => Promise<
+  IResponseErrorInternal | IResponseErrorValidation | IResponsePermanentRedirect
+>;
 
-export class SpidPassportBuilder {
-  private spidStrategy?: IIoSpidStrategy;
-  private loginPath: string;
-  private sloPath: string;
-  private assertionConsumerServicePath: string;
-  private metadataPath: string;
-  private metadataXml?: string;
-  private config: ISpidStrategyConfig;
-  private app: Express;
+export interface IApplicationConfig {
+  assertionConsumerServicePath: string;
+  clientErrorRedirectionUrl: string;
+  clientLoginRedirectionUrl: string;
+  loginPath: string;
+  metadataPath: string;
+  sloPath: string;
+}
 
-  constructor(
-    app: Express,
-    loginPath: string,
-    sloPath: string,
-    assertionConsumerServicePath: string,
-    metadataPath: string,
-    config: ISpidStrategyConfig
-  ) {
-    this.loginPath = loginPath;
-    this.metadataPath = metadataPath;
-    this.sloPath = sloPath;
-    this.assertionConsumerServicePath = assertionConsumerServicePath;
-    this.config = config;
-    this.app = app;
-  }
+const generateServiceProviderMetadataTask = (spidStrategy: MultiSamlStrategy) =>
+  taskify(spidStrategy.generateServiceProviderMetadata.bind(spidStrategy));
 
-  /**
-   * Initializes SpidStrategy for passport and setup login and auth routes.
-   */
-  public init(
-    authenticationController: IAuthenticationController,
-    clientErrorRedirectionUrl: string,
-    clientLoginRedirectionUrl: string
-  ): TaskEither<Error, void> {
-    return loadSpidStrategy(this.config).map(ioSpidStrategy => {
-      // tslint:disable-next-line: no-object-mutation
-      this.spidStrategy = ioSpidStrategy;
-      this.registerLoginRoute(this.spidStrategy);
-      this.registerAuthRoutes(
-        authenticationController,
-        clientErrorRedirectionUrl,
-        clientLoginRedirectionUrl
-      );
-    });
-  }
-
-  public clearAndReloadSpidStrategy(
-    newConfig?: ISpidStrategyConfig
-  ): TaskEither<Error, void> {
-    log.info("Started Spid strategy re-initialization ...");
-    return loadSpidStrategy(newConfig || this.config)
-      .map(spidStrategy => {
-        const newSpidStrategy: IIoSpidStrategy = spidStrategy;
-        if (newConfig) {
-          // tslint:disable-next-line: no-object-mutation
-          this.config = newConfig;
-        }
-        passport.unuse("spid");
-        // tslint:disable-next-line: no-any
-
-        // Remove login route from Express router stack
-        // tslint:disable-next-line: no-object-mutation
-        this.app._router.stack = this.app._router.stack.filter(
-          not(matchRoute(this.loginPath, "get"))
-        );
-        // tslint:disable-next-line: no-object-mutation
-        this.metadataXml = undefined;
-        this.registerLoginRoute(newSpidStrategy);
-        log.info("Spid strategy re-initialization complete.");
-      })
-      .mapLeft(error => {
-        log.error("Error on update spid strategy: %s", error);
-        return SPID_RELOAD_ERROR;
-      });
-  }
-
-  private registerLoginRoute(spidStrategy: IIoSpidStrategy): void {
-    passport.use("spid", spidStrategy);
-    const spidAuth = passport.authenticate("spid", { session: false });
-    this.app.get(this.loginPath, spidAuth);
-    this.app.get(this.metadataPath, this.toExpressHandler(this.metadata, this));
-  }
-
-  private registerAuthRoutes(
-    acsController: IAuthenticationController,
-    clientErrorRedirectionUrl: string,
-    clientLoginRedirectionUrl: string
-  ): void {
-    this.app.post(
-      this.assertionConsumerServicePath,
-      this.withSpidAuth(
-        acsController,
-        clientErrorRedirectionUrl,
-        clientLoginRedirectionUrl
-      )
-    );
-
-    this.app.post(
-      this.sloPath,
-      this.toExpressHandler(acsController.slo, acsController)
-    );
-  }
-
-  /**
-   * Catch SPID authentication errors and redirect the client to
-   * clientErrorRedirectionUrl.
-   */
-  private withSpidAuth(
-    controller: IAuthenticationController,
-    clientErrorRedirectionUrl: string,
-    clientLoginRedirectionUrl: string
-  ): (req: Request, res: Response, next: NextFunction) => void {
-    return (req: Request, res: Response, next: NextFunction) => {
-      passport.authenticate("spid", async (err, user) => {
-        const issuer = getSamlIssuer(req.body);
-        if (err) {
+const withSpidAuthMiddleware = (
+  acs: AssertionConsumerServiceT,
+  clientErrorRedirectionUrl: string,
+  clientLoginRedirectionUrl: string,
+  log?: ISpidLogger
+): express.Handler => {
+  return (req, res, next) => {
+    passport.authenticate("spid", async (err, user) => {
+      const issuer = getSamlIssuer(req.body);
+      if (err) {
+        if (log) {
           log.error(
-            "Spid Authentication|Authentication Error|ERROR=%s|ISSUER=%s",
+            "SPID|Authentication Error|ERROR=%s|ISSUER=%s",
             err,
             issuer
           );
-          return res.redirect(
-            clientErrorRedirectionUrl +
-              fromNullable(err.statusXml)
-                .chain(statusXml => getErrorCodeFromResponse(statusXml))
-                .map(errorCode => `?errorCode=${errorCode}`)
-                .getOrElse("")
-          );
         }
-        if (!user) {
+        return ResponsePermanentRedirect(((clientErrorRedirectionUrl +
+          fromNullable(err.statusXml)
+            .chain(statusXml => getErrorCodeFromResponse(statusXml))
+            .map(errorCode => `?errorCode=${errorCode}`)
+            .getOrElse("")) as unknown) as UrlFromString);
+      }
+      if (!user) {
+        if (log) {
           log.error(
-            "Spid Authentication|Authentication Error|ERROR=user_not_found|ISSUER=%s",
+            "SPID|Authentication Error|ERROR=user_not_found|ISSUER=%s",
             issuer
           );
-          return res.redirect(clientLoginRedirectionUrl);
         }
-        const response = await controller.acs(user);
-        response.apply(res);
-      })(req, res, next);
-    };
-  }
+        return ResponsePermanentRedirect(
+          (clientLoginRedirectionUrl as unknown) as UrlFromString
+        );
+      }
+      return acs(user);
+    })(req, res, next);
+  };
+};
 
-  private toExpressHandler<T, P>(
-    handler: (req: Request) => Promise<IResponse<T>>,
-    object?: P
-  ): (req: Request, res: Response) => void {
-    return (req, res) =>
-      handler
-        .call(object, req)
-        .catch(ResponseErrorInternal)
-        .then(response => {
-          // tslint:disable-next-line:no-object-mutation
-          res.locals.detail = response.detail;
-          response.apply(res);
-        });
-  }
+export function withSpid(
+  appConfig: IApplicationConfig,
+  samlConfig: ISpidSamlConfig,
+  serviceProviderConfig: IServiceProviderConfig,
+  app: express.Express,
+  acs: AssertionConsumerServiceT,
+  logger?: ISpidLogger
+): TaskEither<Error, express.Express> {
+  const loadSpidStrategyOptions = getLoadSpidStrategyOptions(
+    samlConfig,
+    serviceProviderConfig
+  );
+  return loadSpidStrategyOptions()
+    .map(spidStrategyOptions => makeSpidStrategy(spidStrategyOptions))
+    .map(spidStrategy => {
+      //
+      // install express middleware to retrieve SPID passport strategy options
+      app.use(async (req, _, next) => {
+        return (
+          loadSpidStrategyOptions()
+            .map(opts => req.app.set("spidStrategyOptions", opts))
+            .run()
+            // tslint:disable-next-line: no-console
+            .catch(console.error)
+            .finally(() => next())
+        );
+      });
 
-  /**
-   * The metadata for this Service Provider.
-   */
-  private async metadata(): Promise<IResponseSuccessXml<string>> {
-    if (this.spidStrategy === undefined) {
-      return Promise.reject(SPID_STRATEGY_NOT_DEFINED);
-    }
-    if (this.metadataXml === undefined) {
-      // tslint:disable-next-line: no-object-mutation
-      this.metadataXml = this.spidStrategy.generateServiceProviderMetadata(
-        this.config.samlCert
+      // Initializes SpidStrategy for passport and setup login and auth routes.
+
+      passport.use("spid", spidStrategy);
+
+      const spidAuth = passport.authenticate("spid", {
+        session: false
+      });
+
+      app.get(appConfig.loginPath, spidAuth);
+
+      app.get(
+        appConfig.metadataPath,
+        toExpressHandler(async req => {
+          return typeof samlConfig.decryptionPvk === "string" &&
+            typeof samlConfig.privateCert === "string"
+            ? generateServiceProviderMetadataTask(spidStrategy)(
+                req,
+                serviceProviderConfig.publicCert,
+                serviceProviderConfig.publicCert
+              )
+                .fold<IResponseSuccessXml<string> | IResponseErrorInternal>(
+                  err => ResponseErrorInternal(err.message),
+                  ResponseSuccessXml
+                )
+                .run()
+            : ResponseErrorNotFound(
+                "Not found.",
+                "Metadata does not have a valid cert assigned."
+              );
+        })
       );
-    }
-    return ResponseSuccessXml(this.metadataXml);
-  }
+
+      app.post(appConfig.assertionConsumerServicePath, () =>
+        withSpidAuthMiddleware(
+          acs,
+          appConfig.clientErrorRedirectionUrl,
+          appConfig.clientLoginRedirectionUrl,
+          logger
+        )
+      );
+
+      // TODO: check this one
+      app.post(appConfig.sloPath, () =>
+        toExpressHandler(async () =>
+          ResponsePermanentRedirect(
+            UrlFromString.decode(appConfig.loginPath).getOrElse(new URL("/"))
+          )
+        )
+      );
+
+      return app;
+    });
 }
+
+///////////
+
+const appConfigL: IApplicationConfig = {
+  assertionConsumerServicePath: "/acs",
+  clientErrorRedirectionUrl: "/ko",
+  clientLoginRedirectionUrl: "/ok",
+  loginPath: "/login",
+  metadataPath: "/metadata.xml",
+  sloPath: "/logout"
+};
+
+const serviceProviderConfigL: IServiceProviderConfig = {
+  IDPMetadataUrl:
+    "https://registry.spid.gov.it/metadata/idp/spid-entities-idps.xml",
+  hasSpidValidatorEnabled: true,
+  organization: {
+    URL: "https://example.com",
+    displayName: "Organization display name",
+    name: "Organization name"
+  },
+  publicCert: fs.readFileSync("./certs/cert.pem", "utf-8"),
+  requiredAttributes: ["ADDRESS"],
+  spidTestEnvUrl: "https:/ /spid-testenv2:8088"
+};
+
+const samlConfigL: ISpidSamlConfig = {
+  acceptedClockSkewMs: 0,
+  attributeConsumingServiceIndex: "0",
+  attributes: {
+    attributes: ["ADDRESS"],
+    name: "Required attrs"
+  },
+  authnContext: "https://www.spid.gov.it/SpidL1",
+  callbackUrl: "http://localhost:3000/acs",
+  decryptionPvk: fs.readFileSync("./certs/key.pem", "utf-8"),
+  identifierFormat: "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
+  issuer: "https://spid.agid.gov.it/cd",
+  privateCert: fs.readFileSync("./certs/key.pem", "utf-8")
+};
+
+// demo acs
+const demoAcsL = async () =>
+  ResponsePermanentRedirect(("/ok" as unknown) as UrlFromString);
+
+const appL = express();
+
+withSpid(appConfigL, samlConfigL, serviceProviderConfigL, appL, demoAcsL)
+  .map(app => {
+    app.get("/ok", (req, res) => res.json({ ok: "ok" }));
+    app.get("/ko", (req, res) => res.json({ ok: "ko" }));
+    app.listen(3000);
+  })
+  // tslint:disable-next-line: no-console
+  .mapLeft(console.error)
+  .run()
+  // tslint:disable-next-line: no-console
+  .catch(console.error);
