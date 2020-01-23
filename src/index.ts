@@ -17,24 +17,19 @@ import {
 } from "italia-ts-commons/lib/responses";
 import { UrlFromString } from "italia-ts-commons/lib/url";
 import * as passport from "passport";
+import { SamlConfig } from "passport-saml";
 // tslint:disable-next-line: no-submodule-imports
 import * as MultiSamlStrategy from "passport-saml/multiSamlStrategy";
 import {
-  getLoadSpidStrategyOptions,
+  getSpidStrategyOptionsUpdater,
   IServiceProviderConfig,
-  ISpidSamlConfig,
   makeSpidStrategy
 } from "./strategies/spidStrategy";
 import { SpidUser } from "./types/spidUser";
+import { logger } from "./utils/logger";
 import { getErrorCodeFromResponse } from "./utils/response";
 import { getSamlIssuer } from "./utils/saml";
-
-export interface ISpidLogger {
-  // tslint:disable-next-line: ban-types
-  log: Function;
-  // tslint:disable-next-line: ban-types
-  error: Function;
-}
+import { getServiceProviderMetadata } from "./utils/strategy";
 
 export type AssertionConsumerServiceT = (
   userPayload: SpidUser
@@ -51,26 +46,20 @@ export interface IApplicationConfig {
   sloPath: string;
 }
 
-const generateServiceProviderMetadataTask = (spidStrategy: MultiSamlStrategy) =>
-  taskify(spidStrategy.generateServiceProviderMetadata.bind(spidStrategy));
-
 const withSpidAuthMiddleware = (
   acs: AssertionConsumerServiceT,
   clientErrorRedirectionUrl: string,
-  clientLoginRedirectionUrl: string,
-  log?: ISpidLogger
+  clientLoginRedirectionUrl: string
 ): express.Handler => {
   return (req, res, next) => {
     passport.authenticate("spid", async (err, user) => {
       const issuer = getSamlIssuer(req.body);
       if (err) {
-        if (log) {
-          log.error(
-            "SPID|Authentication Error|ERROR=%s|ISSUER=%s",
-            err,
-            issuer
-          );
-        }
+        logger.error(
+          "SPID|Authentication Error|ERROR=%s|ISSUER=%s",
+          err,
+          issuer
+        );
         return ResponsePermanentRedirect(((clientErrorRedirectionUrl +
           fromNullable(err.statusXml)
             .chain(statusXml => getErrorCodeFromResponse(statusXml))
@@ -78,12 +67,10 @@ const withSpidAuthMiddleware = (
             .getOrElse("")) as unknown) as UrlFromString);
       }
       if (!user) {
-        if (log) {
-          log.error(
-            "SPID|Authentication Error|ERROR=user_not_found|ISSUER=%s",
-            issuer
-          );
-        }
+        logger.error(
+          "SPID|Authentication Error|ERROR=user_not_found|ISSUER=%s",
+          issuer
+        );
         return ResponsePermanentRedirect(
           (clientLoginRedirectionUrl as unknown) as UrlFromString
         );
@@ -95,29 +82,31 @@ const withSpidAuthMiddleware = (
 
 export function withSpid(
   appConfig: IApplicationConfig,
-  samlConfig: ISpidSamlConfig,
+  samlConfig: SamlConfig,
   serviceProviderConfig: IServiceProviderConfig,
   app: express.Express,
-  acs: AssertionConsumerServiceT,
-  logger?: ISpidLogger
+  acs: AssertionConsumerServiceT
 ): TaskEither<Error, express.Express> {
-  const loadSpidStrategyOptions = getLoadSpidStrategyOptions(
+  const loadSpidStrategyOptions = getSpidStrategyOptionsUpdater(
     samlConfig,
     serviceProviderConfig
   );
   return loadSpidStrategyOptions()
     .map(spidStrategyOptions => makeSpidStrategy(spidStrategyOptions))
     .map(spidStrategy => {
-      //
-      // install express middleware to retrieve SPID passport strategy options
+      // install express middleware to get SPID passport strategy options
+      // TODO: memoize this
       app.use(async (req, _, next) => {
         return (
           loadSpidStrategyOptions()
             .map(opts => req.app.set("spidStrategyOptions", opts))
             .run()
             // tslint:disable-next-line: no-console
-            .catch(console.error)
-            .finally(() => next())
+            .then(() => next())
+            .catch(e => {
+              console.error("loadSpidStrategyOptions", e);
+              next(e);
+            })
         );
       });
 
@@ -134,12 +123,12 @@ export function withSpid(
       app.get(
         appConfig.metadataPath,
         toExpressHandler(async req => {
-          return typeof samlConfig.decryptionPvk === "string" &&
-            typeof samlConfig.privateCert === "string"
-            ? generateServiceProviderMetadataTask(spidStrategy)(
-                req,
-                serviceProviderConfig.publicCert,
-                serviceProviderConfig.publicCert
+          return typeof samlConfig.privateCert === "string"
+            ? getServiceProviderMetadata(
+                spidStrategy,
+                serviceProviderConfig,
+                samlConfig,
+                req
               )
                 .fold<IResponseSuccessXml<string> | IResponseErrorInternal>(
                   err => ResponseErrorInternal(err.message),
@@ -157,8 +146,7 @@ export function withSpid(
         withSpidAuthMiddleware(
           acs,
           appConfig.clientErrorRedirectionUrl,
-          appConfig.clientLoginRedirectionUrl,
-          logger
+          appConfig.clientLoginRedirectionUrl
         )
       );
 
@@ -196,22 +184,22 @@ const serviceProviderConfigL: IServiceProviderConfig = {
     name: "Organization name"
   },
   publicCert: fs.readFileSync("./certs/cert.pem", "utf-8"),
-  requiredAttributes: ["ADDRESS"],
-  spidTestEnvUrl: "https:/ /spid-testenv2:8088"
-};
-
-const samlConfigL: ISpidSamlConfig = {
-  acceptedClockSkewMs: 0,
-  attributeConsumingServiceIndex: "0",
-  attributes: {
-    attributes: ["ADDRESS"],
+  requiredAttributes: {
+    attributes: ["address"],
     name: "Required attrs"
   },
+  spidTestEnvUrl: "https://spid-testenv2:8088"
+};
+
+const samlConfigL: SamlConfig = {
+  acceptedClockSkewMs: 0,
+  attributeConsumingServiceIndex: "0",
   authnContext: "https://www.spid.gov.it/SpidL1",
   callbackUrl: "http://localhost:3000/acs",
-  decryptionPvk: fs.readFileSync("./certs/key.pem", "utf-8"),
+  // decryptionPvk: fs.readFileSync("./certs/key.pem", "utf-8"),
   identifierFormat: "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
   issuer: "https://spid.agid.gov.it/cd",
+  logoutCallbackUrl: "http://localhost:3000/slo",
   privateCert: fs.readFileSync("./certs/key.pem", "utf-8")
 };
 
@@ -225,10 +213,17 @@ withSpid(appConfigL, samlConfigL, serviceProviderConfigL, appL, demoAcsL)
   .map(app => {
     app.get("/ok", (req, res) => res.json({ ok: "ok" }));
     app.get("/ko", (req, res) => res.json({ ok: "ko" }));
+    // tslint:disable-next-line: no-any
+    app.use(
+      (
+        error: Error,
+        _: express.Request,
+        res: express.Response,
+        ___: express.NextFunction
+      ) => res.status(500).send(error)
+    );
     app.listen(3000);
   })
-  // tslint:disable-next-line: no-console
-  .mapLeft(console.error)
   .run()
   // tslint:disable-next-line: no-console
-  .catch(console.error);
+  .catch(e => console.error("caught error: ", e));

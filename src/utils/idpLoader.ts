@@ -1,5 +1,3 @@
-// tslint:disable: no-console
-
 import { Either, left, right, toError } from "fp-ts/lib/Either";
 import {
   fromEither,
@@ -11,6 +9,7 @@ import { errorsToReadableMessages } from "italia-ts-commons/lib/reporters";
 import nodeFetch from "node-fetch";
 import { DOMParser } from "xmldom";
 import { IDPEntityDescriptor } from "../types/IDPEntityDescriptor";
+import { logger } from "./logger";
 
 const EntityDescriptorTAG = "md:EntityDescriptor";
 const X509CertificateTAG = "ds:X509Certificate";
@@ -28,7 +27,7 @@ export function parseIdpMetadata(
   const domParser = new DOMParser().parseFromString(ipdMetadataPage);
   if (!domParser) {
     const error = Error("Parsing of XML string containing IdP metadata failed");
-    console.error("parseIdpMetadata() | %s", error);
+    logger.error("parseIdpMetadata() | %s", error);
     return left(error);
   }
   const entityDescriptors = domParser.getElementsByTagName(EntityDescriptorTAG);
@@ -67,7 +66,7 @@ export function parseIdpMetadata(
               .getAttribute("Location")
           });
           if (elementInfoOrErrors.isLeft()) {
-            console.warn(
+            logger.warn(
               "Invalid md:EntityDescriptor. %s",
               errorsToReadableMessages(elementInfoOrErrors.value).join(" / ")
             );
@@ -75,7 +74,7 @@ export function parseIdpMetadata(
           }
           return [...idps, elementInfoOrErrors.value];
         } catch {
-          console.warn(
+          logger.warn(
             "Invalid md:EntityDescriptor. %s",
             new Error("Unable to parse element info")
           );
@@ -100,7 +99,7 @@ export const mapIpdMetadata = (
     if (idpKey) {
       return { ...prev, [idpKey]: idp };
     }
-    console.warn(
+    logger.warn(
       `Unsupported SPID idp from metadata repository [${idp.entityID}]`
     );
     return prev;
@@ -115,19 +114,19 @@ export function fetchIdpsMetadata(
   idpIds: Record<string, string>
 ): TaskEither<Error, Record<string, IDPEntityDescriptor>> {
   return tryCatch(() => {
-    console.log("Fetching SPID metadata from [%s]...", idpMetadataUrl);
+    logger.info("Fetching SPID metadata from [%s]...", idpMetadataUrl);
     return nodeFetch(idpMetadataUrl);
   }, toError)
     .chain(p => tryCatch(() => p.text(), toError))
     .chain(idpMetadataXML => {
-      console.log("Parsing SPID metadata...");
+      logger.info("Parsing SPID metadata...");
       return fromEither(parseIdpMetadata(idpMetadataXML));
     })
     .chain(
       fromPredicate(
         idpMetadata => idpMetadata.length > 0,
         () => {
-          console.error(
+          logger.error(
             "No SPID metadata found from the url: %s",
             idpMetadataUrl
           );
@@ -137,9 +136,9 @@ export function fetchIdpsMetadata(
     )
     .map(idpMetadata => {
       if (idpMetadata.length < Object.keys(idpIds).length) {
-        console.warn("Missing SPID metadata on [%s]", idpMetadataUrl);
+        logger.warn("Missing SPID metadata on [%s]", idpMetadataUrl);
       }
-      console.log("Configuring IdPs...");
+      logger.info("Configuring IdPs...");
       return mapIpdMetadata(idpMetadata, idpIds);
     });
 }
