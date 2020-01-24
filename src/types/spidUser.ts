@@ -3,13 +3,16 @@ import { NonEmptyString } from "italia-ts-commons/lib/strings";
 //
 import { EmailString } from "italia-ts-commons/lib/strings";
 import { FiscalCode } from "italia-ts-commons/lib/strings";
-import { SpidLevel } from "./spidLevel";
 
-import { Issuer } from "./issuer";
+import { SPID_LEVELS } from "../config";
+
+const Issuer = t.interface({
+  _: t.string
+});
 
 export const SpidUser = t.intersection([
   t.interface({
-    authnContextClassRef: SpidLevel,
+    authnContextClassRef: t.keyof(SPID_LEVELS),
     getAssertionXml: t.Function,
     issuer: Issuer
   }),

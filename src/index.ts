@@ -18,18 +18,16 @@ import {
 import { UrlFromString } from "italia-ts-commons/lib/url";
 import * as passport from "passport";
 import { SamlConfig } from "passport-saml";
-// tslint:disable-next-line: no-submodule-imports
-import * as MultiSamlStrategy from "passport-saml/multiSamlStrategy";
 import {
   getSpidStrategyOptionsUpdater,
   IServiceProviderConfig,
   makeSpidStrategy
-} from "./strategies/spidStrategy";
+} from "./strategies/SpidStrategy";
 import { SpidUser } from "./types/spidUser";
 import { logger } from "./utils/logger";
 import { getErrorCodeFromResponse } from "./utils/response";
 import { getSamlIssuer } from "./utils/saml";
-import { getServiceProviderMetadata } from "./utils/strategy";
+import { getServiceProviderMetadata } from "./utils/saml";
 
 export type AssertionConsumerServiceT = (
   userPayload: SpidUser
@@ -60,11 +58,13 @@ const withSpidAuthMiddleware = (
           err,
           issuer
         );
-        return ResponsePermanentRedirect(((clientErrorRedirectionUrl +
-          fromNullable(err.statusXml)
-            .chain(statusXml => getErrorCodeFromResponse(statusXml))
-            .map(errorCode => `?errorCode=${errorCode}`)
-            .getOrElse("")) as unknown) as UrlFromString);
+        return ResponsePermanentRedirect(
+          ((clientErrorRedirectionUrl +
+            fromNullable(err.statusXml)
+              .chain(statusXml => getErrorCodeFromResponse(statusXml))
+              .map(errorCode => `?errorCode=${errorCode}`)
+              .getOrElse("")) as unknown) as UrlFromString
+        );
       }
       if (!user) {
         logger.error(

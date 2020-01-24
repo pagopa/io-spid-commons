@@ -20,7 +20,7 @@ services:
     ports:
       - "8088:8088"
     volumes:
-      - "./testenv2/conf:/app/conf"
+      - "./spid-testenv:/app/conf"
 
   redis:
     image: wodby/redis:3.2-2.1.5

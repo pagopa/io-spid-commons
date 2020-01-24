@@ -6,21 +6,18 @@ import { taskEither, TaskEither } from "fp-ts/lib/TaskEither";
 import { Profile, SamlConfig, VerifiedCallback } from "passport-saml";
 // tslint:disable-next-line: no-submodule-imports
 import * as MultiSamlStrategy from "passport-saml/multiSamlStrategy";
-import getCieIpdOption from "../testIdpConfigs/xx_servizicie_test";
-import getSpidTestIpdOption from "../testIdpConfigs/xx_testenv2";
+import { SPID_IDP_IDENTIFIERS } from "../config";
+import getCieIpdOption from "../testIdpsConfig/xx_servizicie_test";
+import getSpidTestIpdOption from "../testIdpsConfig/xx_testenv2";
 import { IDPEntityDescriptor } from "../types/IDPEntityDescriptor";
 import { fetchIdpsMetadata } from "../utils/idpLoader";
 import { logger } from "../utils/logger";
 import {
   getSamlOptions,
   logSamlCertExpiration,
-  SamlAttributeT,
-  SPID_IDP_IDENTIFIERS
-} from "../utils/strategy";
+  SamlAttributeT
+} from "../utils/saml";
 
-/*
- * @see https://www.agid.gov.it/sites/default/files/repository_files/regole_tecniche/tabella_attributi_idp.pdf
- */
 export interface IServiceProviderConfig {
   requiredAttributes: {
     attributes: ReadonlyArray<SamlAttributeT>;
@@ -95,11 +92,15 @@ export const getSpidStrategyOptionsUpdater = (
 
 export const makeSpidStrategy = (options: ISpidStrategyOptions) => {
   return new MultiSamlStrategy(
-    { ...options, getSamlOptions },
-    (profile: Profile, done: VerifiedCallback) => {
+    { ...options, getSamlOptions, passReqToCallback: true },
+    (req: Express.Request, profile: Profile, done: VerifiedCallback) => {
       // TODO: remove
+      logger.debug("SPID request:", JSON.stringify(req));
       logger.debug("getAssertionXml:%s", profile.getAssertionXml());
       logger.debug("profile", JSON.stringify(profile));
+
+      // passport callback that returns
+      // success (verified) or failure
       done(null, profile);
     }
   );
