@@ -1,9 +1,12 @@
 {
-  "name": "io-spid-commons",
-  "version": "1.0.0",
+  "name": "@pagopa/io-spid-commons",
+  "version": "1.1.0",
   "description": "Common code for integrating SPID authentication",
-  "repository": "https://github.com/teamdigitale/io-spid-commons",
-  "author": "https://teamdigitale.governo.it",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pagopa/io-spid-commons.git"
+  },
+  "author": "https://pagopa.gov.it",
   "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -30,6 +33,7 @@
     "jest": "^24.8.0",
     "nock": "^11.7.1",
     "prettier": "^1.12.1",
+    "release-it": "^12.4.3",
     "rimraf": "^2.6.2",
     "supertest": "^4.0.2",
     "ts-jest": "^24.0.2",
@@ -75,5 +79,16 @@
   },
   "resolutions": {
     "fp-ts": "1.17.0"
+  },
+  "bugs": {
+    "url": "https://github.com/pagopa/io-spid-commons/issues"
+  },
+  "homepage": "https://github.com/pagopa/io-spid-commons#readme",
+  "keywords": [
+    "spid"
+  ],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/",
+    "access": "public"
   }
 }
