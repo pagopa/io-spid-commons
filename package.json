@@ -1,8 +1,11 @@
 {
-  "name": "io-spid-commons",
+  "name": "@pagopa/io-spid-commons",
   "version": "1.0.0",
   "description": "Common code for integrating SPID authentication",
-  "repository": "https://github.com/pagopa/io-spid-commons",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pagopa/io-spid-commons.git"
+  },
   "author": "https://pagopa.gov.it",
   "license": "MIT",
   "main": "dist/index.js",
@@ -66,5 +69,12 @@
     ],
     "preset": "ts-jest",
     "testMatch": null
-  }
+  },
+  "bugs": {
+    "url": "https://github.com/pagopa/io-spid-commons/issues"
+  },
+  "homepage": "https://github.com/pagopa/io-spid-commons#readme",
+  "keywords": [
+    "spid"
+  ]
 }
