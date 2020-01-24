@@ -5,6 +5,7 @@ module.exports = {
   git: {
     tagName: "v${version}",
     addFiles: ["package.json", "CHANGELOG.md"],
+    commitMessage: "chore: release ${version}",
     changelog:
       "npx auto-changelog --config .auto-changelog.json --stdout --commit-limit false --unreleased --template preview.hbs"
   },
