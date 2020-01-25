@@ -11,19 +11,21 @@ import {
   some
 } from "fp-ts/lib/Option";
 import { collect, lookup } from "fp-ts/lib/Record";
-import { taskify, tryCatch } from "fp-ts/lib/TaskEither";
+import { TaskEither, taskify, tryCatch } from "fp-ts/lib/TaskEither";
 import produce from "immer";
 import * as t from "io-ts";
 import { NonEmptyString } from "italia-ts-commons/lib/strings";
 import { SamlConfig } from "passport-saml";
-// tslint:disable-next-line: no-submodule-imports
-import * as MultiSamlStrategy from "passport-saml/multiSamlStrategy";
+import { MultiSamlConfig } from "passport-saml/multiSamlStrategy";
 import * as x509 from "x509";
 import * as xmlCrypto from "xml-crypto";
 import { Builder, parseStringPromise } from "xml2js";
 import { DOMParser } from "xmldom";
 import { SPID_LEVELS, SPID_URLS, SPID_USER_ATTRIBUTES } from "../config";
+// tslint:disable-next-line: no-submodule-imports
+import { MultiSamlStrategy } from "../strategies/MultiSamlStrategy";
 import {
+  getSpidStrategyOption,
   IServiceProviderConfig,
   ISpidStrategyOptions
 } from "../strategies/SpidStrategy";
@@ -217,7 +219,7 @@ export function logSamlCertExpiration(samlCert: string): void {
  * middleware is configured) and when generating
  * the Service Provider metadata.
  */
-export const getSamlOptions: MultiSamlStrategy.MultiSamlConfig["getSamlOptions"] = async (
+export const getSamlOptions: MultiSamlConfig["getSamlOptions"] = (
   req,
   done
 ) => {
@@ -230,9 +232,7 @@ export const getSamlOptions: MultiSamlStrategy.MultiSamlConfig["getSamlOptions"]
   logSpidResponse(req, decodedResponse);
 
   // Get SPID strategy options with IDPs metadata
-  const spidStrategyOptions: ISpidStrategyOptions = await req.app.get(
-    "spidStrategyOptions"
-  );
+  const spidStrategyOptions = getSpidStrategyOption(req.app);
 
   // Get the correct entry within the IDP metadata object
   const maybeEntrypointCerts = getEntrypointCerts(req, spidStrategyOptions.idp);
@@ -312,25 +312,12 @@ const getKeyInfoForMetadata = (publicCert: string, privateKey: string) => ({
     `<X509Data><X509Certificate>${publicCert}</X509Certificate></X509Data>`
 });
 
-const generateServiceProviderMetadataTask = (spidStrategy: MultiSamlStrategy) =>
-  taskify(spidStrategy.generateServiceProviderMetadata.bind(spidStrategy));
-
-const xmlBuilder = new Builder();
-
-export const getServiceProviderMetadata = (
-  spidStrategy: MultiSamlStrategy,
+export const getMetadataTamperer = (
+  xmlBuilder: Builder,
   serviceProviderConfig: IServiceProviderConfig,
-  samlConfig: SamlConfig,
-  req: ExpressRequest
-) => {
-  return generateServiceProviderMetadataTask(spidStrategy)(
-    req,
-    null, // decryptionCert = public cert that matches the private decryptionPvk key
-    serviceProviderConfig.publicCert // signingCert = public cert that matches the privateCert key
-  )
-    .chain(generateXml =>
-      tryCatch(() => parseStringPromise(generateXml), toError)
-    )
+  samlConfig: SamlConfig
+) => (generateXml: string): TaskEither<Error, string> => {
+  return tryCatch(() => parseStringPromise(generateXml), toError)
     .chain(objXml => {
       return tryCatch(
         async () =>
@@ -407,4 +394,27 @@ export const getServiceProviderMetadata = (
         return sig.getSignedXml();
       }, toError)
     );
+};
+
+//
+//  Authorize request
+//
+
+export const getAuthorizeRequestTamperer = (
+  xmlBuilder: Builder,
+  serviceProviderConfig: IServiceProviderConfig,
+  samlConfig: SamlConfig
+) => (generateXml: string): TaskEither<Error, string> => {
+  return tryCatch(() => parseStringPromise(generateXml), toError)
+    .chain(objXml => {
+      return tryCatch(
+        async () =>
+          // tslint:disable-next-line: no-any
+          produce(objXml, (o: any) => {
+            return objXml;
+          }),
+        toError
+      );
+    })
+    .chain(_ => tryCatch(async () => xmlBuilder.buildObject(_), toError));
 };

@@ -2,7 +2,7 @@
 
 import * as express from "express";
 import { fromNullable } from "fp-ts/lib/Option";
-import { TaskEither, taskify } from "fp-ts/lib/TaskEither";
+import { TaskEither } from "fp-ts/lib/TaskEither";
 import * as fs from "fs";
 import { toExpressHandler } from "italia-ts-commons/lib/express";
 import {
@@ -11,23 +11,29 @@ import {
   IResponsePermanentRedirect,
   IResponseSuccessXml,
   ResponseErrorInternal,
-  ResponseErrorNotFound,
   ResponsePermanentRedirect,
   ResponseSuccessXml
 } from "italia-ts-commons/lib/responses";
 import { UrlFromString } from "italia-ts-commons/lib/url";
 import * as passport from "passport";
 import { SamlConfig } from "passport-saml";
+import { Builder } from "xml2js";
 import {
   getSpidStrategyOptionsUpdater,
   IServiceProviderConfig,
-  makeSpidStrategy
+  ISpidStrategyOptions,
+  makeSpidStrategy,
+  setSpidStrategyOption
 } from "./strategies/SpidStrategy";
 import { SpidUser } from "./types/spidUser";
 import { logger } from "./utils/logger";
 import { getErrorCodeFromResponse } from "./utils/response";
-import { getSamlIssuer } from "./utils/saml";
-import { getServiceProviderMetadata } from "./utils/saml";
+import {
+  getAuthorizeRequestTamperer,
+  getSamlIssuer,
+  getSamlOptions
+} from "./utils/saml";
+import { getMetadataTamperer } from "./utils/saml";
 
 export type AssertionConsumerServiceT = (
   userPayload: SpidUser
@@ -91,55 +97,80 @@ export function withSpid(
     samlConfig,
     serviceProviderConfig
   );
+
+  const metadataTamperer = getMetadataTamperer(
+    new Builder(),
+    serviceProviderConfig,
+    samlConfig
+  );
+  const authorizeRequestTamperer = getAuthorizeRequestTamperer(
+    new Builder(),
+    serviceProviderConfig,
+    samlConfig
+  );
+
   return loadSpidStrategyOptions()
-    .map(spidStrategyOptions => makeSpidStrategy(spidStrategyOptions))
+    .map(spidStrategyOptions => {
+      setSpidStrategyOption(app, spidStrategyOptions);
+      return makeSpidStrategy(
+        spidStrategyOptions,
+        getSamlOptions,
+        authorizeRequestTamperer,
+        metadataTamperer
+      );
+    })
     .map(spidStrategy => {
       // install express middleware to get SPID passport strategy options
       // TODO: memoize this
-      app.use(async (req, _, next) => {
-        return (
-          loadSpidStrategyOptions()
-            .map(opts => req.app.set("spidStrategyOptions", opts))
-            .run()
-            // tslint:disable-next-line: no-console
-            .then(() => next())
-            .catch(e => {
-              console.error("loadSpidStrategyOptions", e);
-              next(e);
-            })
-        );
-      });
+      app.use(async (req, __, next) =>
+        loadSpidStrategyOptions()
+          .map(opts => setSpidStrategyOption(req.app, opts))
+          .run()
+          .then(() => next())
+          .catch(e => {
+            logger.error("loadSpidStrategyOptions#error:%s", e.toString());
+            next(e);
+          })
+      );
 
-      // Initializes SpidStrategy for passport and setup login and auth routes.
-
+      // Initializes SpidStrategy for passport
       passport.use("spid", spidStrategy);
 
       const spidAuth = passport.authenticate("spid", {
         session: false
       });
 
+      // Setup login and auth routes
       app.get(appConfig.loginPath, spidAuth);
 
       app.get(
         appConfig.metadataPath,
-        toExpressHandler(async req => {
-          return typeof samlConfig.privateCert === "string"
-            ? getServiceProviderMetadata(
-                spidStrategy,
-                serviceProviderConfig,
-                samlConfig,
-                req
+        toExpressHandler(
+          async (
+            req
+          ): Promise<IResponseErrorInternal | IResponseSuccessXml<string>> => {
+            return new Promise(resolve =>
+              spidStrategy.generateServiceProviderMetadataAsync(
+                req,
+                null,
+                serviceProviderConfig.publicCert,
+                (err, metadata) => {
+                  if (err || !metadata) {
+                    resolve(
+                      ResponseErrorInternal(
+                        err
+                          ? err.message
+                          : "Error generating service provider metadata."
+                      )
+                    );
+                  } else {
+                    resolve(ResponseSuccessXml(metadata));
+                  }
+                }
               )
-                .fold<IResponseSuccessXml<string> | IResponseErrorInternal>(
-                  err => ResponseErrorInternal(err.message),
-                  ResponseSuccessXml
-                )
-                .run()
-            : ResponseErrorNotFound(
-                "Not found.",
-                "Metadata does not have a valid cert assigned."
-              );
-        })
+            );
+          }
+        )
       );
 
       app.post(appConfig.assertionConsumerServicePath, () =>

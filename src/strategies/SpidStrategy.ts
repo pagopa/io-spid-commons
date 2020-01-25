@@ -1,22 +1,23 @@
 /**
  * SPID Passport strategy
  */
+import * as express from "express";
 import { array } from "fp-ts/lib/Array";
 import { taskEither, TaskEither } from "fp-ts/lib/TaskEither";
+import * as t from "io-ts";
 import { Profile, SamlConfig, VerifiedCallback } from "passport-saml";
-// tslint:disable-next-line: no-submodule-imports
-import * as MultiSamlStrategy from "passport-saml/multiSamlStrategy";
 import { SPID_IDP_IDENTIFIERS } from "../config";
+// tslint:disable-next-line: no-submodule-imports
+import {
+  MultiSamlStrategy,
+  XmlTamperer
+} from "../strategies/MultiSamlStrategy";
 import getCieIpdOption from "../testIdpsConfig/xx_servizicie_test";
 import getSpidTestIpdOption from "../testIdpsConfig/xx_testenv2";
 import { IDPEntityDescriptor } from "../types/IDPEntityDescriptor";
 import { fetchIdpsMetadata } from "../utils/idpLoader";
 import { logger } from "../utils/logger";
-import {
-  getSamlOptions,
-  logSamlCertExpiration,
-  SamlAttributeT
-} from "../utils/saml";
+import { logSamlCertExpiration, SamlAttributeT } from "../utils/saml";
 
 export interface IServiceProviderConfig {
   requiredAttributes: {
@@ -90,10 +91,31 @@ export const getSpidStrategyOptionsUpdater = (
     });
 };
 
-export const makeSpidStrategy = (options: ISpidStrategyOptions) => {
+const SPID_STRATEGY_OPTIONS_KEY = "spidStrategyOptions";
+
+export const setSpidStrategyOption = (
+  app: express.Application,
+  opts: ISpidStrategyOptions
+) => {
+  app.set(SPID_STRATEGY_OPTIONS_KEY, opts);
+};
+
+export const getSpidStrategyOption = (
+  app: express.Application
+): ISpidStrategyOptions => {
+  return app.get(SPID_STRATEGY_OPTIONS_KEY);
+};
+
+export function makeSpidStrategy(
+  options: ISpidStrategyOptions,
+  getSamlOptions: MultiSamlStrategy["getSamlOptions"],
+  tamperAuthorizeRequest?: XmlTamperer,
+  tamperMetadata?: XmlTamperer
+): MultiSamlStrategy {
   return new MultiSamlStrategy(
-    { ...options, getSamlOptions, passReqToCallback: true },
-    (req: Express.Request, profile: Profile, done: VerifiedCallback) => {
+    { ...options, passReqToCallback: true },
+    getSamlOptions,
+    (req: express.Request, profile: Profile, done: VerifiedCallback) => {
       // TODO: remove
       logger.debug("SPID request:", JSON.stringify(req));
       logger.debug("getAssertionXml:%s", profile.getAssertionXml());
@@ -102,6 +124,8 @@ export const makeSpidStrategy = (options: ISpidStrategyOptions) => {
       // passport callback that returns
       // success (verified) or failure
       done(null, profile);
-    }
+    },
+    tamperAuthorizeRequest,
+    tamperMetadata
   );
-};
+}
