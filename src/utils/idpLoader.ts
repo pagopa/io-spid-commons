@@ -17,8 +17,12 @@ const SingleSignOnServiceTAG = "md:SingleSignOnService";
 const SingleLogoutServiceTAG = "md:SingleLogoutService";
 
 /**
- * Parse a string that represents an XML file containing the ipd Metadata and converts it into an array of IDPEntityDescriptor
- * Required namespace definitions into the XML are xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" and xmlns:ds="http://www.w3.org/2000/09/xmldsig#"
+ * Parse a string that represents an XML file containing
+ * the ipd Metadata and converts it into an array of IDPEntityDescriptor
+ *
+ * Required namespace definitions into the XML are
+ *  xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" and xmlns:ds="http://www.w3.org/2000/09/xmldsig#"
+ *
  * An example file is provided in /test_idps/spid-entities-idps.xml of this project.
  */
 export function parseIdpMetadata(

@@ -16,20 +16,19 @@ import produce from "immer";
 import * as t from "io-ts";
 import { NonEmptyString } from "italia-ts-commons/lib/strings";
 import { SamlConfig } from "passport-saml";
+// tslint:disable-next-line: no-submodule-imports
 import { MultiSamlConfig } from "passport-saml/multiSamlStrategy";
 import * as x509 from "x509";
 import * as xmlCrypto from "xml-crypto";
 import { Builder, parseStringPromise } from "xml2js";
 import { DOMParser } from "xmldom";
 import { SPID_LEVELS, SPID_URLS, SPID_USER_ATTRIBUTES } from "../config";
-// tslint:disable-next-line: no-submodule-imports
-import { MultiSamlStrategy } from "../strategies/MultiSamlStrategy";
+import { logger } from "./logger";
 import {
   getSpidStrategyOption,
   IServiceProviderConfig,
   ISpidStrategyOptions
-} from "../strategies/SpidStrategy";
-import { logger } from "./logger";
+} from "./middleware";
 
 export type SamlAttributeT = keyof typeof SPID_USER_ATTRIBUTES;
 
@@ -411,7 +410,15 @@ export const getAuthorizeRequestTamperer = (
         async () =>
           // tslint:disable-next-line: no-any
           produce(objXml, (o: any) => {
-            return objXml;
+            // tslint:disable-next-line: no-object-mutation no-delete
+            delete objXml["samlp:AuthnRequest"]["samlp:NameIDPolicy"][0].$
+              .AllowCreate;
+            // tslint:disable-next-line: no-object-mutation no-deleteam
+            objXml["samlp:AuthnRequest"]["saml:Issuer"][0].$.NameQualifier =
+              samlConfig.issuer;
+            // tslint:disable-next-line: no-object-mutation no-delete
+            objXml["samlp:AuthnRequest"]["saml:Issuer"][0].$.Format =
+              "urn:oasis:names:tc:SAML:2.0:nameid-format:entity";
           }),
         toError
       );

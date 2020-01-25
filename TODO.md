@@ -1,0 +1,4 @@
+- pass spid-testenv request
+- memoize spid metadata updates (nodefetch)
+- monkey patch saml.ValidateResponse
+- check logout / logout url (io-backend)

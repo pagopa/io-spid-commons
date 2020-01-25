@@ -4,7 +4,6 @@
 import * as express from "express";
 import { array } from "fp-ts/lib/Array";
 import { taskEither, TaskEither } from "fp-ts/lib/TaskEither";
-import * as t from "io-ts";
 import { Profile, SamlConfig, VerifiedCallback } from "passport-saml";
 import { SPID_IDP_IDENTIFIERS } from "../config";
 // tslint:disable-next-line: no-submodule-imports
@@ -15,9 +14,9 @@ import {
 import getCieIpdOption from "../testIdpsConfig/xx_servizicie_test";
 import getSpidTestIpdOption from "../testIdpsConfig/xx_testenv2";
 import { IDPEntityDescriptor } from "../types/IDPEntityDescriptor";
-import { fetchIdpsMetadata } from "../utils/idpLoader";
-import { logger } from "../utils/logger";
-import { logSamlCertExpiration, SamlAttributeT } from "../utils/saml";
+import { fetchIdpsMetadata } from "./idpLoader";
+import { logger } from "./logger";
+import { logSamlCertExpiration, SamlAttributeT } from "./saml";
 
 export interface IServiceProviderConfig {
   requiredAttributes: {

@@ -1,5 +1,3 @@
-// tslint:disable no-commented-code no-console
-
 import * as express from "express";
 import { fromNullable } from "fp-ts/lib/Option";
 import { TaskEither } from "fp-ts/lib/TaskEither";
@@ -18,15 +16,14 @@ import { UrlFromString } from "italia-ts-commons/lib/url";
 import * as passport from "passport";
 import { SamlConfig } from "passport-saml";
 import { Builder } from "xml2js";
+import { SpidUser } from "./types/spidUser";
+import { logger } from "./utils/logger";
 import {
   getSpidStrategyOptionsUpdater,
   IServiceProviderConfig,
-  ISpidStrategyOptions,
   makeSpidStrategy,
   setSpidStrategyOption
-} from "./strategies/SpidStrategy";
-import { SpidUser } from "./types/spidUser";
-import { logger } from "./utils/logger";
+} from "./utils/middleware";
 import { getErrorCodeFromResponse } from "./utils/response";
 import {
   getAuthorizeRequestTamperer,
@@ -35,12 +32,14 @@ import {
 } from "./utils/saml";
 import { getMetadataTamperer } from "./utils/saml";
 
+// assertion consumer service express handler
 export type AssertionConsumerServiceT = (
   userPayload: SpidUser
 ) => Promise<
   IResponseErrorInternal | IResponseErrorValidation | IResponsePermanentRedirect
 >;
 
+// express endpoints configuration
 export interface IApplicationConfig {
   assertionConsumerServicePath: string;
   clientErrorRedirectionUrl: string;
@@ -50,6 +49,10 @@ export interface IApplicationConfig {
   sloPath: string;
 }
 
+/**
+ * Wraps assertion consumer service handler
+ * with SPID authentication and redirects.
+ */
 const withSpidAuthMiddleware = (
   acs: AssertionConsumerServiceT,
   clientErrorRedirectionUrl: string,
@@ -86,6 +89,10 @@ const withSpidAuthMiddleware = (
   };
 };
 
+/**
+ * Apply SPID authentication middleware
+ * to an express application.
+ */
 export function withSpid(
   appConfig: IApplicationConfig,
   samlConfig: SamlConfig,
@@ -104,7 +111,8 @@ export function withSpid(
     samlConfig
   );
   const authorizeRequestTamperer = getAuthorizeRequestTamperer(
-    new Builder(),
+    // spid-testenv does not accept an xml header with utf8 encoding
+    new Builder({ xmldec: { encoding: undefined, version: "1.0" } }),
     serviceProviderConfig,
     samlConfig
   );
@@ -120,8 +128,8 @@ export function withSpid(
       );
     })
     .map(spidStrategy => {
-      // install express middleware to get SPID passport strategy options
-      // TODO: memoize this
+      // install express middleware to get and refresh
+      // SPID passport strategy options
       app.use(async (req, __, next) =>
         loadSpidStrategyOptions()
           .map(opts => setSpidStrategyOption(req.app, opts))
@@ -140,16 +148,17 @@ export function withSpid(
         session: false
       });
 
-      // Setup login and auth routes
+      // Setup SPID login handler
       app.get(appConfig.loginPath, spidAuth);
 
+      // Setup SPID metadata handler
       app.get(
         appConfig.metadataPath,
         toExpressHandler(
           async (
             req
-          ): Promise<IResponseErrorInternal | IResponseSuccessXml<string>> => {
-            return new Promise(resolve =>
+          ): Promise<IResponseErrorInternal | IResponseSuccessXml<string>> =>
+            new Promise(resolve =>
               spidStrategy.generateServiceProviderMetadataAsync(
                 req,
                 null,
@@ -168,11 +177,13 @@ export function withSpid(
                   }
                 }
               )
-            );
-          }
+            )
         )
       );
 
+      // Setup SPID assertion consumer service.
+      // This endpoint is called when the SPID IDP
+      // redirects the authenticated user to our app
       app.post(appConfig.assertionConsumerServicePath, () =>
         withSpidAuthMiddleware(
           acs,
@@ -181,7 +192,7 @@ export function withSpid(
         )
       );
 
-      // TODO: check this one
+      // Setup logout handler
       app.post(appConfig.sloPath, () =>
         toExpressHandler(async () =>
           ResponsePermanentRedirect(
