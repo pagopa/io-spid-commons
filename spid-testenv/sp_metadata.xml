@@ -11,10 +11,10 @@
                     <Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
                 </Transforms>
                 <DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>
-                <DigestValue>C7lX3DpsP5Ky0KCynmQ2vTrcPWUMPqHCQT/WWdfrfHA=</DigestValue>
+                <DigestValue>1gXW5fGAn5KVBsuCF63ASzzRvL7bCOhNyinGjifF2F4=</DigestValue>
             </Reference>
         </SignedInfo>
-        <SignatureValue>j9ebHQhf3qu60Ok0Bmu1rG9jbXaWx78uSsGqbOZ3SFYJiwdKJkPvJ1E/I+4yCdREoQeC5Of9JH2qfI/V0JVe6GduKgbzZpwmG7F9NFLfWyzocTGTFrUdQflCQE/BKDnUs+LytwOuonnj9+CefQnj8rD7g7Ibt82GvIINCgvY8p8OpjlFuqcsx9zd2RI5Q8BgnMd4fYgQ9DVBUaXGgWVatnK3G9lPh4+Yu8q5tqzf0qWojkUBTtA6HO1y/pgU0hXwG7YiEYbWETDD4go7C0nBRuBiA6ZOYVFhL0zSIG6DYbqFG4suO8ZH7C57IpS+4k8lLjbMNjy7RsEYOghLfmBr8Lfl50Hg6+p1M5faHV1zTpG+rV+0bn+VTE190KBl3RQQ/mBRd6GEC/zFz7NAUCyP7g/ugq2OzMtWdOZG7dTGzwSYja74BhbccfkRfk1mNVirFFbtYCbnWsMxb/b+iiSfIHFqH25kjARGrdOMbywi5baJmxOhGoqZ3f0ysXB3pC4GE1e29ldOUInNUBcHa6SdRPto/L+Y0q+TylzS1DClpLZSUtUdHRLFnSLIXDPUDkpVdE5QS7z3Y1ZOZ09uZigyfHuRAI9p+q9FvXQh17+FbsDDOASrxtayKY3Oz+uABmGktNrQuE6EhscEcX286Np7Xl/78+phN1v2kizG4ucG2ZE=</SignatureValue>
+        <SignatureValue>BxAhhE0lqfYoUP8oxZ2rzUTseWsnF+rg5ztD2LfhcZiN7Vx67tWT9/1o/Y7KjuD59l2XVqyjeSInNI2NhTR32qY/E23xtYopkbec2Uiw0qvSS25Iygvy57a1GdzzP/b0ubGuIOKpuSgxZ7T4mrWDHZvHpPitMp+PQYe3qPfxPxEz0T8BvHbPS5xFQCtD+MGbyp88mPiv8FeS+249oQiD7Fx1+nUj7KJ1qabbHvmH1gV6jEtF5B9B5ItYa829h9WoNwYOiPg+so9/bmFdPvGOfRECOOdELzW4Iearm4e7MP/k0q46YuwZlHA1+02DwDUlpPiqxSuizjBRt94bt4y14h2naSyIOl+IT/kNJpuIZSG+o8HGymvmB7AVpAIa1gB0OdMYMJWKtOauOd3tsmV98e04kXigx+Tu4LY6N2D1IypzekG2JrXeDe9IxsEJsXJITYBdo7wJPVhyHhSDHEgicmrj/6JWuAzxEVUGk+8zkRLF2f+SCqmPhH8FeVn7R0QcHogmqd1e3AlJJ7ySKahvq57X6+y5rSdy7Y3ThznIV/DNgCtbXs3HEuRjIKs4b90tpFp/+7gZXZQQxAtTdMJEQRtN+3wr6+9JwZPptd78rPvCDoC7nGcT1fLBLRFOO+39OrISnYuzY6nNen8FKBRNyv664Y3dhN0o0riCjvobq5A=</SignatureValue>
         <KeyInfo>
             <X509Data>
                 <X509Certificate>MIIFvTCCA6WgAwIBAgIUXLHSi9Mg+YPpyOcUXvyiat9tlsYwDQYJKoZIhvcNAQEL
@@ -97,7 +97,11 @@ jwU6uzaOtUNNDZxHVtrlnlZGcoEmoog79fvO/a+I3BRV
         <AssertionConsumerService index="0" isDefault="true" Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="http://localhost:3000/acs"/>
         <AttributeConsumingService index="0">
             <ServiceName xml:lang="it">Required attrs</ServiceName>
-            <RequestedAttribute FriendlyName="Indirizzo" Name="address" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic"/>
+            <RequestedAttribute FriendlyName="Email" Name="email" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic"/>
+            <RequestedAttribute FriendlyName="Nome" Name="name" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic"/>
+            <RequestedAttribute FriendlyName="Cognome" Name="familyName" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic"/>
+            <RequestedAttribute FriendlyName="Codice fiscale" Name="fiscalNumber" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic"/>
+            <RequestedAttribute FriendlyName="Numero di telefono" Name="mobilePhone" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic"/>
         </AttributeConsumingService>
     </SPSSODescriptor>
     <Organization>

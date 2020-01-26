@@ -115,13 +115,9 @@ export function makeSpidStrategy(
     { ...options, passReqToCallback: true },
     getSamlOptions,
     (req: express.Request, profile: Profile, done: VerifiedCallback) => {
-      // TODO: remove
-      logger.debug("SPID request:", JSON.stringify(req));
-      logger.debug("getAssertionXml:%s", profile.getAssertionXml());
-      logger.debug("profile", JSON.stringify(profile));
-
-      // passport callback that returns
-      // success (verified) or failure
+      logger.info(profile.getAssertionXml());
+      // at this point SAML authentication is successful
+      // `done` is a passport callback that signals success
       done(null, profile);
     },
     tamperAuthorizeRequest,

@@ -13,7 +13,7 @@ services:
     working_dir: /usr/src/app
     volumes:
       - .:/usr/src/app
-    command: ["yarn", "hot-reload"]
+    command: ["yarn", "dev"]
 
   spid-testenv2:
     image: italia/spid-testenv2:latest

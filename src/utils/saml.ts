@@ -38,9 +38,7 @@ interface IEntrypointCerts {
   entryPoint?: string;
 }
 
-const decodeBase64 = (s: string) => {
-  return new Buffer(s, "base64").toString("utf8");
-};
+const decodeBase64 = (s: string) => Buffer.from(s, "base64").toString("utf8");
 
 /**
  * Remove prefix and suffix from x509 certificate.
@@ -222,43 +220,50 @@ export const getSamlOptions: MultiSamlConfig["getSamlOptions"] = (
   req,
   done
 ) => {
-  // Get decoded response
-  const decodedResponse =
-    req.body && req.body.SAMLResponse
-      ? decodeBase64(req.body.SAMLResponse)
-      : undefined;
+  try {
+    // Get decoded response
+    const decodedResponse =
+      req.body && req.body.SAMLResponse
+        ? decodeBase64(req.body.SAMLResponse)
+        : undefined;
 
-  logSpidResponse(req, decodedResponse);
+    logSpidResponse(req, decodedResponse);
 
-  // Get SPID strategy options with IDPs metadata
-  const spidStrategyOptions = getSpidStrategyOption(req.app);
+    // Get SPID strategy options with IDPs metadata
+    const spidStrategyOptions = getSpidStrategyOption(req.app);
 
-  // Get the correct entry within the IDP metadata object
-  const maybeEntrypointCerts = getEntrypointCerts(req, spidStrategyOptions.idp);
-  if (isNone(maybeEntrypointCerts)) {
-    logger.debug(
-      `SPID cannot find a valid idp in spidOptions for given entityID: ${req.query.entityID}`
+    // Get the correct entry within the IDP metadata object
+    const maybeEntrypointCerts = getEntrypointCerts(
+      req,
+      spidStrategyOptions.idp
     );
-  }
-  const entrypointCerts = maybeEntrypointCerts.getOrElse(
-    {} as IEntrypointCerts
-  );
-
-  // Get authnContext (SPID level) and forceAuthn from request payload
-  const maybeAuthOptions = getAuthSalmOptions(req, decodedResponse);
-  if (isNone(maybeAuthOptions)) {
-    logger.debug(
-      "SPID cannot find authnContext in response %s",
-      decodedResponse
+    if (isNone(maybeEntrypointCerts)) {
+      logger.debug(
+        `SPID cannot find a valid idp in spidOptions for given entityID: ${req.query.entityID}`
+      );
+    }
+    const entrypointCerts = maybeEntrypointCerts.getOrElse(
+      {} as IEntrypointCerts
     );
-  }
-  const authOptions = maybeAuthOptions.getOrElse({});
 
-  return done(null, {
-    ...spidStrategyOptions.sp,
-    ...entrypointCerts,
-    ...authOptions
-  });
+    // Get authnContext (SPID level) and forceAuthn from request payload
+    const maybeAuthOptions = getAuthSalmOptions(req, decodedResponse);
+    if (isNone(maybeAuthOptions)) {
+      logger.debug(
+        "SPID cannot find authnContext in response %s",
+        decodedResponse
+      );
+    }
+    const authOptions = maybeAuthOptions.getOrElse({});
+
+    return done(null, {
+      ...spidStrategyOptions.sp,
+      ...entrypointCerts,
+      ...authOptions
+    });
+  } catch (e) {
+    return done(e);
+  }
 };
 
 //

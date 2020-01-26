@@ -13,7 +13,7 @@
   "scripts": {
     "prebuild": "shx rm -rf dist",
     "build": "tsc",
-    "hot-reload": "nodemon dist/index.js",
+    "dev": "nodemon dist/example.js",
     "postversion": "git push && git push --tags",
     "test": "jest -i",
     "lint": "tslint --project ."
