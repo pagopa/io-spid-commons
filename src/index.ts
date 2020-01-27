@@ -1,5 +1,4 @@
 import * as express from "express";
-import { fromNullable } from "fp-ts/lib/Option";
 import { TaskEither } from "fp-ts/lib/TaskEither";
 import { toExpressHandler } from "italia-ts-commons/lib/express";
 import {

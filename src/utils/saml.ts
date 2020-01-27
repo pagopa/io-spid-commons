@@ -1,7 +1,7 @@
 import { distanceInWordsToNow, isAfter, subDays } from "date-fns";
 import { Request as ExpressRequest } from "express";
 import { flatten } from "fp-ts/lib/Array";
-import { isLeft, toError } from "fp-ts/lib/Either";
+import { toError } from "fp-ts/lib/Either";
 import {
   fromEither,
   fromNullable,
@@ -449,13 +449,13 @@ export const getAuthorizeRequestTamperer = (
           // tslint:disable-next-line: no-any
           produce(objXml, (o: any) => {
             // tslint:disable-next-line: no-object-mutation no-delete no-duplicate-string
-            delete objXml["samlp:AuthnRequest"]["samlp:NameIDPolicy"][0].$
+            delete o["samlp:AuthnRequest"]["samlp:NameIDPolicy"][0].$
               .AllowCreate;
             // tslint:disable-next-line: no-object-mutation no-deleteam
-            objXml["samlp:AuthnRequest"]["saml:Issuer"][0].$.NameQualifier =
+            o["samlp:AuthnRequest"]["saml:Issuer"][0].$.NameQualifier =
               samlConfig.issuer;
             // tslint:disable-next-line: no-object-mutation no-delete
-            objXml["samlp:AuthnRequest"]["saml:Issuer"][0].$.Format =
+            o["samlp:AuthnRequest"]["saml:Issuer"][0].$.Format =
               "urn:oasis:names:tc:SAML:2.0:nameid-format:entity";
           }),
         toError
