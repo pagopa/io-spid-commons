@@ -22,9 +22,11 @@ import { IServiceProviderConfig } from "./utils/middleware";
 
 export const SpidUser = t.intersection([
   t.interface({
+    // the following values may be set
+    // by the calling application:
     // authnContextClassRef: SpidLevel,
-    getAssertionXml: t.Function
     // issuer: Issuer
+    getAssertionXml: t.Function
   }),
   t.partial({
     email: EmailString,
@@ -40,16 +42,16 @@ export const SpidUser = t.intersection([
 
 export type SpidUser = t.TypeOf<typeof SpidUser>;
 
-const appConfigL: IApplicationConfig = {
+const appConfig: IApplicationConfig = {
   assertionConsumerServicePath: "/acs",
-  clientErrorRedirectionUrl: "/ko",
-  clientLoginRedirectionUrl: "/ok",
+  clientErrorRedirectionUrl: "/error",
+  clientLoginRedirectionUrl: "/success",
   loginPath: "/login",
-  metadataPath: "/metadata.xml",
+  metadataPath: "/metadata",
   sloPath: "/logout"
 };
 
-const serviceProviderConfigL: IServiceProviderConfig = {
+const serviceProviderConfig: IServiceProviderConfig = {
   IDPMetadataUrl:
     "https://registry.spid.gov.it/metadata/idp/spid-entities-idps.xml",
   hasSpidValidatorEnabled: true,
@@ -66,11 +68,11 @@ const serviceProviderConfigL: IServiceProviderConfig = {
   spidTestEnvUrl: "https://spid-testenv2:8088"
 };
 
-const samlConfigL: SamlConfig = {
+const samlConfig: SamlConfig = {
   acceptedClockSkewMs: 0,
   attributeConsumingServiceIndex: "0",
   authnContext: "https://www.spid.gov.it/SpidL1",
-  callbackUrl: "http://localhost:3000/acs",
+  callbackUrl: "http://localhost:3000" + appConfig.assertionConsumerServicePath,
   // decryptionPvk: fs.readFileSync("./certs/key.pem", "utf-8"),
   identifierFormat: "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
   issuer: "https://spid.agid.gov.it/cd",
@@ -80,23 +82,25 @@ const samlConfigL: SamlConfig = {
 
 const acs: AssertionConsumerServiceT = async payload => {
   logger.info("acs:%s", JSON.stringify(payload));
-  return ResponsePermanentRedirect({ href: "/ok?user=" });
+  return ResponsePermanentRedirect({ href: "/success?acs" });
 };
 
 const logout: LogoutT = async () =>
-  ResponsePermanentRedirect({ href: "/ok?logout" });
+  ResponsePermanentRedirect({ href: "/success?logout" });
 
-const appL = express();
+const app = express();
 
-appL.use(bodyParser.json());
-appL.use(bodyParser.urlencoded({ extended: true }));
-appL.use(passport.initialize());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(passport.initialize());
 
-withSpid(appConfigL, samlConfigL, serviceProviderConfigL, appL, acs, logout)
-  .map(app => {
-    app.get("/ok", (_, res) => res.json({ ok: "ok" }));
-    app.get("/ko", (_, res) => res.json({ ok: "ko" }));
-    app.use(
+withSpid(appConfig, samlConfig, serviceProviderConfig, app, acs, logout)
+  .map(withSpidApp => {
+    withSpidApp.get("/success", (_, res) => res.json({ success: "success" }));
+    withSpidApp.get("/error", (_, res) =>
+      res.json({ error: "error" }).status(400)
+    );
+    withSpidApp.use(
       (
         error: Error,
         _: express.Request,
@@ -104,8 +108,8 @@ withSpid(appConfigL, samlConfigL, serviceProviderConfigL, appL, acs, logout)
         ___: express.NextFunction
       ) => res.status(505).send({ error: error.message })
     );
-    app.listen(3000);
+    withSpidApp.listen(3000);
   })
   .run()
   // tslint:disable-next-line: no-console
-  .catch(e => console.error("caught error: ", e));
+  .catch(e => console.error("Application error: ", e));

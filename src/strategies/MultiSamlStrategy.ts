@@ -38,6 +38,11 @@ export class MultiSamlStrategy extends SamlStrategy {
       options.requestIdExpirationPeriodMs = 28800000;
     }
     if (!options.cacheProvider) {
+      // WARNING: you cannot use this one if you have
+      // multiple instances of the express app running
+      // (ie. multiple pods on Kubernetes).
+      // Use a RedisCacheProvider instead which can be
+      // safely shared between instances.
       options.cacheProvider = new InMemoryCacheProvider({
         keyExpirationPeriodMs: options.requestIdExpirationPeriodMs
       });
@@ -54,7 +59,7 @@ export class MultiSamlStrategy extends SamlStrategy {
       }
       this._saml = new saml.SAML(Object.assign({}, this.options, samlOptions));
 
-      // Patch SAML client method to let us intercept
+      // Patch SAML client `generateAuthorizeRequest` to intercept
       // and tamper the generated XML for an authorization request
       if (this.tamperAuthorizeRequest) {
         const tamperAuthorizeRequest = this.tamperAuthorizeRequest;

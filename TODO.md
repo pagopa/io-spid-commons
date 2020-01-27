@@ -1,4 +1,7 @@
 - monkey patch saml.ValidateResponse
-- memoize spid metadata updates (nodefetch)
+
+- l'update delle spid options deve essere un processo schedulato, non un middleware
+
 - check console.log / logger
+
 - permament -> temporary redirect
