@@ -6,7 +6,6 @@ import { array } from "fp-ts/lib/Array";
 import { taskEither, TaskEither } from "fp-ts/lib/TaskEither";
 import { Profile, SamlConfig, VerifiedCallback } from "passport-saml";
 import { SPID_IDP_IDENTIFIERS } from "../config";
-// tslint:disable-next-line: no-submodule-imports
 import {
   MultiSamlStrategy,
   PreValidateResponseT,

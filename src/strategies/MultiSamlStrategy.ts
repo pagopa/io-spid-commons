@@ -1,7 +1,3 @@
-// tslint:disable: no-object-mutation
-// tslint:disable: no-submodule-imports
-// tslint:disable: no-var-requires
-
 import * as express from "express";
 import { TaskEither } from "fp-ts/lib/TaskEither";
 import {
@@ -12,10 +8,14 @@ import {
   VerifyWithRequest
 } from "passport-saml";
 import { Strategy as SamlStrategy } from "passport-saml";
+
+// tslint:disable-next-line: no-submodule-imports
 import { MultiSamlConfig } from "passport-saml/multiSamlStrategy";
 
+// tslint:disable-next-line: no-submodule-imports no-var-requires
 const saml = require("passport-saml/lib/passport-saml/saml");
 
+// tslint:disable-next-line: no-submodule-imports no-var-requires
 const InMemoryCacheProvider = require("passport-saml/lib/passport-saml/inmemory-cache-provider")
   .CacheProvider;
 
@@ -64,6 +64,7 @@ export class MultiSamlStrategy extends SamlStrategy {
       if (err) {
         return this.error(err);
       }
+      // tslint:disable-next-line: no-object-mutation
       this._saml = new saml.SAML(Object.assign({}, this.options, samlOptions));
 
       // Patch SAML client `validatePostResponse` to intercept
@@ -73,6 +74,7 @@ export class MultiSamlStrategy extends SamlStrategy {
         const originalValidatePostResponse = this._saml.validatePostResponse.bind(
           this._saml
         );
+        // tslint:disable-next-line: no-object-mutation
         this._saml.validatePostResponse = function(
           // tslint:disable-next-line: no-any
           ...args: readonly any[]
@@ -95,6 +97,7 @@ export class MultiSamlStrategy extends SamlStrategy {
         const originalGenerateAuthorizeRequest = this._saml.generateAuthorizeRequest.bind(
           this._saml
         );
+        // tslint:disable-next-line: no-object-mutation
         this._saml.generateAuthorizeRequest = function(
           // tslint:disable-next-line: no-any
           ...args: readonly any[]
@@ -127,6 +130,7 @@ export class MultiSamlStrategy extends SamlStrategy {
       if (err) {
         return this.error(err);
       }
+      // tslint:disable-next-line: no-object-mutation
       this._saml = new saml.SAML(Object.assign({}, this.options, samlOptions));
       super.logout(req, callback);
     });
@@ -142,6 +146,7 @@ export class MultiSamlStrategy extends SamlStrategy {
       if (err) {
         return this.error(err);
       }
+      // tslint:disable-next-line: no-object-mutation
       this._saml = new saml.SAML(Object.assign({}, this.options, samlOptions));
 
       const originalXml = super.generateServiceProviderMetadata(
