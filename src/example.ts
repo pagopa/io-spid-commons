@@ -77,7 +77,8 @@ const samlConfig: SamlConfig = {
   identifierFormat: "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
   issuer: "https://spid.agid.gov.it/cd",
   logoutCallbackUrl: "http://localhost:3000/slo",
-  privateCert: fs.readFileSync("./certs/key.pem", "utf-8")
+  privateCert: fs.readFileSync("./certs/key.pem", "utf-8"),
+  validateInResponseTo: true
 };
 
 const acs: AssertionConsumerServiceT = async payload => {

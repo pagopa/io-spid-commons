@@ -139,17 +139,17 @@ export function withSpid(
       );
     })
     .map(spidStrategy => {
-      // install express middleware to get and refresh
+      // Schedule get and refresh
       // SPID passport strategy options
-      app.use(async (req, __, next) =>
-        loadSpidStrategyOptions()
-          .map(opts => setSpidStrategyOption(req.app, opts))
-          .run()
-          .then(() => next())
-          .catch(e => {
-            logger.error("loadSpidStrategyOptions#error:%s", e.toString());
-            next(e);
-          })
+      setInterval(
+        () =>
+          loadSpidStrategyOptions()
+            .map(opts => setSpidStrategyOption(app, opts))
+            .run()
+            .catch(e => {
+              logger.error("loadSpidStrategyOptions#error:%s", e.toString());
+            }),
+        10000
       );
 
       // Initializes SpidStrategy for passport
