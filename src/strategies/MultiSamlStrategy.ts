@@ -21,6 +21,12 @@ const InMemoryCacheProvider = require("passport-saml/lib/passport-saml/inmemory-
 
 export type XmlTamperer = (xml: string) => TaskEither<Error, string>;
 
+export type PreValidateResponseT = (
+  body: unknown,
+  // tslint:disable-next-line: bool-param-default
+  callback: (err: Error | null, isValid?: boolean) => void
+) => void;
+
 export class MultiSamlStrategy extends SamlStrategy {
   // tslint:disable-next-line: variable-name no-any
   private _saml: any;
@@ -30,7 +36,8 @@ export class MultiSamlStrategy extends SamlStrategy {
     private getSamlOptions: MultiSamlConfig["getSamlOptions"],
     verify: VerifyWithRequest | VerifyWithoutRequest,
     private tamperAuthorizeRequest?: XmlTamperer,
-    private tamperMetadata?: XmlTamperer
+    private tamperMetadata?: XmlTamperer,
+    private preValidateResponse?: PreValidateResponseT
   ) {
     super(options, verify);
     if (!options.requestIdExpirationPeriodMs) {
@@ -59,9 +66,31 @@ export class MultiSamlStrategy extends SamlStrategy {
       }
       this._saml = new saml.SAML(Object.assign({}, this.options, samlOptions));
 
-      // Patch SAML client `generateAuthorizeRequest` to intercept
+      // Patch SAML client `validatePostResponse` to intercept
+      // and validate the SAMLResponse before the SAML client checks
+      if (this.preValidateResponse && req.body && req.body.SAMLResponse) {
+        const preValidateResponse = this.preValidateResponse;
+        const originalValidatePostResponse = this._saml.validatePostResponse.bind(
+          this._saml
+        );
+        this._saml.validatePostResponse = function(
+          // tslint:disable-next-line: no-any
+          ...args: readonly any[]
+        ): void {
+          const originalBody = args[0];
+          const originalCallback = args[args.length - 1];
+          return preValidateResponse(originalBody, err2 => {
+            if (err2) {
+              return originalCallback(err2);
+            }
+            return originalValidatePostResponse.apply(this._saml, args);
+          });
+        };
+      }
+
+      // Patch SAML client `validatePostResponse` to intercept
       // and tamper the generated XML for an authorization request
-      if (this.tamperAuthorizeRequest) {
+      else if (this.tamperAuthorizeRequest) {
         const tamperAuthorizeRequest = this.tamperAuthorizeRequest;
         const originalGenerateAuthorizeRequest = this._saml.generateAuthorizeRequest.bind(
           this._saml

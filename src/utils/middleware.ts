@@ -9,6 +9,7 @@ import { SPID_IDP_IDENTIFIERS } from "../config";
 // tslint:disable-next-line: no-submodule-imports
 import {
   MultiSamlStrategy,
+  PreValidateResponseT,
   XmlTamperer
 } from "../strategies/MultiSamlStrategy";
 import getCieIpdOption from "../testIdpsConfig/xx_servizicie_test";
@@ -109,18 +110,20 @@ export function makeSpidStrategy(
   options: ISpidStrategyOptions,
   getSamlOptions: MultiSamlStrategy["getSamlOptions"],
   tamperAuthorizeRequest?: XmlTamperer,
-  tamperMetadata?: XmlTamperer
+  tamperMetadata?: XmlTamperer,
+  preValidateResponse?: PreValidateResponseT
 ): MultiSamlStrategy {
   return new MultiSamlStrategy(
     { ...options, passReqToCallback: true },
     getSamlOptions,
     (req: express.Request, profile: Profile, done: VerifiedCallback) => {
-      logger.info(profile.getAssertionXml());
+      logger.debug(profile.getAssertionXml());
       // at this point SAML authentication is successful
       // `done` is a passport callback that signals success
       done(null, profile);
     },
     tamperAuthorizeRequest,
-    tamperMetadata
+    tamperMetadata,
+    preValidateResponse
   );
 }

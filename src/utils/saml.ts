@@ -1,17 +1,18 @@
 import { distanceInWordsToNow, isAfter, subDays } from "date-fns";
 import { Request as ExpressRequest } from "express";
 import { flatten } from "fp-ts/lib/Array";
-import { toError } from "fp-ts/lib/Either";
+import { isLeft, toError } from "fp-ts/lib/Either";
 import {
   fromEither,
   fromNullable,
   isNone,
   none,
   Option,
-  some
+  some,
+  tryCatch as optionTryCatch
 } from "fp-ts/lib/Option";
 import { collect, lookup } from "fp-ts/lib/Record";
-import { TaskEither, taskify, tryCatch } from "fp-ts/lib/TaskEither";
+import { TaskEither, tryCatch } from "fp-ts/lib/TaskEither";
 import produce from "immer";
 import * as t from "io-ts";
 import { NonEmptyString } from "italia-ts-commons/lib/strings";
@@ -23,6 +24,7 @@ import * as xmlCrypto from "xml-crypto";
 import { Builder, parseStringPromise } from "xml2js";
 import { DOMParser } from "xmldom";
 import { SPID_LEVELS, SPID_URLS, SPID_USER_ATTRIBUTES } from "../config";
+import { PreValidateResponseT } from "../strategies/MultiSamlStrategy";
 import { logger } from "./logger";
 import {
   getSpidStrategyOption,
@@ -37,6 +39,11 @@ interface IEntrypointCerts {
   cert: NonEmptyString[];
   entryPoint?: string;
 }
+
+const NS = {
+  ASSERTION: "urn:oasis:names:tc:SAML:2.0:assertion",
+  PROTOCOL: "urn:oasis:names:tc:SAML:2.0:protocol"
+};
 
 const decodeBase64 = (s: string) => Buffer.from(s, "base64").toString("utf8");
 
@@ -53,16 +60,42 @@ const SAMLResponse = t.type({
   SAMLResponse: t.string
 });
 
+export const getXmlFromSamlResponse = (body: unknown): Option<Document> =>
+  fromEither(SAMLResponse.decode(body))
+    .map(_ => decodeBase64(_.SAMLResponse))
+    .chain(_ => optionTryCatch(() => new DOMParser().parseFromString(_)));
+
+/**
+ * Extract StatusMessage from SAML response
+ *
+ * ie. for <StatusMessage>ErrorCode nr22</StatusMessage>
+ * returns "22"
+ */
+export function getErrorCodeFromResponse(doc: Document): Option<string> {
+  return fromNullable(doc.getElementsByTagNameNS(NS.PROTOCOL, "StatusMessage"))
+    .chain(responseStatusMessageEl => {
+      return responseStatusMessageEl &&
+        responseStatusMessageEl[0] &&
+        responseStatusMessageEl[0].textContent
+        ? some(responseStatusMessageEl[0].textContent.trim())
+        : none;
+    })
+    .chain(errorString => {
+      const indexString = "ErrorCode nr";
+      const errorCode = errorString.slice(
+        errorString.indexOf(indexString) + indexString.length
+      );
+      return errorCode !== "" ? some(errorCode) : none;
+    });
+}
+
 /**
  * Extracts the issuer field from the response body.
  */
-export const getSamlIssuer = (body: unknown): string => {
-  return fromEither(SAMLResponse.decode(body))
-    .map(_ => Buffer.from(_.SAMLResponse, "base64").toString("utf8"))
-    .mapNullable(_ => new DOMParser().parseFromString(_))
-    .mapNullable(_ => _.getElementsByTagName("saml:Issuer").item(0))
-    .mapNullable(_ => _.textContent)
-    .getOrElse("UNKNOWN");
+export const getSamlIssuer = (doc: Document): Option<string> => {
+  return fromNullable(
+    doc.getElementsByTagNameNS(NS.ASSERTION, "Issuer").item(0)
+  ).mapNullable(_ => _.textContent);
 };
 
 /**
@@ -106,7 +139,7 @@ const getAuthnContextValueFromResponse = (response: string): Option<string> => {
   const xmlResponse = new DOMParser().parseFromString(response, "text/xml");
   // ie. <saml2:AuthnContextClassRef>https://www.spid.gov.it/SpidL2</saml2:AuthnContextClassRef>
   const responseAuthLevelEl = xmlResponse.getElementsByTagNameNS(
-    "urn:oasis:names:tc:SAML:2.0:assertion",
+    NS.ASSERTION,
     "AuthnContextClassRef"
   );
   return responseAuthLevelEl[0] && responseAuthLevelEl[0].textContent
@@ -406,7 +439,7 @@ export const getMetadataTamperer = (
 
 export const getAuthorizeRequestTamperer = (
   xmlBuilder: Builder,
-  serviceProviderConfig: IServiceProviderConfig,
+  _: IServiceProviderConfig,
   samlConfig: SamlConfig
 ) => (generateXml: string): TaskEither<Error, string> => {
   return tryCatch(() => parseStringPromise(generateXml), toError)
@@ -415,7 +448,7 @@ export const getAuthorizeRequestTamperer = (
         async () =>
           // tslint:disable-next-line: no-any
           produce(objXml, (o: any) => {
-            // tslint:disable-next-line: no-object-mutation no-delete
+            // tslint:disable-next-line: no-object-mutation no-delete no-duplicate-string
             delete objXml["samlp:AuthnRequest"]["samlp:NameIDPolicy"][0].$
               .AllowCreate;
             // tslint:disable-next-line: no-object-mutation no-deleteam
@@ -428,5 +461,47 @@ export const getAuthorizeRequestTamperer = (
         toError
       );
     })
-    .chain(_ => tryCatch(async () => xmlBuilder.buildObject(_), toError));
+    .chain(obj => tryCatch(async () => xmlBuilder.buildObject(obj), toError));
+};
+
+//
+//  Validate response
+//
+
+// tslint:disable-next-line: no-commented-code
+// export const getResponseValidator = (
+//   xmlBuilder: Builder,
+//   serviceProviderConfig: IServiceProviderConfig,
+//   samlConfig: SamlConfig
+// ): PreValidateResponseT => {
+// }
+
+export const preValidateResponse: PreValidateResponseT = (body, callback) => {
+  try {
+    const maybeDoc = getXmlFromSamlResponse(body);
+    if (isNone(maybeDoc)) {
+      throw new Error("Empty SAML response");
+    }
+    const doc = maybeDoc.value;
+
+    const Response = doc
+      .getElementsByTagNameNS(NS.PROTOCOL, "Response")
+      .item(0);
+
+    if (Response) {
+      const ID = Response.getAttribute("ID");
+      if (!ID || ID === "") {
+        throw new Error("Response must contain a non empty ID");
+      }
+      const Version = Response.getAttribute("Version");
+      if (Version !== "2.0") {
+        throw new Error("Response version must be 2.0");
+      }
+    }
+
+    callback(null, true);
+  } catch (e) {
+    logger.error("Error parsing IDP response:%s", e.message);
+    callback(e);
+  }
 };

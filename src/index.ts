@@ -20,11 +20,13 @@ import {
   makeSpidStrategy,
   setSpidStrategyOption
 } from "./utils/middleware";
-import { getErrorCodeFromResponse } from "./utils/response";
 import {
   getAuthorizeRequestTamperer,
+  getErrorCodeFromResponse,
   getSamlIssuer,
-  getSamlOptions
+  getSamlOptions,
+  getXmlFromSamlResponse,
+  preValidateResponse
 } from "./utils/saml";
 import { getMetadataTamperer } from "./utils/saml";
 
@@ -54,8 +56,8 @@ export interface IApplicationConfig {
  */
 const withSpidAuthMiddleware = (
   acs: AssertionConsumerServiceT,
-  clientErrorRedirectionUrl: string,
-  clientLoginRedirectionUrl: string
+  clientLoginRedirectionUrl: string,
+  clientErrorRedirectionUrl: string
 ): ((
   req: express.Request,
   res: express.Response,
@@ -67,7 +69,8 @@ const withSpidAuthMiddleware = (
     next: express.NextFunction
   ) => {
     passport.authenticate("spid", async (err, user) => {
-      const issuer = getSamlIssuer(req.body);
+      const maybeDoc = getXmlFromSamlResponse(req.body);
+      const issuer = maybeDoc.chain(getSamlIssuer).getOrElse("UNKNOWN");
       if (err) {
         logger.error(
           "Spid Authentication|Authentication Error|ERROR=%s|ISSUER=%s",
@@ -76,8 +79,8 @@ const withSpidAuthMiddleware = (
         );
         return res.redirect(
           clientErrorRedirectionUrl +
-            fromNullable(err.statusXml)
-              .chain(statusXml => getErrorCodeFromResponse(statusXml))
+            maybeDoc
+              .chain(getErrorCodeFromResponse)
               .map(errorCode => `?errorCode=${errorCode}`)
               .getOrElse("")
         );
@@ -131,7 +134,8 @@ export function withSpid(
         spidStrategyOptions,
         getSamlOptions,
         authorizeRequestTamperer,
-        metadataTamperer
+        metadataTamperer,
+        preValidateResponse
       );
     })
     .map(spidStrategy => {
