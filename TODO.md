@@ -1,5 +1,3 @@
-- configurare parametro intervallo refresh metadati
-
 - redis cache provider per validazione InResponseTo
 
 - check console.log / logger

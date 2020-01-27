@@ -148,7 +148,7 @@ export function withSpid(
             .catch(e => {
               logger.error("loadSpidStrategyOptions#error:%s", e.toString());
             }),
-        10000
+        serviceProviderConfig.idpMetadataRefreshIntervalMillis
       );
 
       // Initializes SpidStrategy for passport

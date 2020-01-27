@@ -32,6 +32,7 @@ export interface IServiceProviderConfig {
   };
   publicCert: string;
   hasSpidValidatorEnabled: boolean;
+  idpMetadataRefreshIntervalMillis: number;
 }
 
 export interface ISpidStrategyOptions {

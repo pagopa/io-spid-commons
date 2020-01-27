@@ -55,6 +55,7 @@ const serviceProviderConfig: IServiceProviderConfig = {
   IDPMetadataUrl:
     "https://registry.spid.gov.it/metadata/idp/spid-entities-idps.xml",
   hasSpidValidatorEnabled: true,
+  idpMetadataRefreshIntervalMillis: 10000,
   organization: {
     URL: "https://example.com",
     displayName: "Organization display name",
