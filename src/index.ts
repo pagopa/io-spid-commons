@@ -66,6 +66,7 @@ export class SpidPassportBuilder {
   private metadataXml?: string;
   private config: ISpidStrategyConfig;
   private app: Express;
+  private staticIdpOptionsMetadata?: Record<string, IDPOption>;
 
   constructor(
     app: Express,
@@ -73,7 +74,8 @@ export class SpidPassportBuilder {
     sloPath: string,
     assertionConsumerServicePath: string,
     metadataPath: string,
-    config: ISpidStrategyConfig
+    config: ISpidStrategyConfig,
+    staticIdpOptionsMetadata?: Record<string, IDPOption>
   ) {
     this.loginPath = loginPath;
     this.metadataPath = metadataPath;
@@ -81,6 +83,7 @@ export class SpidPassportBuilder {
     this.assertionConsumerServicePath = assertionConsumerServicePath;
     this.config = config;
     this.app = app;
+    this.staticIdpOptionsMetadata = staticIdpOptionsMetadata;
   }
 
   /**
@@ -91,16 +94,18 @@ export class SpidPassportBuilder {
     clientErrorRedirectionUrl: string,
     clientLoginRedirectionUrl: string
   ): TaskEither<Error, void> {
-    return loadSpidStrategy(this.config).map(ioSpidStrategy => {
-      // tslint:disable-next-line: no-object-mutation
-      this.spidStrategy = ioSpidStrategy;
-      this.registerLoginRoute(this.spidStrategy);
-      this.registerAuthRoutes(
-        authenticationController,
-        clientErrorRedirectionUrl,
-        clientLoginRedirectionUrl
-      );
-    });
+    return loadSpidStrategy(this.config, this.staticIdpOptionsMetadata).map(
+      ioSpidStrategy => {
+        // tslint:disable-next-line: no-object-mutation
+        this.spidStrategy = ioSpidStrategy;
+        this.registerLoginRoute(this.spidStrategy);
+        this.registerAuthRoutes(
+          authenticationController,
+          clientErrorRedirectionUrl,
+          clientLoginRedirectionUrl
+        );
+      }
+    );
   }
 
   public clearAndReloadSpidStrategy(

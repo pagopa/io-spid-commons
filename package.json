@@ -10,6 +10,9 @@
   "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "gen-idps-options": "dist/bin/gen-ipds-options.js"
+  },
   "scripts": {
     "prebuild": "rimraf dist",
     "build": "tsc",
@@ -19,6 +22,7 @@
   },
   "devDependencies": {
     "@types/express": "4.17.0",
+    "@types/fs-extra": "^8.0.1",
     "@types/jest": "^24.0.13",
     "@types/node": "10.14.1",
     "@types/node-fetch": "^2.1.2",
@@ -43,6 +47,7 @@
   "dependencies": {
     "date-fns": "^1.30.1",
     "fp-ts": "1.12.0",
+    "fs-extra": "^8.1.0",
     "io-ts": "1.8.5",
     "io-ts-types": "^0.4.7",
     "italia-ts-commons": "^5.1.4",
@@ -52,7 +57,8 @@
     "spid-passport": "git://github.com/teamdigitale/spid-passport.git#v1.1.7",
     "winston": "^3.0.0",
     "x509": "^0.3.4",
-    "xmldom": "^0.1.27"
+    "xmldom": "^0.1.27",
+    "yargs": "^15.1.0"
   },
   "peerDependencies": {
     "express": "^4.17.0",

@@ -124,74 +124,115 @@ export interface ISpidStrategyConfig {
 }
 
 export const loadSpidStrategy = (
-  config: ISpidStrategyConfig
+  config: ISpidStrategyConfig,
+  staticIdpOptionsMetadata?: Record<string, IDPOption>
 ): TaskEither<Error, IIoSpidStrategy> => {
-  const idpOptionsTasks = [
-    loadFromRemote(config.IDPMetadataUrl, IDP_IDS)
-  ].concat(
-    config.hasSpidValidatorEnabled
-      ? [
-          loadFromRemote("https://validator.spid.gov.it/metadata.xml", {
-            "https://validator.spid.gov.it": "xx_validator"
-          })
-        ]
-      : []
-  );
-  return array
-    .sequence(taskEither)(idpOptionsTasks)
-    .map(idpOptionsRecords =>
-      idpOptionsRecords.reduce((prev, current) => ({ ...prev, ...current }), {})
-    )
-    .map(idpOptionsRecord => {
-      logSamlCertExpiration(config.samlCert);
-      const options: {
-        idp: { [key: string]: IDPOption | undefined };
-        // tslint:disable-next-line: no-any
-        sp: any;
-      } = {
-        idp: {
-          ...idpOptionsRecord,
-          xx_servizicie_test: getCieIpdOption(),
-          xx_testenv2: getSpidTestIpdOption(config.spidTestEnvUrl)
-        },
-        sp: {
-          acceptedClockSkewMs: config.samlAcceptedClockSkewMs,
-          attributeConsumingServiceIndex:
-            config.samlAttributeConsumingServiceIndex,
-          attributes: {
-            attributes: config.requiredAttributes,
-            name: "Required attributes"
-          },
-          callbackUrl: config.samlCallbackUrl,
-          decryptionPvk: config.samlKey,
-          identifierFormat:
-            "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
-          issuer: config.samlIssuer,
-          organization: config.organization,
-          privateCert: config.samlKey,
-          signatureAlgorithm: "sha256"
+  const options: {
+    idp: { [key: string]: IDPOption | undefined };
+    // tslint:disable-next-line: no-any
+    sp: any;
+  } = {
+    idp: {
+      xx_servizicie_test: getCieIpdOption(),
+      xx_testenv2: getSpidTestIpdOption(config.spidTestEnvUrl)
+    },
+    sp: {
+      acceptedClockSkewMs: config.samlAcceptedClockSkewMs,
+      attributeConsumingServiceIndex: config.samlAttributeConsumingServiceIndex,
+      attributes: {
+        attributes: config.requiredAttributes,
+        name: "Required attributes"
+      },
+      callbackUrl: config.samlCallbackUrl,
+      decryptionPvk: config.samlKey,
+      identifierFormat: "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
+      issuer: config.samlIssuer,
+      organization: config.organization,
+      privateCert: config.samlKey,
+      signatureAlgorithm: "sha256"
+    }
+  };
+  if (staticIdpOptionsMetadata) {
+    const idpOptions = {
+      ...options,
+      idp: {
+        ...staticIdpOptionsMetadata,
+        ...options.idp
+      }
+    };
+    const optionsWithAutoLoginInfo = {
+      ...idpOptions,
+      sp: {
+        ...idpOptions.sp,
+        additionalParams: {
+          auto_login: config.spidAutologin
         }
-      };
-      const optionsWithAutoLoginInfo = {
-        ...options,
-        sp: {
-          ...options.sp,
-          additionalParams: {
-            auto_login: config.spidAutologin
+      }
+    };
+    return tryCatch(
+      () =>
+        Promise.resolve(new SpidStrategy(
+          config.spidAutologin === "" ? idpOptions : optionsWithAutoLoginInfo,
+          (
+            profile: SpidUser,
+            done: (err: Error | undefined, info: SpidUser) => void
+          ) => {
+            log.info(profile.getAssertionXml());
+            done(undefined, profile);
           }
-        }
-      };
-      return new SpidStrategy(
-        config.spidAutologin === "" ? options : optionsWithAutoLoginInfo,
-        (
-          profile: SpidUser,
-          done: (err: Error | undefined, info: SpidUser) => void
-        ) => {
-          log.info(profile.getAssertionXml());
-          done(undefined, profile);
-        }
-      ) as IIoSpidStrategy;
-    });
+        ) as IIoSpidStrategy),
+      toError
+    );
+  } else {
+    const idpOptionsTasks = [
+      loadFromRemote(config.IDPMetadataUrl, IDP_IDS)
+    ].concat(
+      config.hasSpidValidatorEnabled
+        ? [
+            loadFromRemote("https://validator.spid.gov.it/metadata.xml", {
+              "https://validator.spid.gov.it": "xx_validator"
+            })
+          ]
+        : []
+    );
+    return array
+      .sequence(taskEither)(idpOptionsTasks)
+      .map(idpOptionsRecords =>
+        idpOptionsRecords.reduce(
+          (prev, current) => ({ ...prev, ...current }),
+          {}
+        )
+      )
+      .map(idpOptionsRecord => {
+        logSamlCertExpiration(config.samlCert);
+        const idpOptions = {
+          ...options,
+          idp: {
+            ...idpOptionsRecord,
+            ...options.idp
+          }
+        };
+        const optionsWithAutoLoginInfo = {
+          ...idpOptions,
+          sp: {
+            ...idpOptions.sp,
+            additionalParams: {
+              auto_login: config.spidAutologin
+            }
+          }
+        };
+        return new SpidStrategy(
+          config.spidAutologin === "" ? idpOptions : optionsWithAutoLoginInfo,
+          (
+            profile: SpidUser,
+            done: (err: Error | undefined, info: SpidUser) => void
+          ) => {
+            log.info(profile.getAssertionXml());
+            done(undefined, profile);
+          }
+        ) as IIoSpidStrategy;
+      });
+  }
 };
 
 /**
