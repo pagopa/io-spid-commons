@@ -146,7 +146,7 @@ export function withSpid(
             .map(opts => setSpidStrategyOption(app, opts))
             .run()
             .catch(e => {
-              logger.error("loadSpidStrategyOptions#error:%s", e.toString());
+              logger.error("loadSpidStrategyOptions|error:%s", e);
             }),
         serviceProviderConfig.idpMetadataRefreshIntervalMillis
       );
