@@ -468,14 +468,6 @@ export const getAuthorizeRequestTamperer = (
 //  Validate response
 //
 
-// tslint:disable-next-line: no-commented-code
-// export const getResponseValidator = (
-//   xmlBuilder: Builder,
-//   serviceProviderConfig: IServiceProviderConfig,
-//   samlConfig: SamlConfig
-// ): PreValidateResponseT => {
-// }
-
 export const preValidateResponse: PreValidateResponseT = (body, callback) => {
   try {
     const maybeDoc = getXmlFromSamlResponse(body);
