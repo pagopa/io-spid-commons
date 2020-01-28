@@ -11,10 +11,7 @@ import { Strategy as SamlStrategy } from "passport-saml";
 
 // tslint:disable-next-line: no-submodule-imports
 import { MultiSamlConfig } from "passport-saml/multiSamlStrategy";
-import { CustomSamlClient } from "./saml";
-
-// tslint:disable-next-line: no-submodule-imports no-var-requires
-const saml = require("passport-saml/lib/passport-saml/saml");
+import { CustomSamlClient } from "./saml_client";
 
 // tslint:disable-next-line: no-submodule-imports no-var-requires
 const InMemoryCacheProvider = require("passport-saml/lib/passport-saml/inmemory-cache-provider")
