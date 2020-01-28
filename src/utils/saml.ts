@@ -40,7 +40,7 @@ interface IEntrypointCerts {
   entryPoint?: string;
 }
 
-const NS = {
+export const SAML_NAMESPACE = {
   ASSERTION: "urn:oasis:names:tc:SAML:2.0:assertion",
   PROTOCOL: "urn:oasis:names:tc:SAML:2.0:protocol"
 };
@@ -72,7 +72,9 @@ export const getXmlFromSamlResponse = (body: unknown): Option<Document> =>
  * returns "22"
  */
 export function getErrorCodeFromResponse(doc: Document): Option<string> {
-  return fromNullable(doc.getElementsByTagNameNS(NS.PROTOCOL, "StatusMessage"))
+  return fromNullable(
+    doc.getElementsByTagNameNS(SAML_NAMESPACE.PROTOCOL, "StatusMessage")
+  )
     .chain(responseStatusMessageEl => {
       return responseStatusMessageEl &&
         responseStatusMessageEl[0] &&
@@ -94,7 +96,7 @@ export function getErrorCodeFromResponse(doc: Document): Option<string> {
  */
 export const getSamlIssuer = (doc: Document): Option<string> => {
   return fromNullable(
-    doc.getElementsByTagNameNS(NS.ASSERTION, "Issuer").item(0)
+    doc.getElementsByTagNameNS(SAML_NAMESPACE.ASSERTION, "Issuer").item(0)
   ).mapNullable(_ => _.textContent);
 };
 
@@ -139,7 +141,7 @@ const getAuthnContextValueFromResponse = (response: string): Option<string> => {
   const xmlResponse = new DOMParser().parseFromString(response, "text/xml");
   // ie. <saml2:AuthnContextClassRef>https://www.spid.gov.it/SpidL2</saml2:AuthnContextClassRef>
   const responseAuthLevelEl = xmlResponse.getElementsByTagNameNS(
-    NS.ASSERTION,
+    SAML_NAMESPACE.ASSERTION,
     "AuthnContextClassRef"
   );
   return responseAuthLevelEl[0] && responseAuthLevelEl[0].textContent
@@ -477,7 +479,7 @@ export const preValidateResponse: PreValidateResponseT = (body, callback) => {
     const doc = maybeDoc.value;
 
     const Response = doc
-      .getElementsByTagNameNS(NS.PROTOCOL, "Response")
+      .getElementsByTagNameNS(SAML_NAMESPACE.PROTOCOL, "Response")
       .item(0);
 
     if (Response) {

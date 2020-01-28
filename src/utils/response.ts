@@ -1,6 +1,7 @@
 import { DOMParser } from "xmldom";
 
 import { fromNullable, none, Option, some, tryCatch } from "fp-ts/lib/Option";
+import { SAML_NAMESPACE } from "./saml";
 
 /**
  * Extract AuthnContextClassRef from SAML response
@@ -13,7 +14,12 @@ export function getAuthnContextFromResponse(xml: string): Option<string> {
     .chain(xmlStr => tryCatch(() => new DOMParser().parseFromString(xmlStr)))
     .chain(xmlResponse =>
       xmlResponse
-        ? some(xmlResponse.getElementsByTagName("saml:AuthnContextClassRef"))
+        ? some(
+            xmlResponse.getElementsByTagNameNS(
+              SAML_NAMESPACE.ASSERTION,
+              "AuthnContextClassRef"
+            )
+          )
         : none
     )
     .chain(responseAuthLevelEl =>

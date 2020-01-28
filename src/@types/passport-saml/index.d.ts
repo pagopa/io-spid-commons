@@ -4,9 +4,21 @@ import {
   VerifyWithoutRequest
 } from "passport-saml";
 
-declare class SamlClient {
-  constructor(
-    config: SamlConfig,
-    verify: VerifyWithRequest | VerifyWithoutRequest
-  );
+import * as express from "express";
+
+declare module "passport-saml" {
+  export class SAML {
+    constructor(config: SamlConfig);
+
+    validatePostResponse(
+      body: { SAMLResponse: string },
+      callback: (err: Error, profile?: unknown, loggedOut?: boolean) => void
+    ): void;
+
+    generateAuthorizeRequest(
+      req: express.Request,
+      isPassive: boolean,
+      callback: (err: Error, xml?: string) => void
+    ): void;
+  }
 }

@@ -11,6 +11,7 @@ import { Strategy as SamlStrategy } from "passport-saml";
 
 // tslint:disable-next-line: no-submodule-imports
 import { MultiSamlConfig } from "passport-saml/multiSamlStrategy";
+import { CustomSamlClient } from "./saml";
 
 // tslint:disable-next-line: no-submodule-imports no-var-requires
 const saml = require("passport-saml/lib/passport-saml/saml");
@@ -65,59 +66,11 @@ export class SpidStrategy extends SamlStrategy {
         return this.error(err);
       }
       // tslint:disable-next-line: no-object-mutation
-      this._saml = new saml.SAML(Object.assign({}, this.options, samlOptions));
-
-      // Patch SAML client `validatePostResponse` to intercept
-      // and validate the SAMLResponse before the SAML client checks
-      if (this.preValidateResponse && req.body && req.body.SAMLResponse) {
-        const preValidateResponse = this.preValidateResponse;
-        const originalValidatePostResponse = this._saml.validatePostResponse.bind(
-          this._saml
-        );
-        // tslint:disable-next-line: no-object-mutation
-        this._saml.validatePostResponse = function(
-          // tslint:disable-next-line: no-any
-          ...args: readonly any[]
-        ): void {
-          const originalBody = args[0];
-          const originalCallback = args[args.length - 1];
-          return preValidateResponse(originalBody, err2 => {
-            if (err2) {
-              return originalCallback(err2);
-            }
-            return originalValidatePostResponse.apply(this._saml, args);
-          });
-        };
-      }
-
-      // Patch SAML client `validatePostResponse` to intercept
-      // and tamper the generated XML for an authorization request
-      else if (this.tamperAuthorizeRequest) {
-        const tamperAuthorizeRequest = this.tamperAuthorizeRequest;
-        const originalGenerateAuthorizeRequest = this._saml.generateAuthorizeRequest.bind(
-          this._saml
-        );
-        // tslint:disable-next-line: no-object-mutation
-        this._saml.generateAuthorizeRequest = function(
-          // tslint:disable-next-line: no-any
-          ...args: readonly any[]
-        ): void {
-          const originalCallback = args[args.length - 1];
-          const callback = (e: Error, xml: string) => {
-            return tamperAuthorizeRequest(xml)
-              .fold(
-                _ => originalCallback(_),
-                xmlStr => originalCallback(e, xmlStr)
-              )
-              .run();
-          };
-          return originalGenerateAuthorizeRequest.apply(this._saml, [
-            ...args.slice(0, args.length - 1),
-            callback
-          ]);
-        };
-      }
-
+      this._saml = new CustomSamlClient(
+        { ...this.options, ...samlOptions },
+        this.tamperAuthorizeRequest,
+        this.preValidateResponse
+      );
       super.authenticate(req, options);
     });
   }
@@ -131,7 +84,7 @@ export class SpidStrategy extends SamlStrategy {
         return this.error(err);
       }
       // tslint:disable-next-line: no-object-mutation
-      this._saml = new saml.SAML(Object.assign({}, this.options, samlOptions));
+      this._saml = new CustomSamlClient({ ...this.options, ...samlOptions });
       super.logout(req, callback);
     });
   }
@@ -147,7 +100,7 @@ export class SpidStrategy extends SamlStrategy {
         return this.error(err);
       }
       // tslint:disable-next-line: no-object-mutation
-      this._saml = new saml.SAML(Object.assign({}, this.options, samlOptions));
+      this._saml = new CustomSamlClient({ ...this.options, ...samlOptions });
 
       const originalXml = super.generateServiceProviderMetadata(
         decryptionCert,
