@@ -1,3 +1,6 @@
+/**
+ * Methods to fetch and parse Identity service providers metadata.
+ */
 import { Either, right, toError, tryCatch2v } from "fp-ts/lib/Either";
 import {
   fromEither,

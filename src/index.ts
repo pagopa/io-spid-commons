@@ -1,3 +1,10 @@
+/**
+ * Exports a decorator function that applies
+ * a SPID authentication middleware to an express application.
+ *
+ * Setups the endpoint to generate service provider metadata
+ * and a scheduled process to refresh IDP metadata from providers.
+ */
 import * as express from "express";
 import { TaskEither } from "fp-ts/lib/TaskEither";
 import { toExpressHandler } from "italia-ts-commons/lib/express";

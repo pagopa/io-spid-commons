@@ -41,6 +41,12 @@ export interface ISpidStrategyOptions {
   sp: SamlConfig;
 }
 
+/**
+ * Merge strategy configuration with metadata from IDP.
+ *
+ * This is used to pass options to the SAML client
+ * so it can discriminate between the IDP certificates.
+ */
 export const getSpidStrategyOptionsUpdater = (
   samlConfig: SamlConfig,
   serviceProviderConfig: IServiceProviderConfig
@@ -93,6 +99,11 @@ export const getSpidStrategyOptionsUpdater = (
 
 const SPID_STRATEGY_OPTIONS_KEY = "spidStrategyOptions";
 
+/**
+ * SPID strategy calls getSamlOptions() for every
+ * SAML request. It extracts the options from a
+ * shared variable set into the express app.
+ */
 export const setSpidStrategyOption = (
   app: express.Application,
   opts: ISpidStrategyOptions
@@ -106,6 +117,9 @@ export const getSpidStrategyOption = (
   return app.get(SPID_STRATEGY_OPTIONS_KEY);
 };
 
+/**
+ * SPID strategy factory function.
+ */
 export function makeSpidStrategy(
   options: ISpidStrategyOptions,
   getSamlOptions: SpidStrategy["getSamlOptions"],

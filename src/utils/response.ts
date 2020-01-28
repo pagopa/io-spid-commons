@@ -4,7 +4,7 @@ import { fromNullable, none, Option, some, tryCatch } from "fp-ts/lib/Option";
 import { SAML_NAMESPACE } from "./saml";
 
 /**
- * Extract AuthnContextClassRef from SAML response
+ * Extract AuthnContextClassRef from SAML response.
  *
  * ie. for <saml2:AuthnContextClassRef>https://www.spid.gov.it/SpidL2</saml2:AuthnContextClassRef>
  * returns "https://www.spid.gov.it/SpidL2"

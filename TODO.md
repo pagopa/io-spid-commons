@@ -1,5 +1,3 @@
-- redis cache provider per validazione InResponseTo
-
 - check console.log / logger
 
 ///

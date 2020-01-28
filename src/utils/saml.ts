@@ -1,3 +1,9 @@
+/**
+ * Methods used to tamper passport-saml generated SAML XML.
+ *
+ * SPID protocol has some peculiarities that need to be addressed
+ * to make request, metadata and responses compliant.
+ */
 import { distanceInWordsToNow, isAfter, subDays } from "date-fns";
 import { Request as ExpressRequest } from "express";
 import { flatten } from "fp-ts/lib/Array";
@@ -450,14 +456,13 @@ export const getAuthorizeRequestTamperer = (
         async () =>
           // tslint:disable-next-line: no-any
           produce(objXml, (o: any) => {
-            // tslint:disable-next-line: no-object-mutation no-delete no-duplicate-string
-            delete o["samlp:AuthnRequest"]["samlp:NameIDPolicy"][0].$
-              .AllowCreate;
-            // tslint:disable-next-line: no-object-mutation no-deleteam
-            o["samlp:AuthnRequest"]["saml:Issuer"][0].$.NameQualifier =
-              samlConfig.issuer;
+            const authnRequest = o["samlp:AuthnRequest"];
             // tslint:disable-next-line: no-object-mutation no-delete
-            o["samlp:AuthnRequest"]["saml:Issuer"][0].$.Format =
+            delete authnRequest["samlp:NameIDPolicy"][0].$.AllowCreate;
+            // tslint:disable-next-line: no-object-mutation
+            authnRequest["saml:Issuer"][0].$.NameQualifier = samlConfig.issuer;
+            // tslint:disable-next-line: no-object-mutation
+            authnRequest["saml:Issuer"][0].$.Format =
               "urn:oasis:names:tc:SAML:2.0:nameid-format:entity";
           }),
         toError
