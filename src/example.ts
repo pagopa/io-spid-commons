@@ -1,22 +1,23 @@
-import {
-  EmailString,
-  FiscalCode,
-  NonEmptyString
-} from "italia-ts-commons/lib/strings";
-
 import * as bodyParser from "body-parser";
 import * as express from "express";
 import * as fs from "fs";
 import * as t from "io-ts";
 import { ResponsePermanentRedirect } from "italia-ts-commons/lib/responses";
+import {
+  EmailString,
+  FiscalCode,
+  NonEmptyString
+} from "italia-ts-commons/lib/strings";
 import passport = require("passport");
 import { SamlConfig } from "passport-saml";
+import * as redis from "redis";
 import {
   AssertionConsumerServiceT,
   IApplicationConfig,
   LogoutT,
   withSpid
 } from ".";
+import { getRedisCacheProvider } from "./strategy/redis_cache_provider";
 import { logger } from "./utils/logger";
 import { IServiceProviderConfig } from "./utils/middleware";
 
@@ -55,7 +56,7 @@ const serviceProviderConfig: IServiceProviderConfig = {
   IDPMetadataUrl:
     "https://registry.spid.gov.it/metadata/idp/spid-entities-idps.xml",
   hasSpidValidatorEnabled: true,
-  idpMetadataRefreshIntervalMillis: 10000,
+  idpMetadataRefreshIntervalMillis: 120000,
   organization: {
     URL: "https://example.com",
     displayName: "Organization display name",
@@ -69,10 +70,15 @@ const serviceProviderConfig: IServiceProviderConfig = {
   spidTestEnvUrl: "https://spid-testenv2:8088"
 };
 
+const redisClient = redis.createClient({
+  host: "redis"
+});
+
 const samlConfig: SamlConfig = {
   acceptedClockSkewMs: 0,
   attributeConsumingServiceIndex: "0",
   authnContext: "https://www.spid.gov.it/SpidL1",
+  cacheProvider: getRedisCacheProvider(redisClient),
   callbackUrl: "http://localhost:3000" + appConfig.assertionConsumerServicePath,
   // decryptionPvk: fs.readFileSync("./certs/key.pem", "utf-8"),
   identifierFormat: "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",

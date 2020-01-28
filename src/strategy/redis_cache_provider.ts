@@ -1,6 +1,13 @@
 import { parseJSON, toError } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import { readableReport } from "italia-ts-commons/lib/reporters";
 import { CacheItem, CacheProvider } from "passport-saml";
 import * as redis from "redis";
+
+const CacheItem = t.interface({
+  createdAt: t.any,
+  value: t.any
+});
 
 // those methods must never fail since there's
 // practically no error handling in passport-saml
@@ -55,10 +62,19 @@ export const getRedisCacheProvider = (
           );
           return;
         }
-        parseJSON(value, toError).fold(
-          _ => callback(_, null),
-          _ => callback(null, _)
-        );
+        parseJSON(value, toError)
+          .chain(_ =>
+            CacheItem.decode(_).mapLeft(
+              __ =>
+                new Error(
+                  `SAML#RedisCacheProvider: get() error ${readableReport(__)}`
+                )
+            )
+          )
+          .fold(
+            error => callback(error, null),
+            v => callback(null, v.value)
+          );
       });
     },
     // removes the key from the cache, invokes `callback` with the
