@@ -27,7 +27,7 @@ export type PreValidateResponseT = (
   callback: (err: Error | null, isValid?: boolean) => void
 ) => void;
 
-export class MultiSamlStrategy extends SamlStrategy {
+export class SpidStrategy extends SamlStrategy {
   // tslint:disable-next-line: variable-name no-any
   private _saml: any;
 

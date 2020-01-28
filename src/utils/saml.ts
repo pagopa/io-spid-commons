@@ -24,7 +24,7 @@ import * as xmlCrypto from "xml-crypto";
 import { Builder, parseStringPromise } from "xml2js";
 import { DOMParser } from "xmldom";
 import { SPID_LEVELS, SPID_URLS, SPID_USER_ATTRIBUTES } from "../config";
-import { PreValidateResponseT } from "../strategies/MultiSamlStrategy";
+import { PreValidateResponseT } from "../strategy/spid";
 import { logger } from "./logger";
 import {
   getSpidStrategyOption,

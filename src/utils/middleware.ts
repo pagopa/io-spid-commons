@@ -6,16 +6,16 @@ import { array } from "fp-ts/lib/Array";
 import { taskEither, TaskEither } from "fp-ts/lib/TaskEither";
 import { Profile, SamlConfig, VerifiedCallback } from "passport-saml";
 import { SPID_IDP_IDENTIFIERS } from "../config";
+import getCieIpdOption from "../providers/xx_servizicie_test";
+import getSpidTestIpdOption from "../providers/xx_testenv2";
 import {
-  MultiSamlStrategy,
   PreValidateResponseT,
+  SpidStrategy,
   XmlTamperer
-} from "../strategies/MultiSamlStrategy";
-import getCieIpdOption from "../testIdpsConfig/xx_servizicie_test";
-import getSpidTestIpdOption from "../testIdpsConfig/xx_testenv2";
+} from "../strategy/spid";
 import { IDPEntityDescriptor } from "../types/IDPEntityDescriptor";
-import { fetchIdpsMetadata } from "./idpLoader";
 import { logger } from "./logger";
+import { fetchIdpsMetadata } from "./metadata";
 import { logSamlCertExpiration, SamlAttributeT } from "./saml";
 
 export interface IServiceProviderConfig {
@@ -108,12 +108,12 @@ export const getSpidStrategyOption = (
 
 export function makeSpidStrategy(
   options: ISpidStrategyOptions,
-  getSamlOptions: MultiSamlStrategy["getSamlOptions"],
+  getSamlOptions: SpidStrategy["getSamlOptions"],
   tamperAuthorizeRequest?: XmlTamperer,
   tamperMetadata?: XmlTamperer,
   preValidateResponse?: PreValidateResponseT
-): MultiSamlStrategy {
-  return new MultiSamlStrategy(
+): SpidStrategy {
+  return new SpidStrategy(
     { ...options, passReqToCallback: true },
     getSamlOptions,
     (_: express.Request, profile: Profile, done: VerifiedCallback) => {
