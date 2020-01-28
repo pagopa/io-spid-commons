@@ -2,9 +2,6 @@
 
 - check console.log / logger
 
-- la procedura di refresh degli IDP deve essere opzionale e deve
-  terminare il timer quando l'app esce
-
 ///
 
 - passare test validator spid

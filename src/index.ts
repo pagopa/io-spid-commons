@@ -140,7 +140,7 @@ export function withSpid(
     .map(spidStrategy => {
       // Schedule get and refresh
       // SPID passport strategy options
-      setInterval(
+      const idpMetadataRefreshTimer = setInterval(
         () =>
           loadSpidStrategyOptions()
             .map(opts => setSpidStrategyOption(app, opts))
@@ -150,6 +150,9 @@ export function withSpid(
             }),
         serviceProviderConfig.idpMetadataRefreshIntervalMillis
       );
+
+      // Avoid hanging when express server exits
+      app.on("server:stop", () => clearInterval(idpMetadataRefreshTimer));
 
       // Initializes SpidStrategy for passport
       passport.use("spid", spidStrategy);
@@ -171,7 +174,7 @@ export function withSpid(
             new Promise(resolve =>
               spidStrategy.generateServiceProviderMetadataAsync(
                 req,
-                null,
+                null, // certificate used for encryption / decryption
                 serviceProviderConfig.publicCert,
                 (err, metadata) => {
                   if (err || !metadata) {
@@ -179,7 +182,7 @@ export function withSpid(
                       ResponseErrorInternal(
                         err
                           ? err.message
-                          : "Error generating service provider metadata."
+                          : `Error generating service provider metadata ${err}.`
                       )
                     );
                   } else {

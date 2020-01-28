@@ -2,19 +2,23 @@
 
 This repo contains:
 
-- a passport-strategy that implements a [SPID](https://www.spid.gov.it) login
-- express endpoints and middlewares to server Service Provider metadata and get
-  IDP metadata from [SPID registry](https://registry.spid.gov.it)
+- a passport-strategy that implements [SPID](https://www.spid.gov.it)
+  authentication
+- a method that configures an express endpoint to serve Service Provider
+  metadata
+- a scheduled procedure that refreshes IDP metadata from the [SPID
+  registry](https://registry.spid.gov.it)
+- a redis cache provider to validate SAML InResponseTo field
 
-Use this package to implement a SPID Service Provider with a NodeJS [express
-server](https://expressjs.com).
+You may use this package if you're going to implement a SPID Service Provider
+with a NodeJS [express server](https://expressjs.com).
 
 ## Upgrading passport-saml
 
 Beware that any changes to the method signatures of
 `SAML.prototype.generateAuthorizeRequest` and
 `SAML.prototype.validatePostResponse` must be reflected inside the
-[`CustomSamlClient`]() class.
+[`CustomSamlClient`](./strategy/saml_client.ts) class.
 
 That's why the version of passport-saml in package.json is currently fixed at
 `1.2.0`.
