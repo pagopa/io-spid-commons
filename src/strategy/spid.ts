@@ -20,6 +20,7 @@ const InMemoryCacheProvider = require("passport-saml/lib/passport-saml/inmemory-
 export type XmlTamperer = (xml: string) => TaskEither<Error, string>;
 
 export type PreValidateResponseT = (
+  samlConfig: SamlConfig,
   body: unknown,
   // tslint:disable-next-line: bool-param-default
   callback: (err: Error | null, isValid?: boolean) => void

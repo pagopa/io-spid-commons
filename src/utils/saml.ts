@@ -465,7 +465,11 @@ export const getAuthorizeRequestTamperer = (
 //  Validate response
 //
 
-export const preValidateResponse: PreValidateResponseT = (body, callback) => {
+export const preValidateResponse: PreValidateResponseT = (
+  samlConfig,
+  body,
+  callback
+) => {
   try {
     const maybeDoc = getXmlFromSamlResponse(body);
     if (isNone(maybeDoc)) {

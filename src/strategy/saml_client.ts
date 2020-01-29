@@ -5,7 +5,7 @@ import { PreValidateResponseT, XmlTamperer } from "./spid";
 
 export class CustomSamlClient extends SAML {
   constructor(
-    config: SamlConfig,
+    private config: SamlConfig,
     private tamperAuthorizeRequest?: XmlTamperer,
     private preValidateResponse?: PreValidateResponseT
   ) {
@@ -22,7 +22,7 @@ export class CustomSamlClient extends SAML {
     callback: (err: Error, profile?: unknown, loggedOut?: boolean) => void
   ): void {
     if (this.preValidateResponse) {
-      return this.preValidateResponse(body, err => {
+      return this.preValidateResponse(this.config, body, err => {
         if (err) {
           return callback(err);
         }
