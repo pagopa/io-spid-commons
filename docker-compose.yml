@@ -2,6 +2,9 @@ version: "2.2"
 
 services:
   io-spid-commons:
+    build:
+      context: ./
+      dockerfile: Dockerfile
     environment:
       - NODE_ENV=dev
       - REDIS_URL=redis://redis
@@ -12,7 +15,7 @@ services:
     image: node:10.14.2-alpine
     working_dir: /usr/src/app
     volumes:
-      - .:/usr/src/app
+      - "./certs:/usr/src/app/certs:delegated"
     command: ["yarn", "dev"]
     networks:
       - io-spid-commons
