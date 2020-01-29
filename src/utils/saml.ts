@@ -21,10 +21,10 @@ import { collect, lookup } from "fp-ts/lib/Record";
 import { TaskEither, tryCatch } from "fp-ts/lib/TaskEither";
 import * as t from "io-ts";
 import { NonEmptyString } from "italia-ts-commons/lib/strings";
+import { pki } from "node-forge";
 import { SamlConfig } from "passport-saml";
 // tslint:disable-next-line: no-submodule-imports
 import { MultiSamlConfig } from "passport-saml/multiSamlStrategy";
-import * as x509 from "x509";
 import * as xmlCrypto from "xml-crypto";
 import { Builder, parseStringPromise } from "xml2js";
 import { DOMParser } from "xmldom";
@@ -229,13 +229,13 @@ const logSpidResponse = (req: ExpressRequest, decodedResponse?: string) => {
  */
 export function logSamlCertExpiration(samlCert: string): void {
   try {
-    const out = x509.parseCert(samlCert);
-    if (out.notAfter) {
-      const timeDiff = distanceInWordsToNow(out.notAfter);
+    const out = pki.certificateFromPem(samlCert);
+    if (out.validity.notAfter) {
+      const timeDiff = distanceInWordsToNow(out.validity.notAfter);
       const warningDate = subDays(new Date(), 60);
-      if (isAfter(out.notAfter, warningDate)) {
+      if (isAfter(out.validity.notAfter, warningDate)) {
         logger.info("samlCert expire in %s", timeDiff);
-      } else if (isAfter(out.notAfter, new Date())) {
+      } else if (isAfter(out.validity.notAfter, new Date())) {
         logger.warn("samlCert expire in %s", timeDiff);
       } else {
         logger.error("samlCert expired from %s", timeDiff);

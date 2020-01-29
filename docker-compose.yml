@@ -14,6 +14,8 @@ services:
     volumes:
       - .:/usr/src/app
     command: ["yarn", "dev"]
+    networks:
+      - io-spid-commons
 
   spid-testenv2:
     image: italia/spid-testenv2:latest
@@ -21,6 +23,8 @@ services:
       - "8088:8088"
     volumes:
       - "./spid-testenv:/app/conf"
+    networks:
+      - io-spid-commons
 
   redis:
     image: wodby/redis:3.2-2.1.5
@@ -28,8 +32,19 @@ services:
       REDIS_TIMEOUT: 300
       REDIS_TCP_KEEPALIVE: 60
       REDIS_MAXMEMORY: 182m
+    networks:
+      - io-spid-commons
 
   spid-saml-check:
     image: spid-saml-check
     ports:
       - "8080:8080"
+    networks:
+      - io-spid-commons
+
+# needed to make TSL work
+networks:
+  io-spid-commons:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1450
