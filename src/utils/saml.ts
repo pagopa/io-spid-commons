@@ -7,7 +7,7 @@
 import { distanceInWordsToNow, isAfter, subDays } from "date-fns";
 import { Request as ExpressRequest } from "express";
 import { flatten } from "fp-ts/lib/Array";
-import { toError } from "fp-ts/lib/Either";
+import { isLeft, toError } from "fp-ts/lib/Either";
 import {
   fromEither,
   fromNullable,
@@ -20,6 +20,7 @@ import {
 import { collect, lookup } from "fp-ts/lib/Record";
 import { TaskEither, tryCatch } from "fp-ts/lib/TaskEither";
 import * as t from "io-ts";
+import { UTCISODateFromString } from "italia-ts-commons/lib/dates";
 import { NonEmptyString } from "italia-ts-commons/lib/strings";
 import { pki } from "node-forge";
 import { SamlConfig } from "passport-saml";
@@ -493,6 +494,75 @@ export const preValidateResponse: PreValidateResponseT = (
       const Version = Response.getAttribute("Version");
       if (Version !== "2.0") {
         throw new Error("Response version must be 2.0");
+      }
+      const IssueInstant = Response.getAttribute("IssueInstant");
+      if (!IssueInstant) {
+        throw new Error("Response must contain a non empty IssueInstant");
+      }
+      const IssueInstantValue =
+        IssueInstant.length === 24
+          ? UTCISODateFromString.decode(IssueInstant)
+          : UTCISODateFromString.decode(IssueInstant.replace("Z", ".000Z"));
+      if (isLeft(IssueInstantValue)) {
+        throw new Error("IssueInstant must be an UTCISO format date string");
+      }
+      if (IssueInstantValue.value.getTime() > Date.now()) {
+        throw new Error("IssueInstant must be in the past");
+      }
+      // TODO: Must validate that the IssueInstant of the Request must be after IssueInstant of the Request (15)
+      const Destination = Response.getAttribute("Destination");
+      if (!Destination || Destination === "") {
+        throw new Error("Response must contain a non empty Destination");
+      }
+      // TODO: Destination must be equal to AssertionConsumerServiceURL (21)
+      const StatusElement = Response.getElementsByTagNameNS(
+        SAML_NAMESPACE.PROTOCOL,
+        "Status"
+      ).item(0);
+      if (!StatusElement || !StatusElement.hasChildNodes()) {
+        throw new Error("Status element must be present");
+      }
+      const StatusCodeElement = StatusElement.getElementsByTagNameNS(
+        SAML_NAMESPACE.PROTOCOL,
+        "StatusCode"
+      ).item(0);
+      if (!StatusCodeElement) {
+        throw new Error("StatusCode element must be present");
+      }
+      const StatusCodeValue = StatusCodeElement.getAttribute("Value");
+      if (!StatusCodeValue || StatusCodeValue === "") {
+        throw new Error("StatusCode must contain a non empty Value");
+      }
+      if (StatusCodeValue !== "urn:oasis:names:tc:SAML:2.0:status:Success") {
+        throw new Error("Value attribute of StatusCode is invalid"); // TODO: Must be shown an error page to the user (26)
+      }
+      const IssuerElement = Response.getElementsByTagNameNS(
+        SAML_NAMESPACE.ASSERTION,
+        "Issuer"
+      ).item(0);
+      if (
+        !IssuerElement ||
+        !IssuerElement.textContent ||
+        IssuerElement.textContent === ""
+      ) {
+        throw new Error("Issuer element must be present and not empty");
+      }
+      // TODO: Must validate that Issuer value is equal to EntityID IDP (29)
+      const IssuerFormatValue = IssuerElement.getAttribute("Format");
+      if (!IssuerFormatValue) {
+        throw new Error("Format attribute of Issuer element must be present");
+      }
+      if (
+        IssuerFormatValue !== "urn:oasis:names:tc:SAML:2.0:nameid-format:entity"
+      ) {
+        throw new Error("Format attribute of Issuer element is invalid");
+      }
+      const AssertionElement = Response.getElementsByTagNameNS(
+        SAML_NAMESPACE.ASSERTION,
+        "Assertion"
+      ).item(0);
+      if (!AssertionElement) {
+        throw new Error("Assertion element must be present");
       }
     }
 
