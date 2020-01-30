@@ -362,40 +362,42 @@ export const getMetadataTamperer = (
   samlConfig: SamlConfig
 ) => (generateXml: string): TaskEither<Error, string> => {
   return tryCatch(() => parseStringPromise(generateXml), toError)
-    .chain(o => {
-      // it is safe to mutate object here since it is
-      // deserialized and serialized locally in this method
-      const sso = o.EntityDescriptor.SPSSODescriptor[0];
-      // tslint:disable-next-line: no-object-mutation
-      sso.$ = {
-        ...sso.$,
-        AuthnRequestsSigned: true,
-        WantAssertionsSigned: true
-      };
-      // tslint:disable-next-line: no-object-mutation
-      sso.AssertionConsumerService[0].$.index = 0;
-      // tslint:disable-next-line: no-object-mutation
-      sso.AttributeConsumingService = {
-        $: {
-          index: samlConfig.attributeConsumingServiceIndex
-        },
-        ServiceName: {
+    .chain(o =>
+      tryCatch(async () => {
+        // it is safe to mutate object here since it is
+        // deserialized and serialized locally in this method
+        const sso = o.EntityDescriptor.SPSSODescriptor[0];
+        // tslint:disable-next-line: no-object-mutation
+        sso.$ = {
+          ...sso.$,
+          AuthnRequestsSigned: true,
+          WantAssertionsSigned: true
+        };
+        // tslint:disable-next-line: no-object-mutation
+        sso.AssertionConsumerService[0].$.index = 0;
+        // tslint:disable-next-line: no-object-mutation
+        sso.AttributeConsumingService = {
           $: {
-            "xml:lang": "it"
+            index: samlConfig.attributeConsumingServiceIndex
           },
-          _: serviceProviderConfig.requiredAttributes.name
-        },
-        // must appear after attributes
-        // tslint:disable-next-line: object-literal-sort-keys
-        RequestedAttribute: getSpidAttributesMetadata(serviceProviderConfig)
-      };
-      // tslint:disable-next-line: no-object-mutation
-      o.EntityDescriptor = {
-        ...o.EntityDescriptor,
-        ...getSpidOrganizationMetadata(serviceProviderConfig)
-      };
-      return o;
-    })
+          ServiceName: {
+            $: {
+              "xml:lang": "it"
+            },
+            _: serviceProviderConfig.requiredAttributes.name
+          },
+          // must appear after attributes
+          // tslint:disable-next-line: object-literal-sort-keys
+          RequestedAttribute: getSpidAttributesMetadata(serviceProviderConfig)
+        };
+        // tslint:disable-next-line: no-object-mutation
+        o.EntityDescriptor = {
+          ...o.EntityDescriptor,
+          ...getSpidOrganizationMetadata(serviceProviderConfig)
+        };
+        return o;
+      }, toError)
+    )
     .chain(_ => tryCatch(async () => xmlBuilder.buildObject(_), toError))
     .chain(xml =>
       tryCatch(async () => {
@@ -444,20 +446,22 @@ export const getAuthorizeRequestTamperer = (
   samlConfig: SamlConfig
 ) => (generateXml: string): TaskEither<Error, string> => {
   return tryCatch(() => parseStringPromise(generateXml), toError)
-    .chain(o => {
-      // it is safe to mutate object here since it is
-      // deserialized and serialized locally in this method
-      // tslint:disable-next-line: no-any
-      const authnRequest = o["samlp:AuthnRequest"];
-      // tslint:disable-next-line: no-object-mutation no-delete
-      delete authnRequest["samlp:NameIDPolicy"][0].$.AllowCreate;
-      // tslint:disable-next-line: no-object-mutation
-      authnRequest["saml:Issuer"][0].$.NameQualifier = samlConfig.issuer;
-      // tslint:disable-next-line: no-object-mutation
-      authnRequest["saml:Issuer"][0].$.Format =
-        "urn:oasis:names:tc:SAML:2.0:nameid-format:entity";
-      return o;
-    })
+    .chain(o =>
+      tryCatch(async () => {
+        // it is safe to mutate object here since it is
+        // deserialized and serialized locally in this method
+        // tslint:disable-next-line: no-any
+        const authnRequest = o["samlp:AuthnRequest"];
+        // tslint:disable-next-line: no-object-mutation no-delete
+        delete authnRequest["samlp:NameIDPolicy"][0].$.AllowCreate;
+        // tslint:disable-next-line: no-object-mutation
+        authnRequest["saml:Issuer"][0].$.NameQualifier = samlConfig.issuer;
+        // tslint:disable-next-line: no-object-mutation
+        authnRequest["saml:Issuer"][0].$.Format =
+          "urn:oasis:names:tc:SAML:2.0:nameid-format:entity";
+        return o;
+      }, toError)
+    )
     .chain(obj => tryCatch(async () => xmlBuilder.buildObject(obj), toError));
 };
 
