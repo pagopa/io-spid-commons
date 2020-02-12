@@ -14,7 +14,7 @@ RUN sudo chmod -R 777 /usr/src/app \
   && yarn build
 
 FROM node:10.14.2-alpine
-LABEL maintainer="https://teamdigitale.governo.it"
+LABEL maintainer="https://pagopa.gov.it"
 
 # Install major CA certificates to cover
 # https://github.com/SparebankenVest/azure-key-vault-to-kubernetes integration
