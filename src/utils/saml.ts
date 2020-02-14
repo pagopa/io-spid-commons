@@ -26,7 +26,12 @@ import {
   tryCatch as optionTryCatch
 } from "fp-ts/lib/Option";
 import { collect, lookup } from "fp-ts/lib/Record";
-import { TaskEither, tryCatch } from "fp-ts/lib/TaskEither";
+import {
+  fromEither as fromEitherToTaskEither,
+  TaskEither,
+  taskify,
+  tryCatch
+} from "fp-ts/lib/TaskEither";
 import * as t from "io-ts";
 import { UTCISODateFromString } from "italia-ts-commons/lib/dates";
 import { NonEmptyString } from "italia-ts-commons/lib/strings";
@@ -52,6 +57,7 @@ interface IEntrypointCerts {
   // tslint:disable-next-line: readonly-array
   cert: NonEmptyString[];
   entryPoint?: string;
+  idpIssuer?: string;
 }
 
 export const SAML_NAMESPACE = {
@@ -131,11 +137,11 @@ const getEntrypointCerts = (
     .mapNullable(q => q.entityID)
     .chain(entityID =>
       fromNullable(idps[entityID]).map(
-        idp =>
-          ({
-            cert: idp.cert.toArray(),
-            entryPoint: idp.entryPoint
-          } as IEntrypointCerts)
+        (idp): IEntrypointCerts => ({
+          cert: idp.cert.toArray(),
+          entryPoint: idp.entryPoint,
+          idpIssuer: idp.entityID
+        })
       )
     )
     .alt(
@@ -304,12 +310,12 @@ export const getSamlOptions: MultiSamlConfig["getSamlOptions"] = (
       );
     }
     const authOptions = maybeAuthOptions.getOrElse({});
-
-    return done(null, {
+    const options = {
       ...spidStrategyOptions.sp,
-      ...entrypointCerts,
-      ...authOptions
-    });
+      ...authOptions,
+      ...entrypointCerts
+    };
+    return done(null, options);
   } catch (e) {
     return done(e);
   }
@@ -478,44 +484,55 @@ export const getAuthorizeRequestTamperer = (
 //  Validate response
 //
 
-const utcStringToDate = (value: string, tag: string): Either<Error, Date> => {
-  const maybeDate =
-    value.length === 24
-      ? UTCISODateFromString.decode(value)
-      : UTCISODateFromString.decode(value.replace("Z", ".000Z"));
-  return isLeft(maybeDate)
-    ? left(new Error(`${tag} must be an UTCISO format date string`))
-    : right(maybeDate.value);
-};
+const utcStringToDate = (value: string, tag: string): Either<Error, Date> =>
+  UTCISODateFromString.decode(value).mapLeft(
+    () => new Error(`${tag} must be an UTCISO format date string`)
+  );
 
-const validateIssuer = (fatherElement: Element): Either<Error, void> => {
-  const IssuerElement = fatherElement
-    .getElementsByTagNameNS(SAML_NAMESPACE.ASSERTION, "Issuer")
-    .item(0);
-  if (
-    !IssuerElement ||
-    !IssuerElement.textContent ||
-    IssuerElement.textContent === ""
-  ) {
-    return left(new Error("Issuer element must be present and not empty"));
-  }
-  // TODO: Must validate that Issuer value is equal to EntityID IDP (29)(69)
-  /*if (IssuerElement.textContent !== samlConfig.idpIssuer) {
-    throw new Error(`"Invalid Issuer value: "${samlConfig.idpIssuer}`);
-  }*/
-  const IssuerFormatValue = IssuerElement.getAttribute("Format");
-  if (!IssuerFormatValue) {
-    return left(
-      new Error("Format attribute of Issuer element must be present")
-    );
-  }
-  if (
-    IssuerFormatValue !== "urn:oasis:names:tc:SAML:2.0:nameid-format:entity"
-  ) {
-    return left(new Error("Format attribute of Issuer element is invalid"));
-  }
-  return right(undefined);
-};
+const validateIssuer = (
+  fatherElement: Element,
+  samlConfig: SamlConfig
+): Either<Error, void> =>
+  fromOption(new Error("Issuer element must be present"))(
+    fromNullable(
+      fatherElement
+        .getElementsByTagNameNS(SAML_NAMESPACE.ASSERTION, "Issuer")
+        .item(0)
+    )
+  )
+    .chain(Issuer =>
+      NonEmptyString.decode(Issuer.textContent)
+        .mapLeft(() => new Error("Issuer element must be not empty"))
+        /* TODO: Must validate that Issuer value is equal to EntityID IDP (29)(69)
+        .chain(
+          fromPredicate(
+            IssuerTextContent => {
+              console.log("IssuerTextContent: ", IssuerTextContent);
+              console.log("samlConfig.idpIssuer INNER: ", samlConfig.idpIssuer);
+              return IssuerTextContent === samlConfig.idpIssuer;
+            },
+            () => new Error(`"Invalid Issuer value: "${samlConfig.idpIssuer}`)
+          )
+        )*/
+        .map(() => Issuer)
+    )
+    .chain(Issuer =>
+      NonEmptyString.decode(Issuer.getAttribute("Format"))
+        .mapLeft(
+          () =>
+            new Error(
+              "Format attribute of Issuer element must be a non empty string"
+            )
+        )
+        .chain(
+          fromPredicate(
+            Format =>
+              Format === "urn:oasis:names:tc:SAML:2.0:nameid-format:entity",
+            () => new Error("Format attribute of Issuer element is invalid")
+          )
+        )
+    )
+    .map(() => undefined);
 
 const mainAttributeValidation = (
   requestOrAssertion: Element
@@ -525,7 +542,7 @@ const mainAttributeValidation = (
     .map(() => requestOrAssertion.getAttribute("Version"))
     .chain(
       fromPredicate(
-        Version => Version !== "2.0",
+        Version => Version === "2.0",
         () => new Error("Version version must be 2.0")
       )
     )
@@ -537,7 +554,7 @@ const mainAttributeValidation = (
     .chain(IssueInstant => utcStringToDate(IssueInstant, "IssueInstant"))
     .chain(
       fromPredicate(
-        _ => _.getTime() > Date.now(),
+        _ => _.getTime() < Date.now(),
         () => new Error("IssueInstant must be in the past")
       )
     );
@@ -568,7 +585,7 @@ const notOnOrAfterValidation = (element: Element) => {
     .chain(NotOnOrAfter => utcStringToDate(NotOnOrAfter, "NotOnOrAfter"))
     .chain(
       fromPredicate(
-        NotOnOrAfter => NotOnOrAfter.getTime() < Date.now(),
+        NotOnOrAfter => NotOnOrAfter.getTime() > Date.now(),
         () => new Error("NotOnOrAfter must be in the future")
       )
     );
@@ -590,7 +607,7 @@ const assertionValidation = (
   )
     .chain(
       fromPredicate(
-        isEmptyNode,
+        node => !isEmptyNode(node),
         () => new Error("Subject element must be not empty")
       )
     )
@@ -605,7 +622,7 @@ const assertionValidation = (
       )
         .chain(
           fromPredicate(
-            isEmptyNode,
+            node => !isEmptyNode(node),
             () => new Error("NameID element must be not empty")
           )
         )
@@ -620,7 +637,7 @@ const assertionValidation = (
             .chain(
               fromPredicate(
                 Format =>
-                  Format !==
+                  Format ===
                   "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
                 () => new Error("Format attribute of NameID element is invalid")
               )
@@ -648,7 +665,7 @@ const assertionValidation = (
       )
         .chain(
           fromPredicate(
-            isEmptyNode,
+            node => !isEmptyNode(node),
             () => new Error("SubjectConfirmation element must be not empty")
           )
         )
@@ -662,7 +679,7 @@ const assertionValidation = (
             )
             .chain(
               fromPredicate(
-                Method => Method !== "urn:oasis:names:tc:SAML:2.0:cm:bearer",
+                Method => Method === "urn:oasis:names:tc:SAML:2.0:cm:bearer",
                 () =>
                   new Error(
                     "Method attribute of SubjectConfirmation element is invalid"
@@ -694,7 +711,7 @@ const assertionValidation = (
                 )
                 .chain(
                   fromPredicate(
-                    Recipient => Recipient !== samlConfig.callbackUrl,
+                    Recipient => Recipient === samlConfig.callbackUrl,
                     () =>
                       new Error(
                         "Recipient attribute of SubjectConfirmationData element must be equal to AssertionConsumerServiceURL"
@@ -720,7 +737,7 @@ const assertionValidation = (
                 )
                 .chain(
                   fromPredicate(
-                    inResponseTo => inResponseTo !== InResponseTo,
+                    inResponseTo => inResponseTo === InResponseTo,
                     () =>
                       new Error(
                         "InResponseTo attribute of SubjectConfirmationData element must be equal to Response InResponseTo"
@@ -730,7 +747,7 @@ const assertionValidation = (
             )
         )
     )
-    .chain(() => validateIssuer(Assertion))
+    .chain(() => validateIssuer(Assertion, samlConfig))
     .chain(() =>
       fromOption(new Error("Conditions element must be provided"))(
         fromNullable(
@@ -742,7 +759,7 @@ const assertionValidation = (
       )
         .chain(
           fromPredicate(
-            isEmptyNode,
+            node => !isEmptyNode(node),
             () => new Error("Conditions element must be provided")
           )
         )
@@ -755,7 +772,7 @@ const assertionValidation = (
             .chain(NotBefore => utcStringToDate(NotBefore, "NotBefore"))
             .chain(
               fromPredicate(
-                NotBefore => NotBefore.getTime() > Date.now(),
+                NotBefore => NotBefore.getTime() <= Date.now(),
                 () => new Error("NotBefore must be in the past")
               )
             )
@@ -776,7 +793,7 @@ const assertionValidation = (
           )
             .chain(
               fromPredicate(
-                isEmptyNode,
+                node => !isEmptyNode(node),
                 () =>
                   new Error(
                     "AudienceRestriction element must be present and not empty"
@@ -793,7 +810,7 @@ const assertionValidation = (
                 )
               ).chain(
                 fromPredicate(
-                  Audience => Audience.textContent !== samlConfig.issuer,
+                  Audience => Audience.textContent === samlConfig.issuer,
                   () => new Error("Audience invalid")
                 )
               )
@@ -810,7 +827,7 @@ const assertionValidation = (
           )
             .chain(
               fromPredicate(
-                isEmptyNode,
+                node => !isEmptyNode(node),
                 () => new Error("Empty AuthnStatement")
               )
             )
@@ -825,7 +842,7 @@ const assertionValidation = (
               )
                 .chain(
                   fromPredicate(
-                    isEmptyNode,
+                    node => !isEmptyNode(node),
                     () => new Error("Empty AuthnContext")
                   )
                 )
@@ -841,22 +858,43 @@ const assertionValidation = (
                     )
                       .chain(
                         fromPredicate(
-                          isEmptyNode,
+                          node => !isEmptyNode(node),
                           () => new Error("Empty AuthnContextClassRef")
                         )
                       )
                       .chain(
                         fromPredicate(
                           AuthnContextClassRef =>
-                            AuthnContextClassRef.textContent !==
-                              SPID_LEVELS.SpidL1 &&
-                            AuthnContextClassRef.textContent !==
-                              SPID_LEVELS.SpidL2 &&
-                            AuthnContextClassRef.textContent !==
+                            AuthnContextClassRef.textContent ===
+                              SPID_LEVELS.SpidL1 ||
+                            AuthnContextClassRef.textContent ===
+                              SPID_LEVELS.SpidL2 ||
+                            AuthnContextClassRef.textContent ===
                               SPID_LEVELS.SpidL3,
                           () => new Error("Invalid AuthnContextClassRef value")
                         )
-                      ) // TODO: Check AuthnContextClassRef with request protocol value (94)(95)(96)
+                      )
+                  /* TODO: Check AuthnContextClassRef with request protocol value (94)(95)(96)
+                    .chain(
+                      fromPredicate(
+                        AuthnContextClassRef => {
+                          console.log(
+                            "AuthnContextClassRef.textContent: ",
+                            AuthnContextClassRef.textContent
+                          );
+                          console.log(
+                            "samlConfig.authnContext",
+                            samlConfig.authnContext
+                          );
+                          return (
+                            AuthnContextClassRef.textContent ===
+                            samlConfig.authnContext
+                          );
+                        },
+                        () =>
+                          new Error("AuthnContextClassRef value not expected")
+                      )
+                    )*/
                 )
             )
         )
@@ -877,8 +915,8 @@ const assertionValidation = (
               // TODO: Attribute into the response different from the Attribute into the request (103)
               fromPredicate(
                 Attributes =>
-                  Attributes.length === 0 ||
-                  Array.from(Attributes).some(isEmptyNode),
+                  Attributes.length > 0 &&
+                  !Array.from(Attributes).some(isEmptyNode),
                 () =>
                   new Error("Attribute element must be present and not empty")
               )
@@ -895,16 +933,14 @@ export const preValidateResponse: PreValidateResponseT = (
   body,
   callback
 ) => {
-  try {
-    const maybeDoc = getXmlFromSamlResponse(body);
-    if (isNone(maybeDoc)) {
-      throw new Error("Empty SAML response");
-    }
-    const doc = maybeDoc.value;
+  const maybeDoc = getXmlFromSamlResponse(body);
+  if (isNone(maybeDoc)) {
+    throw new Error("Empty SAML response");
+  }
+  const doc = maybeDoc.value;
 
-    const ErrorOrResponseAndAssertion = fromOption(
-      new Error("Missing Reponse element inside SAML Response")
-    )(
+  fromEitherToTaskEither(
+    fromOption(new Error("Missing Reponse element inside SAML Response"))(
       fromNullable(
         doc.getElementsByTagNameNS(SAML_NAMESPACE.PROTOCOL, "Response").item(0)
       )
@@ -922,7 +958,7 @@ export const preValidateResponse: PreValidateResponseT = (
           )
           .chain(
             fromPredicate(
-              Destination => Destination !== samlConfig.callbackUrl,
+              Destination => Destination === samlConfig.callbackUrl,
               () =>
                 new Error(
                   "Destination must be equal to AssertionConsumerServiceURL"
@@ -931,7 +967,7 @@ export const preValidateResponse: PreValidateResponseT = (
           )
           .map(() => _)
       )
-      .chain(_ => validateIssuer(_.Response).map(() => _))
+      .chain(_ => validateIssuer(_.Response, samlConfig).map(() => _))
       .chain(_ =>
         fromOption(new Error("Status element must be present"))(
           fromNullable(
@@ -946,7 +982,7 @@ export const preValidateResponse: PreValidateResponseT = (
           )
           .chain(
             fromPredicate(
-              isEmptyNode,
+              node => !isEmptyNode(node),
               () => new Error("Status element must be present not empty")
             )
           )
@@ -967,7 +1003,7 @@ export const preValidateResponse: PreValidateResponseT = (
               .chain(
                 fromPredicate(
                   Value =>
-                    Value !== "urn:oasis:names:tc:SAML:2.0:status:Success",
+                    Value === "urn:oasis:names:tc:SAML:2.0:status:Success",
                   () => new Error("Value attribute of StatusCode is invalid")
                 ) // TODO: Must be shown an error page to the user (26)
               )
@@ -1005,42 +1041,45 @@ export const preValidateResponse: PreValidateResponseT = (
           ..._
         }))
       )
-      .mapLeft(callback);
-    if (isLeft(ErrorOrResponseAndAssertion)) {
-      return;
-    }
-    samlConfig.cacheProvider?.get(
-      ErrorOrResponseAndAssertion.value.InResponseTo,
-      (err, value) => {
-        try {
-          if (err) {
-            throw new Error("Error reading the cache provider");
-          }
-          const RequestIssueInstant = new Date(value);
-          if (
-            ErrorOrResponseAndAssertion.value.IssueInstant.getTime() <
-            RequestIssueInstant.getTime()
-          ) {
-            throw new Error(
-              "Request IssueInstant must after Request IssueInstant"
-            );
-          }
-          if (
-            ErrorOrResponseAndAssertion.value.AssertionIssueInstant.getTime() <
-            RequestIssueInstant.getTime()
-          ) {
-            throw new Error(
-              "Assertion IssueInstant must after Request IssueInstant"
-            );
-          }
-          callback(null, true);
-        } catch (e) {
-          callback(e);
-        }
-      }
-    );
-  } catch (e) {
-    logger.error("Error parsing IDP response:%s", e.message);
-    callback(e);
-  }
+  )
+    .chain(_ =>
+      fromEitherToTaskEither(
+        fromOption(new Error("cacheProvider not initialized"))(
+          fromNullable(samlConfig.cacheProvider)
+        )
+      ).map(cacheProvider => ({ ..._, cacheProvider }))
+    )
+    .chain(_ =>
+      taskify(_.cacheProvider.get)(_.InResponseTo)
+        .mapLeft(() => new Error("Error reading the cache provider"))
+        .map(RequestIssueInstant => ({ ..._, RequestIssueInstant }))
+    )
+    .chain(_ =>
+      fromEitherToTaskEither(
+        utcStringToDate(_.RequestIssueInstant, "CacheProvider")
+      ).map(value => ({ ..._, RequestIssueInstant: value }))
+    )
+    .chain(_ =>
+      fromEitherToTaskEither(
+        fromPredicate<Error, Date>(
+          _1 => _1.getTime() <= _.IssueInstant.getTime(),
+          () =>
+            new Error("Request IssueInstant must after Request IssueInstant")
+        )(_.RequestIssueInstant)
+      ).map(() => _)
+    )
+    .chain(_ =>
+      fromEitherToTaskEither(
+        fromPredicate<Error, Date>(
+          _1 => _1.getTime() <= _.AssertionIssueInstant.getTime(),
+          () =>
+            new Error("Assertion IssueInstant must after Request IssueInstant")
+        )(_.RequestIssueInstant)
+      )
+    )
+    .run()
+    .then(result =>
+      isLeft(result) ? callback(result.value) : callback(null, true)
+    )
+    .catch(callback);
 };
