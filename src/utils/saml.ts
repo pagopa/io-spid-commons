@@ -157,6 +157,17 @@ const getEntrypointCerts = (
     );
 };
 
+export const getIDFromRequest = (requestXML: string): Option<string> => {
+  const xmlRequest = new DOMParser().parseFromString(requestXML, "text/xml");
+  return fromNullable(
+    xmlRequest
+      .getElementsByTagNameNS(SAML_NAMESPACE.PROTOCOL, "AuthnRequest")
+      .item(0)
+  ).chain(AuthnRequest =>
+    fromEither(NonEmptyString.decode(AuthnRequest.getAttribute("ID")))
+  );
+};
+
 const getAuthnContextValueFromResponse = (response: string): Option<string> => {
   const xmlResponse = new DOMParser().parseFromString(response, "text/xml");
   // ie. <saml2:AuthnContextClassRef>https://www.spid.gov.it/SpidL2</saml2:AuthnContextClassRef>
@@ -931,6 +942,7 @@ const assertionValidation = (
 export const preValidateResponse: PreValidateResponseT = (
   samlConfig,
   body,
+  extendedCacheProvider,
   callback
 ) => {
   const maybeDoc = getXmlFromSamlResponse(body);

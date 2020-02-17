@@ -102,7 +102,15 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(passport.initialize());
 
-withSpid(appConfig, samlConfig, serviceProviderConfig, app, acs, logout)
+withSpid(
+  appConfig,
+  samlConfig,
+  redisClient,
+  serviceProviderConfig,
+  app,
+  acs,
+  logout
+)
   .map(withSpidApp => {
     withSpidApp.get("/success", (_, res) => res.json({ success: "success" }));
     withSpidApp.get("/error", (_, res) =>

@@ -8,9 +8,14 @@ import {
   VerifyWithRequest
 } from "passport-saml";
 import { Strategy as SamlStrategy } from "passport-saml";
+import { RedisClient } from "redis";
 
 // tslint:disable-next-line: no-submodule-imports
 import { MultiSamlConfig } from "passport-saml/multiSamlStrategy";
+import {
+  getExtendedRedisCacheProvider,
+  IExtendedCacheProvider
+} from "./redis_cache_provider";
 import { CustomSamlClient } from "./saml_client";
 
 // tslint:disable-next-line: no-submodule-imports no-var-requires
@@ -22,6 +27,7 @@ export type XmlTamperer = (xml: string) => TaskEither<Error, string>;
 export type PreValidateResponseT = (
   samlConfig: SamlConfig,
   body: unknown,
+  extendedRedisCacheProvider: IExtendedCacheProvider,
   // tslint:disable-next-line: bool-param-default
   callback: (err: Error | null, isValid?: boolean) => void
 ) => void;
@@ -29,11 +35,13 @@ export type PreValidateResponseT = (
 export class SpidStrategy extends SamlStrategy {
   // tslint:disable-next-line: variable-name no-any
   private _saml: any;
+  private extendedRedisCacheProvider: IExtendedCacheProvider;
 
   constructor(
     private options: SamlConfig,
     private getSamlOptions: MultiSamlConfig["getSamlOptions"],
     verify: VerifyWithRequest | VerifyWithoutRequest,
+    private redisClient: RedisClient,
     private tamperAuthorizeRequest?: XmlTamperer,
     private tamperMetadata?: XmlTamperer,
     private preValidateResponse?: PreValidateResponseT
@@ -43,6 +51,10 @@ export class SpidStrategy extends SamlStrategy {
       // 8 hours
       options.requestIdExpirationPeriodMs = 28800000;
     }
+    this.extendedRedisCacheProvider = getExtendedRedisCacheProvider(
+      this.redisClient,
+      options.requestIdExpirationPeriodMs
+    );
     if (!options.cacheProvider) {
       // WARNING: you cannot use this one if you have
       // multiple instances of the express app running
@@ -66,6 +78,7 @@ export class SpidStrategy extends SamlStrategy {
       // tslint:disable-next-line: no-object-mutation
       this._saml = new CustomSamlClient(
         { ...this.options, ...samlOptions },
+        this.extendedRedisCacheProvider,
         this.tamperAuthorizeRequest,
         this.preValidateResponse
       );
@@ -82,7 +95,10 @@ export class SpidStrategy extends SamlStrategy {
         return this.error(err);
       }
       // tslint:disable-next-line: no-object-mutation
-      this._saml = new CustomSamlClient({ ...this.options, ...samlOptions });
+      this._saml = new CustomSamlClient(
+        { ...this.options, ...samlOptions },
+        this.extendedRedisCacheProvider
+      );
       super.logout(req, callback);
     });
   }
@@ -98,7 +114,10 @@ export class SpidStrategy extends SamlStrategy {
         return this.error(err);
       }
       // tslint:disable-next-line: no-object-mutation
-      this._saml = new CustomSamlClient({ ...this.options, ...samlOptions });
+      this._saml = new CustomSamlClient(
+        { ...this.options, ...samlOptions },
+        this.extendedRedisCacheProvider
+      );
 
       const originalXml = super.generateServiceProviderMetadata(
         decryptionCert,
