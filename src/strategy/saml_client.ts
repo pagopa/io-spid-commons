@@ -59,7 +59,9 @@ export class CustomSamlClient extends SAML {
       .map(tamperAuthorizeRequest => (e: Error, xml?: string) =>
         xml
           ? tamperAuthorizeRequest(xml)
-              .chain(this.extededCacheProvider.save)
+              .chain(tamperedXml =>
+                this.extededCacheProvider.save(tamperedXml, this.config)
+              )
               .fold(callback, (tamperedXml: SAMLRequestCacheItem) => {
                 // There is a type error on @types/passport-saml
                 // Error argument in callback can be null but the

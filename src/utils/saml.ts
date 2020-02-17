@@ -29,7 +29,6 @@ import { collect, lookup } from "fp-ts/lib/Record";
 import {
   fromEither as fromEitherToTaskEither,
   TaskEither,
-  taskify,
   tryCatch
 } from "fp-ts/lib/TaskEither";
 import * as t from "io-ts";
@@ -502,7 +501,7 @@ const utcStringToDate = (value: string, tag: string): Either<Error, Date> =>
 
 const validateIssuer = (
   fatherElement: Element,
-  samlConfig: SamlConfig
+  idpIssuer: string
 ): Either<Error, void> =>
   fromOption(new Error("Issuer element must be present"))(
     fromNullable(
@@ -514,17 +513,14 @@ const validateIssuer = (
     .chain(Issuer =>
       NonEmptyString.decode(Issuer.textContent)
         .mapLeft(() => new Error("Issuer element must be not empty"))
-        /* TODO: Must validate that Issuer value is equal to EntityID IDP (29)(69)
         .chain(
           fromPredicate(
             IssuerTextContent => {
-              console.log("IssuerTextContent: ", IssuerTextContent);
-              console.log("samlConfig.idpIssuer INNER: ", samlConfig.idpIssuer);
-              return IssuerTextContent === samlConfig.idpIssuer;
+              return IssuerTextContent === idpIssuer;
             },
-            () => new Error(`"Invalid Issuer value: "${samlConfig.idpIssuer}`)
+            () => new Error(`Invalid Issuer. Expected value is ${idpIssuer}`)
           )
-        )*/
+        )
         .map(() => Issuer)
     )
     .chain(Issuer =>
@@ -605,7 +601,8 @@ const notOnOrAfterValidation = (element: Element) => {
 const assertionValidation = (
   Assertion: Element,
   samlConfig: SamlConfig,
-  InResponseTo: string
+  InResponseTo: string,
+  requestAuthnContextClassRef: string
   // tslint:disable-next-line: no-big-function
 ): Either<Error, void> => {
   return fromOption(new Error("Subject element must be present"))(
@@ -758,7 +755,6 @@ const assertionValidation = (
             )
         )
     )
-    .chain(() => validateIssuer(Assertion, samlConfig))
     .chain(() =>
       fromOption(new Error("Conditions element must be provided"))(
         fromNullable(
@@ -857,55 +853,45 @@ const assertionValidation = (
                     () => new Error("Empty AuthnContext")
                   )
                 )
-                .chain(
-                  AuthnContext =>
-                    fromOption(new Error("Missing AuthnContextClassRef"))(
-                      fromNullable(
-                        AuthnContext.getElementsByTagNameNS(
-                          SAML_NAMESPACE.ASSERTION,
-                          "AuthnContextClassRef"
-                        ).item(0)
+                .chain(AuthnContext =>
+                  fromOption(new Error("Missing AuthnContextClassRef"))(
+                    fromNullable(
+                      AuthnContext.getElementsByTagNameNS(
+                        SAML_NAMESPACE.ASSERTION,
+                        "AuthnContextClassRef"
+                      ).item(0)
+                    )
+                  )
+                    .chain(
+                      fromPredicate(
+                        node => !isEmptyNode(node),
+                        () => new Error("Empty AuthnContextClassRef")
                       )
                     )
-                      .chain(
-                        fromPredicate(
-                          node => !isEmptyNode(node),
-                          () => new Error("Empty AuthnContextClassRef")
-                        )
+                    .chain(
+                      fromPredicate(
+                        AuthnContextClassRef =>
+                          AuthnContextClassRef.textContent ===
+                            SPID_LEVELS.SpidL1 ||
+                          AuthnContextClassRef.textContent ===
+                            SPID_LEVELS.SpidL2 ||
+                          AuthnContextClassRef.textContent ===
+                            SPID_LEVELS.SpidL3,
+                        () => new Error("Invalid AuthnContextClassRef value")
                       )
-                      .chain(
-                        fromPredicate(
-                          AuthnContextClassRef =>
-                            AuthnContextClassRef.textContent ===
-                              SPID_LEVELS.SpidL1 ||
-                            AuthnContextClassRef.textContent ===
-                              SPID_LEVELS.SpidL2 ||
-                            AuthnContextClassRef.textContent ===
-                              SPID_LEVELS.SpidL3,
-                          () => new Error("Invalid AuthnContextClassRef value")
-                        )
-                      )
-                  /* TODO: Check AuthnContextClassRef with request protocol value (94)(95)(96)
+                    )
                     .chain(
                       fromPredicate(
                         AuthnContextClassRef => {
-                          console.log(
-                            "AuthnContextClassRef.textContent: ",
-                            AuthnContextClassRef.textContent
-                          );
-                          console.log(
-                            "samlConfig.authnContext",
-                            samlConfig.authnContext
-                          );
                           return (
                             AuthnContextClassRef.textContent ===
-                            samlConfig.authnContext
+                            requestAuthnContextClassRef
                           );
                         },
                         () =>
                           new Error("AuthnContextClassRef value not expected")
                       )
-                    )*/
+                    )
                 )
             )
         )
@@ -944,6 +930,7 @@ export const preValidateResponse: PreValidateResponseT = (
   body,
   extendedCacheProvider,
   callback
+  // tslint:disable-next-line: no-big-function
 ) => {
   const maybeDoc = getXmlFromSamlResponse(body);
   if (isNone(maybeDoc)) {
@@ -979,7 +966,6 @@ export const preValidateResponse: PreValidateResponseT = (
           )
           .map(() => _)
       )
-      .chain(_ => validateIssuer(_.Response, samlConfig).map(() => _))
       .chain(_ =>
         fromOption(new Error("Status element must be present"))(
           fromNullable(
@@ -1040,11 +1026,6 @@ export const preValidateResponse: PreValidateResponseT = (
           .mapLeft(
             () => new Error("InResponseTo must contain a non empty string")
           )
-          .chain(InResponseTo =>
-            assertionValidation(_.Assertion, samlConfig, InResponseTo).map(
-              () => InResponseTo
-            )
-          )
           .map(InResponseTo => ({ ..._, InResponseTo }))
       )
       .chain(_ =>
@@ -1055,21 +1036,45 @@ export const preValidateResponse: PreValidateResponseT = (
       )
   )
     .chain(_ =>
+      extendedCacheProvider
+        .get(_.InResponseTo)
+        .map(SAMLResponseCache => ({ ..._, SAMLResponseCache }))
+    )
+    .chain(_ =>
       fromEitherToTaskEither(
-        fromOption(new Error("cacheProvider not initialized"))(
-          fromNullable(samlConfig.cacheProvider)
+        fromOption(
+          new Error("An error occurs parsing the cached SAML Request")
+        )(
+          optionTryCatch(() =>
+            new DOMParser().parseFromString(_.SAMLResponseCache.RequestXML)
+          )
         )
-      ).map(cacheProvider => ({ ..._, cacheProvider }))
-    )
-    .chain(_ =>
-      taskify(_.cacheProvider.get)(_.InResponseTo)
-        .mapLeft(() => new Error("Error reading the cache provider"))
-        .map(RequestIssueInstant => ({ ..._, RequestIssueInstant }))
+      ).map(Request => ({ ..._, Request }))
     )
     .chain(_ =>
       fromEitherToTaskEither(
-        utcStringToDate(_.RequestIssueInstant, "CacheProvider")
-      ).map(value => ({ ..._, RequestIssueInstant: value }))
+        fromOption(new Error("Missing AuthnRequest into Cached Request"))(
+          fromNullable(
+            _.Request.getElementsByTagNameNS(
+              SAML_NAMESPACE.PROTOCOL,
+              "AuthnRequest"
+            ).item(0)
+          )
+        )
+      )
+        .map(RequestAuthnRequest => ({ ..._, RequestAuthnRequest }))
+        .chain(__ =>
+          fromEitherToTaskEither(
+            UTCISODateFromString.decode(
+              __.RequestAuthnRequest.getAttribute("IssueInstant")
+            ).mapLeft(
+              () =>
+                new Error(
+                  "IssueInstant into the Request must be a valid UTC string"
+                )
+            )
+          ).map(RequestIssueInstant => ({ ...__, RequestIssueInstant }))
+        )
     )
     .chain(_ =>
       fromEitherToTaskEither(
@@ -1087,7 +1092,66 @@ export const preValidateResponse: PreValidateResponseT = (
           () =>
             new Error("Assertion IssueInstant must after Request IssueInstant")
         )(_.RequestIssueInstant)
+      ).map(() => _)
+    )
+    .chain(_ =>
+      fromEitherToTaskEither(
+        fromOption(
+          new Error("Missing AuthnContextClassRef inside cached SAML Response")
+        )(
+          fromNullable(
+            _.RequestAuthnRequest.getElementsByTagNameNS(
+              SAML_NAMESPACE.ASSERTION,
+              "AuthnContextClassRef"
+            ).item(0)
+          )
+        )
+          .chain(
+            fromPredicate(
+              node => !isEmptyNode(node),
+              () => new Error("Subject element must be not empty")
+            )
+          )
+          .chain(AuthnContextClassRef =>
+            NonEmptyString.decode(AuthnContextClassRef.textContent).mapLeft(
+              () =>
+                new Error(
+                  "AuthnContextClassRef inside cached Request must be a non empty string"
+                )
+            )
+          )
+          .chain(
+            fromPredicate(
+              authnContextClassRef =>
+                authnContextClassRef === samlConfig.authnContext,
+              () => new Error("Unexpected authnContextClassRef value")
+            )
+          )
+          .map(rACCR => ({
+            ..._,
+            RequestAuthnContextClassRef: rACCR
+          }))
       )
+    )
+    .chain(_ =>
+      fromEitherToTaskEither(
+        assertionValidation(
+          _.Assertion,
+          samlConfig,
+          _.InResponseTo,
+          _.RequestAuthnContextClassRef
+        )
+      ).map(() => _)
+    )
+    .chain(_ =>
+      fromEitherToTaskEither(
+        validateIssuer(_.Response, _.SAMLResponseCache.idpIssuer).map(() => _)
+      )
+    )
+    .chain(_ =>
+      fromEitherToTaskEither(
+        validateIssuer(_.Assertion, _.SAMLResponseCache.idpIssuer)
+      ).map(() => _)
     )
     .run()
     .then(result =>
