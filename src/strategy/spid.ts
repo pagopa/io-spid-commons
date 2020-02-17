@@ -52,7 +52,7 @@ export class SpidStrategy extends SamlStrategy {
       options.requestIdExpirationPeriodMs = 28800000;
     }
     this.extendedRedisCacheProvider = getExtendedRedisCacheProvider(
-      this.redisClient.duplicate(),
+      this.redisClient,
       options.requestIdExpirationPeriodMs
     );
     if (!options.cacheProvider) {
