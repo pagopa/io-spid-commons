@@ -1155,7 +1155,9 @@ export const preValidateResponse: PreValidateResponseT = (
     )
     .run()
     .then(result =>
-      isLeft(result) ? callback(result.value) : callback(null, true)
+      isLeft(result)
+        ? callback(result.value)
+        : callback(null, true, result.value.InResponseTo)
     )
     .catch(callback);
 };

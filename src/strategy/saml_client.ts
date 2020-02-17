@@ -2,6 +2,7 @@ import * as express from "express";
 import { fromNullable } from "fp-ts/lib/Option";
 import { SamlConfig } from "passport-saml";
 import { SAML } from "passport-saml";
+import * as log from "util";
 import {
   IExtendedCacheProvider,
   SAMLRequestCacheItem
@@ -34,12 +35,22 @@ export class CustomSamlClient extends SAML {
         this.config,
         body,
         this.extededCacheProvider,
-        err => {
+        (err, isValid, AuthnRequestID) => {
           if (err) {
             return callback(err);
           }
           // go on with checks in case no error is found
-          return super.validatePostResponse(body, callback);
+          return super.validatePostResponse(body, (error, __, ___) => {
+            if (!error && isValid && AuthnRequestID) {
+              this.extededCacheProvider
+                .remove(AuthnRequestID)
+                .run()
+                .finally(() => callback(error, __, ___))
+                .catch(e => log.error("Error deleting SAML Request: %s", e));
+            } else {
+              callback(error, __, ___);
+            }
+          });
         }
       );
     }

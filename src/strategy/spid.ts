@@ -29,7 +29,12 @@ export type PreValidateResponseT = (
   body: unknown,
   extendedRedisCacheProvider: IExtendedCacheProvider,
   // tslint:disable-next-line: bool-param-default
-  callback: (err: Error | null, isValid?: boolean) => void
+  callback: (
+    err: Error | null,
+    // tslint:disable-next-line: bool-param-default
+    isValid?: boolean,
+    InResponseTo?: string
+  ) => void
 ) => void;
 
 export class SpidStrategy extends SamlStrategy {
