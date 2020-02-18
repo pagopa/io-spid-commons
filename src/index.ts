@@ -20,6 +20,7 @@ import * as passport from "passport";
 import { SamlConfig } from "passport-saml";
 import { RedisClient } from "redis";
 import { Builder } from "xml2js";
+import { overrideCacheProvider } from "./strategy/redis_cache_provider";
 import { logger } from "./utils/logger";
 import {
   getSpidStrategyOptionsUpdater,
@@ -56,6 +57,11 @@ export interface IApplicationConfig {
   metadataPath: string;
   sloPath: string;
 }
+
+// re-export
+export { overrideCacheProvider };
+export { IServiceProviderConfig };
+export { SamlConfig };
 
 /**
  * Wraps assertion consumer service handler
