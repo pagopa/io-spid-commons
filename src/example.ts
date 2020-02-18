@@ -63,7 +63,14 @@ const serviceProviderConfig: IServiceProviderConfig = {
   },
   publicCert: fs.readFileSync("./certs/cert.pem", "utf-8"),
   requiredAttributes: {
-    attributes: ["email", "name", "familyName", "fiscalNumber", "mobilePhone"],
+    attributes: [
+      "address",
+      "email",
+      "name",
+      "familyName",
+      "fiscalNumber",
+      "mobilePhone"
+    ],
     name: "Required attrs"
   },
   spidTestEnvUrl: "https://spid-testenv2:8088",
