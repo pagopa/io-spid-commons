@@ -55,7 +55,6 @@ const appConfig: IApplicationConfig = {
 const serviceProviderConfig: IServiceProviderConfig = {
   IDPMetadataUrl:
     "https://registry.spid.gov.it/metadata/idp/spid-entities-idps.xml",
-  spidValidatorUrl: "http://localhost:8080",
   idpMetadataRefreshIntervalMillis: 120000,
   organization: {
     URL: "https://example.com",
@@ -67,7 +66,8 @@ const serviceProviderConfig: IServiceProviderConfig = {
     attributes: ["email", "name", "familyName", "fiscalNumber", "mobilePhone"],
     name: "Required attrs"
   },
-  spidTestEnvUrl: "https://spid-testenv2:8088"
+  spidTestEnvUrl: "https://spid-testenv2:8088",
+  spidValidatorUrl: "http://localhost:8080"
 };
 
 const redisClient = redis.createClient({
