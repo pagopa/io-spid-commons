@@ -6,7 +6,7 @@
  */
 import { distanceInWordsToNow, isAfter, subDays } from "date-fns";
 import { Request as ExpressRequest } from "express";
-import { flatten } from "fp-ts/lib/Array";
+import { difference, flatten } from "fp-ts/lib/Array";
 import {
   Either,
   fromOption,
@@ -27,6 +27,7 @@ import {
   tryCatch as optionTryCatch
 } from "fp-ts/lib/Option";
 import { collect, lookup } from "fp-ts/lib/Record";
+import { setoidString } from "fp-ts/lib/Setoid";
 import {
   fromEither as fromEitherToTaskEither,
   TaskEither,
@@ -605,7 +606,7 @@ const assertionValidation = (
   InResponseTo: string,
   requestAuthnContextClassRef: string
   // tslint:disable-next-line: no-big-function
-): Either<Error, void> => {
+): Either<Error, HTMLCollectionOf<Element>> => {
   return fromOption(new Error("Subject element must be present"))(
     fromNullable(
       Assertion.getElementsByTagNameNS(
@@ -897,31 +898,27 @@ const assertionValidation = (
             )
         )
         .chain(() =>
-          fromNullable(
-            Assertion.getElementsByTagNameNS(
-              SAML_NAMESPACE.ASSERTION,
-              "AttributeStatement"
-            ).item(0)
-          )
-            .map(AttributeStatement =>
+          fromOption(new Error("AttributeStatement must contains Attributes"))(
+            fromNullable(
+              Assertion.getElementsByTagNameNS(
+                SAML_NAMESPACE.ASSERTION,
+                "AttributeStatement"
+              ).item(0)
+            ).map(AttributeStatement =>
               AttributeStatement.getElementsByTagNameNS(
                 SAML_NAMESPACE.ASSERTION,
                 "Attribute"
               )
             )
-            .map(
-              // TODO: Attribute into the response different from the Attribute into the request (103)
-              fromPredicate(
-                Attributes =>
-                  Attributes.length > 0 &&
-                  !Array.from(Attributes).some(isEmptyNode),
-                () =>
-                  new Error("Attribute element must be present and not empty")
-              )
+          ).chain(
+            // TODO: Attribute into the response different from the Attribute into the request (103)
+            fromPredicate(
+              Attributes =>
+                Attributes.length > 0 &&
+                !Array.from(Attributes).some(isEmptyNode),
+              () => new Error("Attribute element must be present and not empty")
             )
-            .fold(right(undefined), _ =>
-              isLeft(_) ? left(_.value) : right(undefined)
-            )
+          )
         )
     );
 };
@@ -1142,7 +1139,31 @@ export const preValidateResponse: PreValidateResponseT = (
           _.InResponseTo,
           _.RequestAuthnContextClassRef
         )
-      ).map(() => _)
+      )
+        .chain(Attributes => {
+          const missingAttributes = difference(setoidString)(
+            // TODO: The next row must be fail with an exception
+            // tslint:disable-next-line: no-any
+            (samlConfig as any).sp.attributes.attributes.attributes,
+            Array.from(Attributes).reduce((prev, attr) => {
+              const attribute = attr.getAttribute("Name");
+              if (attribute) {
+                return [...prev, attribute];
+              }
+              return prev;
+            }, new Array<string>())
+          );
+          return fromEitherToTaskEither(
+            fromPredicate<Error, HTMLCollectionOf<Element>>(
+              () => missingAttributes.length === 0,
+              () =>
+                new Error(
+                  `Missing required Attributes: ${missingAttributes.toString()}`
+                )
+            )(Attributes)
+          );
+        })
+        .map(() => _)
     )
     .chain(_ =>
       fromEitherToTaskEither(
