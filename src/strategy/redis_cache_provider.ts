@@ -31,7 +31,7 @@ export const overrideCacheProvider = (): CacheProvider => {
   return {
     // saves the key with the optional value
     // invokes the callback with the value saved
-    save(key, value, callback): void {
+    save(_, value, callback): void {
       const v = {
         createdAt: new Date(),
         value
@@ -39,7 +39,7 @@ export const overrideCacheProvider = (): CacheProvider => {
       callback(null, v);
     },
     // invokes 'callback' and passes the value if found, null otherwise
-    get(key, callback): void {
+    get(_, callback): void {
       callback(null, {});
     },
     // removes the key from the cache, invokes `callback` with the

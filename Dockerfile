@@ -1,7 +1,5 @@
 FROM circleci/node:10.14.2 as builder
 
-RUN sudo apt-get -y install --no-install-recommends libunwind8=1.1-4.1
-
 WORKDIR /usr/src/app
 
 COPY /src /usr/src/app/src
@@ -15,11 +13,6 @@ RUN sudo chmod -R 777 /usr/src/app \
 
 FROM node:10.14.2-alpine
 LABEL maintainer="https://pagopa.gov.it"
-
-# Install major CA certificates to cover
-# https://github.com/SparebankenVest/azure-key-vault-to-kubernetes integration
-RUN apk update && \
-    apk add ca-certificates
 
 WORKDIR /usr/src/app
 

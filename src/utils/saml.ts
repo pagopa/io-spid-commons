@@ -7,15 +7,7 @@
 import { distanceInWordsToNow, isAfter, subDays } from "date-fns";
 import { Request as ExpressRequest } from "express";
 import { difference, flatten } from "fp-ts/lib/Array";
-import {
-  Either,
-  fromOption,
-  fromPredicate,
-  isLeft,
-  left,
-  right,
-  toError
-} from "fp-ts/lib/Either";
+import { Either, fromOption, fromPredicate, toError } from "fp-ts/lib/Either";
 import { not } from "fp-ts/lib/function";
 import {
   fromEither,
