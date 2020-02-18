@@ -911,7 +911,6 @@ const assertionValidation = (
               )
             )
           ).chain(
-            // TODO: Attribute into the response different from the Attribute into the request (103)
             fromPredicate(
               Attributes =>
                 Attributes.length > 0 &&
@@ -1001,7 +1000,7 @@ export const preValidateResponse: PreValidateResponseT = (
                   Value =>
                     Value === "urn:oasis:names:tc:SAML:2.0:status:Success",
                   () => new Error("Value attribute of StatusCode is invalid")
-                ) // TODO: Must be shown an error page to the user (26)
+                ) // TODO: Must show an error page to the user (26)
               )
               .map(() => _)
           )
@@ -1142,9 +1141,10 @@ export const preValidateResponse: PreValidateResponseT = (
       )
         .chain(Attributes => {
           const missingAttributes = difference(setoidString)(
-            // TODO: The next row must be fail with an exception
             // tslint:disable-next-line: no-any
-            (samlConfig as any).attributes.attributes.attributes,
+            (samlConfig as any).attributes?.attributes?.attributes || [
+              "Request attributes must be defined"
+            ],
             Array.from(Attributes).reduce((prev, attr) => {
               const attribute = attr.getAttribute("Name");
               if (attribute) {

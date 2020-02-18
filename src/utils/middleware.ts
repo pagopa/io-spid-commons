@@ -32,7 +32,7 @@ export interface IServiceProviderConfig {
     name: string;
   };
   publicCert: string;
-  hasSpidValidatorEnabled: boolean;
+  spidValidatorUrl: string | undefined;
   idpMetadataRefreshIntervalMillis: number;
 }
 
@@ -58,12 +58,11 @@ export const getSpidStrategyOptionsUpdater = (
       SPID_IDP_IDENTIFIERS
     )
   ].concat(
-    serviceProviderConfig.hasSpidValidatorEnabled
+    serviceProviderConfig.spidValidatorUrl
       ? [
           fetchIdpsMetadata("http://spid-saml-check:8080/metadata.xml", {
-            // TODO: must be a configuration param
-            // "https://validator.spid.gov.it": "xx_validator"
-            "http://localhost:8080": "xx_validator"
+            // "https://validator.spid.gov.it" or "http://localhost:8080"
+            [serviceProviderConfig.spidValidatorUrl]: "xx_validator"
           })
         ]
       : []
