@@ -6,8 +6,17 @@
  */
 import { distanceInWordsToNow, isAfter, subDays } from "date-fns";
 import { Request as ExpressRequest } from "express";
-import { flatten } from "fp-ts/lib/Array";
-import { toError } from "fp-ts/lib/Either";
+import { difference, flatten } from "fp-ts/lib/Array";
+import {
+  Either,
+  fromOption,
+  fromPredicate,
+  isLeft,
+  left,
+  right,
+  toError
+} from "fp-ts/lib/Either";
+import { not } from "fp-ts/lib/function";
 import {
   fromEither,
   fromNullable,
@@ -18,8 +27,14 @@ import {
   tryCatch as optionTryCatch
 } from "fp-ts/lib/Option";
 import { collect, lookup } from "fp-ts/lib/Record";
-import { TaskEither, tryCatch } from "fp-ts/lib/TaskEither";
+import { setoidString } from "fp-ts/lib/Setoid";
+import {
+  fromEither as fromEitherToTaskEither,
+  TaskEither,
+  tryCatch
+} from "fp-ts/lib/TaskEither";
 import * as t from "io-ts";
+import { UTCISODateFromString } from "italia-ts-commons/lib/dates";
 import { NonEmptyString } from "italia-ts-commons/lib/strings";
 import { pki } from "node-forge";
 import { SamlConfig } from "passport-saml";
@@ -43,6 +58,7 @@ interface IEntrypointCerts {
   // tslint:disable-next-line: readonly-array
   cert: NonEmptyString[];
   entryPoint?: string;
+  idpIssuer?: string;
 }
 
 export const SAML_NAMESPACE = {
@@ -122,11 +138,11 @@ const getEntrypointCerts = (
     .mapNullable(q => q.entityID)
     .chain(entityID =>
       fromNullable(idps[entityID]).map(
-        idp =>
-          ({
-            cert: idp.cert.toArray(),
-            entryPoint: idp.entryPoint
-          } as IEntrypointCerts)
+        (idp): IEntrypointCerts => ({
+          cert: idp.cert.toArray(),
+          entryPoint: idp.entryPoint,
+          idpIssuer: idp.entityID
+        })
       )
     )
     .alt(
@@ -140,6 +156,17 @@ const getEntrypointCerts = (
         entryPoint: ""
       } as IEntrypointCerts)
     );
+};
+
+export const getIDFromRequest = (requestXML: string): Option<string> => {
+  const xmlRequest = new DOMParser().parseFromString(requestXML, "text/xml");
+  return fromNullable(
+    xmlRequest
+      .getElementsByTagNameNS(SAML_NAMESPACE.PROTOCOL, "AuthnRequest")
+      .item(0)
+  ).chain(AuthnRequest =>
+    fromEither(NonEmptyString.decode(AuthnRequest.getAttribute("ID")))
+  );
 };
 
 const getAuthnContextValueFromResponse = (response: string): Option<string> => {
@@ -295,12 +322,12 @@ export const getSamlOptions: MultiSamlConfig["getSamlOptions"] = (
       );
     }
     const authOptions = maybeAuthOptions.getOrElse({});
-
-    return done(null, {
+    const options = {
       ...spidStrategyOptions.sp,
-      ...entrypointCerts,
-      ...authOptions
-    });
+      ...authOptions,
+      ...entrypointCerts
+    };
+    return done(null, options);
   } catch (e) {
     return done(e);
   }
@@ -469,36 +496,686 @@ export const getAuthorizeRequestTamperer = (
 //  Validate response
 //
 
+const utcStringToDate = (value: string, tag: string): Either<Error, Date> =>
+  UTCISODateFromString.decode(value).mapLeft(
+    () => new Error(`${tag} must be an UTCISO format date string`)
+  );
+
+const validateIssuer = (
+  fatherElement: Element,
+  idpIssuer: string
+): Either<Error, void> =>
+  fromOption(new Error("Issuer element must be present"))(
+    fromNullable(
+      fatherElement
+        .getElementsByTagNameNS(SAML_NAMESPACE.ASSERTION, "Issuer")
+        .item(0)
+    )
+  )
+    .chain(Issuer =>
+      NonEmptyString.decode(Issuer.textContent)
+        .mapLeft(() => new Error("Issuer element must be not empty"))
+        .chain(
+          fromPredicate(
+            IssuerTextContent => {
+              return IssuerTextContent === idpIssuer;
+            },
+            () => new Error(`Invalid Issuer. Expected value is ${idpIssuer}`)
+          )
+        )
+        .map(() => Issuer)
+    )
+    .chain(Issuer =>
+      NonEmptyString.decode(Issuer.getAttribute("Format"))
+        .mapLeft(
+          () =>
+            new Error(
+              "Format attribute of Issuer element must be a non empty string"
+            )
+        )
+        .chain(
+          fromPredicate(
+            Format =>
+              Format === "urn:oasis:names:tc:SAML:2.0:nameid-format:entity",
+            () => new Error("Format attribute of Issuer element is invalid")
+          )
+        )
+    )
+    .map(() => undefined);
+
+const mainAttributeValidation = (
+  requestOrAssertion: Element
+): Either<Error, Date> => {
+  return NonEmptyString.decode(requestOrAssertion.getAttribute("ID"))
+    .mapLeft(() => new Error("Assertion must contain a non empty ID"))
+    .map(() => requestOrAssertion.getAttribute("Version"))
+    .chain(
+      fromPredicate(
+        Version => Version === "2.0",
+        () => new Error("Version version must be 2.0")
+      )
+    )
+    .chain(() =>
+      fromOption(new Error("Assertion must contain a non empty IssueInstant"))(
+        fromNullable(requestOrAssertion.getAttribute("IssueInstant"))
+      )
+    )
+    .chain(IssueInstant => utcStringToDate(IssueInstant, "IssueInstant"))
+    .chain(
+      fromPredicate(
+        _ => _.getTime() < Date.now(),
+        () => new Error("IssueInstant must be in the past")
+      )
+    );
+};
+
+const isEmptyNode = (element: Element): boolean => {
+  if (element.childNodes.length > 1) {
+    return false;
+  } else if (
+    element.firstChild &&
+    element.firstChild.nodeType === element.ELEMENT_NODE
+  ) {
+    return false;
+  } else if (
+    element.textContent &&
+    element.textContent.replace(/[\r\n\ ]+/g, "") !== ""
+  ) {
+    return false;
+  }
+  return true;
+};
+
+const notOnOrAfterValidation = (element: Element) => {
+  return NonEmptyString.decode(element.getAttribute("NotOnOrAfter"))
+    .mapLeft(
+      () => new Error("NotOnOrAfter attribute must be a non empty string")
+    )
+    .chain(NotOnOrAfter => utcStringToDate(NotOnOrAfter, "NotOnOrAfter"))
+    .chain(
+      fromPredicate(
+        NotOnOrAfter => NotOnOrAfter.getTime() > Date.now(),
+        () => new Error("NotOnOrAfter must be in the future")
+      )
+    );
+};
+
+const assertionValidation = (
+  Assertion: Element,
+  samlConfig: SamlConfig,
+  InResponseTo: string,
+  requestAuthnContextClassRef: string
+  // tslint:disable-next-line: no-big-function
+): Either<Error, HTMLCollectionOf<Element>> => {
+  return fromOption(new Error("Subject element must be present"))(
+    fromNullable(
+      Assertion.getElementsByTagNameNS(
+        SAML_NAMESPACE.ASSERTION,
+        "Subject"
+      ).item(0)
+    )
+  )
+    .chain(
+      fromPredicate(
+        not(isEmptyNode),
+        () => new Error("Subject element must be not empty")
+      )
+    )
+    .chain(Subject =>
+      fromOption(new Error("NameID element must be present"))(
+        fromNullable(
+          Subject.getElementsByTagNameNS(
+            SAML_NAMESPACE.ASSERTION,
+            "NameID"
+          ).item(0)
+        )
+      )
+        .chain(
+          fromPredicate(
+            not(isEmptyNode),
+            () => new Error("NameID element must be not empty")
+          )
+        )
+        .chain(NameID =>
+          NonEmptyString.decode(NameID.getAttribute("Format"))
+            .mapLeft(
+              () =>
+                new Error(
+                  "Format attribute of NameID element must be a non empty string"
+                )
+            )
+            .chain(
+              fromPredicate(
+                Format =>
+                  Format ===
+                  "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
+                () => new Error("Format attribute of NameID element is invalid")
+              )
+            )
+            .map(() => NameID)
+        )
+        .chain(NameID =>
+          NonEmptyString.decode(NameID.getAttribute("NameQualifier")).mapLeft(
+            () =>
+              new Error(
+                "NameQualifier attribute of NameID element must be a non empty string"
+              )
+          )
+        )
+        .map(() => Subject)
+    )
+    .chain(Subject =>
+      fromOption(new Error("SubjectConfirmation element must be present"))(
+        fromNullable(
+          Subject.getElementsByTagNameNS(
+            SAML_NAMESPACE.ASSERTION,
+            "SubjectConfirmation"
+          ).item(0)
+        )
+      )
+        .chain(
+          fromPredicate(
+            not(isEmptyNode),
+            () => new Error("SubjectConfirmation element must be not empty")
+          )
+        )
+        .chain(SubjectConfirmation =>
+          NonEmptyString.decode(SubjectConfirmation.getAttribute("Method"))
+            .mapLeft(
+              () =>
+                new Error(
+                  "Method attribute of SubjectConfirmation element must be a non empty string"
+                )
+            )
+            .chain(
+              fromPredicate(
+                Method => Method === "urn:oasis:names:tc:SAML:2.0:cm:bearer",
+                () =>
+                  new Error(
+                    "Method attribute of SubjectConfirmation element is invalid"
+                  )
+              )
+            )
+            .map(() => SubjectConfirmation)
+        )
+        .chain(SubjectConfirmation =>
+          fromOption(
+            new Error("SubjectConfirmationData element must be provided")
+          )(
+            fromNullable(
+              SubjectConfirmation.getElementsByTagNameNS(
+                SAML_NAMESPACE.ASSERTION,
+                "SubjectConfirmationData"
+              ).item(0)
+            )
+          )
+            .chain(SubjectConfirmationData =>
+              NonEmptyString.decode(
+                SubjectConfirmationData.getAttribute("Recipient")
+              )
+                .mapLeft(
+                  () =>
+                    new Error(
+                      "Recipient attribute of SubjectConfirmationData element must be a non empty string"
+                    )
+                )
+                .chain(
+                  fromPredicate(
+                    Recipient => Recipient === samlConfig.callbackUrl,
+                    () =>
+                      new Error(
+                        "Recipient attribute of SubjectConfirmationData element must be equal to AssertionConsumerServiceURL"
+                      )
+                  )
+                )
+                .map(() => SubjectConfirmationData)
+            )
+            .chain(SubjectConfirmationData =>
+              notOnOrAfterValidation(SubjectConfirmationData).map(
+                () => SubjectConfirmationData
+              )
+            )
+            .chain(SubjectConfirmationData =>
+              NonEmptyString.decode(
+                SubjectConfirmationData.getAttribute("InResponseTo")
+              )
+                .mapLeft(
+                  () =>
+                    new Error(
+                      "InResponseTo attribute of SubjectConfirmationData element must be a non empty string"
+                    )
+                )
+                .chain(
+                  fromPredicate(
+                    inResponseTo => inResponseTo === InResponseTo,
+                    () =>
+                      new Error(
+                        "InResponseTo attribute of SubjectConfirmationData element must be equal to Response InResponseTo"
+                      )
+                  )
+                )
+            )
+        )
+    )
+    .chain(() =>
+      fromOption(new Error("Conditions element must be provided"))(
+        fromNullable(
+          Assertion.getElementsByTagNameNS(
+            SAML_NAMESPACE.ASSERTION,
+            "Conditions"
+          ).item(0)
+        )
+      )
+        .chain(
+          fromPredicate(
+            not(isEmptyNode),
+            () => new Error("Conditions element must be provided")
+          )
+        )
+        .chain(Conditions =>
+          notOnOrAfterValidation(Conditions).map(() => Conditions)
+        )
+        .chain(Conditions =>
+          NonEmptyString.decode(Conditions.getAttribute("NotBefore"))
+            .mapLeft(() => new Error("NotBefore must be a non empty string"))
+            .chain(NotBefore => utcStringToDate(NotBefore, "NotBefore"))
+            .chain(
+              fromPredicate(
+                NotBefore => NotBefore.getTime() <= Date.now(),
+                () => new Error("NotBefore must be in the past")
+              )
+            )
+            .map(() => Conditions)
+        )
+        .chain(Conditions =>
+          fromOption(
+            new Error(
+              "AudienceRestriction element must be present and not empty"
+            )
+          )(
+            fromNullable(
+              Conditions.getElementsByTagNameNS(
+                SAML_NAMESPACE.ASSERTION,
+                "AudienceRestriction"
+              ).item(0)
+            )
+          )
+            .chain(
+              fromPredicate(
+                not(isEmptyNode),
+                () =>
+                  new Error(
+                    "AudienceRestriction element must be present and not empty"
+                  )
+              )
+            )
+            .chain(AudienceRestriction =>
+              fromOption(new Error("Audience missing"))(
+                fromNullable(
+                  AudienceRestriction.getElementsByTagNameNS(
+                    SAML_NAMESPACE.ASSERTION,
+                    "Audience"
+                  ).item(0)
+                )
+              ).chain(
+                fromPredicate(
+                  Audience => Audience.textContent === samlConfig.issuer,
+                  () => new Error("Audience invalid")
+                )
+              )
+            )
+        )
+        .chain(() =>
+          fromOption(new Error("Missing AuthnStatement"))(
+            fromNullable(
+              Assertion.getElementsByTagNameNS(
+                SAML_NAMESPACE.ASSERTION,
+                "AuthnStatement"
+              ).item(0)
+            )
+          )
+            .chain(
+              fromPredicate(
+                not(isEmptyNode),
+                () => new Error("Empty AuthnStatement")
+              )
+            )
+            .chain(AuthnStatement =>
+              fromOption(new Error("Missing AuthnContext"))(
+                fromNullable(
+                  AuthnStatement.getElementsByTagNameNS(
+                    SAML_NAMESPACE.ASSERTION,
+                    "AuthnContext"
+                  ).item(0)
+                )
+              )
+                .chain(
+                  fromPredicate(
+                    not(isEmptyNode),
+                    () => new Error("Empty AuthnContext")
+                  )
+                )
+                .chain(AuthnContext =>
+                  fromOption(new Error("Missing AuthnContextClassRef"))(
+                    fromNullable(
+                      AuthnContext.getElementsByTagNameNS(
+                        SAML_NAMESPACE.ASSERTION,
+                        "AuthnContextClassRef"
+                      ).item(0)
+                    )
+                  )
+                    .chain(
+                      fromPredicate(
+                        not(isEmptyNode),
+                        () => new Error("Empty AuthnContextClassRef")
+                      )
+                    )
+                    .chain(
+                      fromPredicate(
+                        AuthnContextClassRef =>
+                          AuthnContextClassRef.textContent ===
+                            SPID_LEVELS.SpidL1 ||
+                          AuthnContextClassRef.textContent ===
+                            SPID_LEVELS.SpidL2 ||
+                          AuthnContextClassRef.textContent ===
+                            SPID_LEVELS.SpidL3,
+                        () => new Error("Invalid AuthnContextClassRef value")
+                      )
+                    )
+                    .chain(
+                      fromPredicate(
+                        AuthnContextClassRef => {
+                          return (
+                            AuthnContextClassRef.textContent ===
+                            requestAuthnContextClassRef
+                          );
+                        },
+                        () =>
+                          new Error("AuthnContextClassRef value not expected")
+                      )
+                    )
+                )
+            )
+        )
+        .chain(() =>
+          fromOption(new Error("AttributeStatement must contains Attributes"))(
+            fromNullable(
+              Assertion.getElementsByTagNameNS(
+                SAML_NAMESPACE.ASSERTION,
+                "AttributeStatement"
+              ).item(0)
+            ).map(AttributeStatement =>
+              AttributeStatement.getElementsByTagNameNS(
+                SAML_NAMESPACE.ASSERTION,
+                "Attribute"
+              )
+            )
+          ).chain(
+            // TODO: Attribute into the response different from the Attribute into the request (103)
+            fromPredicate(
+              Attributes =>
+                Attributes.length > 0 &&
+                !Array.from(Attributes).some(isEmptyNode),
+              () => new Error("Attribute element must be present and not empty")
+            )
+          )
+        )
+    );
+};
+
 export const preValidateResponse: PreValidateResponseT = (
   samlConfig,
   body,
+  extendedCacheProvider,
   callback
+  // tslint:disable-next-line: no-big-function
 ) => {
-  try {
-    const maybeDoc = getXmlFromSamlResponse(body);
-    if (isNone(maybeDoc)) {
-      throw new Error("Empty SAML response");
-    }
-    const doc = maybeDoc.value;
-
-    const Response = doc
-      .getElementsByTagNameNS(SAML_NAMESPACE.PROTOCOL, "Response")
-      .item(0);
-
-    if (Response) {
-      const ID = Response.getAttribute("ID");
-      if (!ID || ID === "") {
-        throw new Error("Response must contain a non empty ID");
-      }
-      const Version = Response.getAttribute("Version");
-      if (Version !== "2.0") {
-        throw new Error("Response version must be 2.0");
-      }
-    }
-
-    callback(null, true);
-  } catch (e) {
-    logger.error("Error parsing IDP response:%s", e.message);
-    callback(e);
+  const maybeDoc = getXmlFromSamlResponse(body);
+  if (isNone(maybeDoc)) {
+    throw new Error("Empty SAML response");
   }
+  const doc = maybeDoc.value;
+
+  fromEitherToTaskEither(
+    fromOption(new Error("Missing Reponse element inside SAML Response"))(
+      fromNullable(
+        doc.getElementsByTagNameNS(SAML_NAMESPACE.PROTOCOL, "Response").item(0)
+      )
+    )
+      .chain(Response =>
+        mainAttributeValidation(Response).map(IssueInstant => ({
+          IssueInstant,
+          Response
+        }))
+      )
+      .chain(_ =>
+        NonEmptyString.decode(_.Response.getAttribute("Destination"))
+          .mapLeft(
+            () => new Error("Response must contain a non empty Destination")
+          )
+          .chain(
+            fromPredicate(
+              Destination => Destination === samlConfig.callbackUrl,
+              () =>
+                new Error(
+                  "Destination must be equal to AssertionConsumerServiceURL"
+                )
+            )
+          )
+          .map(() => _)
+      )
+      .chain(_ =>
+        fromOption(new Error("Status element must be present"))(
+          fromNullable(
+            _.Response.getElementsByTagNameNS(
+              SAML_NAMESPACE.PROTOCOL,
+              "Status"
+            ).item(0)
+          )
+        )
+          .mapLeft(
+            () => new Error("Status element must be present into Response")
+          )
+          .chain(
+            fromPredicate(
+              not(isEmptyNode),
+              () => new Error("Status element must be present not empty")
+            )
+          )
+          .chain(Status =>
+            fromOption(new Error("StatusCode element must be present"))(
+              fromNullable(
+                Status.getElementsByTagNameNS(
+                  SAML_NAMESPACE.PROTOCOL,
+                  "StatusCode"
+                ).item(0)
+              )
+            )
+          )
+          .chain(StatusCode =>
+            fromOption(new Error("StatusCode must contain a non empty Value"))(
+              fromNullable(StatusCode.getAttribute("Value"))
+            )
+              .chain(
+                fromPredicate(
+                  Value =>
+                    Value === "urn:oasis:names:tc:SAML:2.0:status:Success",
+                  () => new Error("Value attribute of StatusCode is invalid")
+                ) // TODO: Must be shown an error page to the user (26)
+              )
+              .map(() => _)
+          )
+      )
+      .chain(_ =>
+        fromOption(new Error("Assertion element must be present"))(
+          fromNullable(
+            _.Response.getElementsByTagNameNS(
+              SAML_NAMESPACE.ASSERTION,
+              "Assertion"
+            ).item(0)
+          )
+        ).map(Assertion => ({
+          Assertion,
+          ..._
+        }))
+      )
+      .chain(_ =>
+        NonEmptyString.decode(_.Response.getAttribute("InResponseTo"))
+          .mapLeft(
+            () => new Error("InResponseTo must contain a non empty string")
+          )
+          .map(InResponseTo => ({ ..._, InResponseTo }))
+      )
+      .chain(_ =>
+        mainAttributeValidation(_.Assertion).map(IssueInstant => ({
+          AssertionIssueInstant: IssueInstant,
+          ..._
+        }))
+      )
+  )
+    .chain(_ =>
+      extendedCacheProvider
+        .get(_.InResponseTo)
+        .map(SAMLResponseCache => ({ ..._, SAMLResponseCache }))
+    )
+    .chain(_ =>
+      fromEitherToTaskEither(
+        fromOption(
+          new Error("An error occurs parsing the cached SAML Request")
+        )(
+          optionTryCatch(() =>
+            new DOMParser().parseFromString(_.SAMLResponseCache.RequestXML)
+          )
+        )
+      ).map(Request => ({ ..._, Request }))
+    )
+    .chain(_ =>
+      fromEitherToTaskEither(
+        fromOption(new Error("Missing AuthnRequest into Cached Request"))(
+          fromNullable(
+            _.Request.getElementsByTagNameNS(
+              SAML_NAMESPACE.PROTOCOL,
+              "AuthnRequest"
+            ).item(0)
+          )
+        )
+      )
+        .map(RequestAuthnRequest => ({ ..._, RequestAuthnRequest }))
+        .chain(__ =>
+          fromEitherToTaskEither(
+            UTCISODateFromString.decode(
+              __.RequestAuthnRequest.getAttribute("IssueInstant")
+            ).mapLeft(
+              () =>
+                new Error(
+                  "IssueInstant into the Request must be a valid UTC string"
+                )
+            )
+          ).map(RequestIssueInstant => ({ ...__, RequestIssueInstant }))
+        )
+    )
+    .chain(_ =>
+      fromEitherToTaskEither(
+        fromPredicate<Error, Date>(
+          _1 => _1.getTime() <= _.IssueInstant.getTime(),
+          () =>
+            new Error("Request IssueInstant must after Request IssueInstant")
+        )(_.RequestIssueInstant)
+      ).map(() => _)
+    )
+    .chain(_ =>
+      fromEitherToTaskEither(
+        fromPredicate<Error, Date>(
+          _1 => _1.getTime() <= _.AssertionIssueInstant.getTime(),
+          () =>
+            new Error("Assertion IssueInstant must after Request IssueInstant")
+        )(_.RequestIssueInstant)
+      ).map(() => _)
+    )
+    .chain(_ =>
+      fromEitherToTaskEither(
+        fromOption(
+          new Error("Missing AuthnContextClassRef inside cached SAML Response")
+        )(
+          fromNullable(
+            _.RequestAuthnRequest.getElementsByTagNameNS(
+              SAML_NAMESPACE.ASSERTION,
+              "AuthnContextClassRef"
+            ).item(0)
+          )
+        )
+          .chain(
+            fromPredicate(
+              not(isEmptyNode),
+              () => new Error("Subject element must be not empty")
+            )
+          )
+          .chain(AuthnContextClassRef =>
+            NonEmptyString.decode(AuthnContextClassRef.textContent).mapLeft(
+              () =>
+                new Error(
+                  "AuthnContextClassRef inside cached Request must be a non empty string"
+                )
+            )
+          )
+          .chain(
+            fromPredicate(
+              authnContextClassRef =>
+                authnContextClassRef === samlConfig.authnContext,
+              () => new Error("Unexpected authnContextClassRef value")
+            )
+          )
+          .map(rACCR => ({
+            ..._,
+            RequestAuthnContextClassRef: rACCR
+          }))
+      )
+    )
+    .chain(_ =>
+      fromEitherToTaskEither(
+        assertionValidation(
+          _.Assertion,
+          samlConfig,
+          _.InResponseTo,
+          _.RequestAuthnContextClassRef
+        )
+      )
+        .chain(Attributes => {
+          const missingAttributes = difference(setoidString)(
+            // TODO: The next row must be fail with an exception
+            // tslint:disable-next-line: no-any
+            (samlConfig as any).attributes.attributes.attributes,
+            Array.from(Attributes).reduce((prev, attr) => {
+              const attribute = attr.getAttribute("Name");
+              if (attribute) {
+                return [...prev, attribute];
+              }
+              return prev;
+            }, new Array<string>())
+          );
+          return fromEitherToTaskEither(
+            fromPredicate<Error, HTMLCollectionOf<Element>>(
+              () => missingAttributes.length === 0,
+              () =>
+                new Error(
+                  `Missing required Attributes: ${missingAttributes.toString()}`
+                )
+            )(Attributes)
+          );
+        })
+        .map(() => _)
+    )
+    .chain(_ =>
+      fromEitherToTaskEither(
+        validateIssuer(_.Response, _.SAMLResponseCache.idpIssuer).map(() => _)
+      )
+    )
+    .chain(_ =>
+      fromEitherToTaskEither(
+        validateIssuer(_.Assertion, _.SAMLResponseCache.idpIssuer)
+      ).map(() => _)
+    )
+    .bimap(callback, _ => callback(null, true, _.InResponseTo))
+    .run()
+    .catch(callback);
 };

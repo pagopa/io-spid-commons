@@ -17,7 +17,7 @@ import {
   LogoutT,
   withSpid
 } from ".";
-import { getRedisCacheProvider } from "./strategy/redis_cache_provider";
+import { overrideCacheProvider } from "./strategy/redis_cache_provider";
 import { logger } from "./utils/logger";
 import { IServiceProviderConfig } from "./utils/middleware";
 
@@ -78,7 +78,7 @@ const samlConfig: SamlConfig = {
   acceptedClockSkewMs: 0,
   attributeConsumingServiceIndex: "0",
   authnContext: "https://www.spid.gov.it/SpidL1",
-  cacheProvider: getRedisCacheProvider(redisClient),
+  cacheProvider: overrideCacheProvider(),
   callbackUrl: "http://localhost:3000" + appConfig.assertionConsumerServicePath,
   // decryptionPvk: fs.readFileSync("./certs/key.pem", "utf-8"),
   identifierFormat: "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
@@ -102,7 +102,15 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(passport.initialize());
 
-withSpid(appConfig, samlConfig, serviceProviderConfig, app, acs, logout)
+withSpid(
+  appConfig,
+  samlConfig,
+  redisClient,
+  serviceProviderConfig,
+  app,
+  acs,
+  logout
+)
   .map(withSpidApp => {
     withSpidApp.get("/success", (_, res) => res.json({ success: "success" }));
     withSpidApp.get("/error", (_, res) =>

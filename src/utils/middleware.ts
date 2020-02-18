@@ -5,6 +5,7 @@ import * as express from "express";
 import { array } from "fp-ts/lib/Array";
 import { taskEither, TaskEither } from "fp-ts/lib/TaskEither";
 import { Profile, SamlConfig, VerifiedCallback } from "passport-saml";
+import { RedisClient } from "redis";
 import { SPID_IDP_IDENTIFIERS } from "../config";
 import getCieIpdOption from "../providers/xx_servizicie_test";
 import getSpidTestIpdOption from "../providers/xx_testenv2";
@@ -123,6 +124,7 @@ export const getSpidStrategyOption = (
 export function makeSpidStrategy(
   options: ISpidStrategyOptions,
   getSamlOptions: SpidStrategy["getSamlOptions"],
+  redisClient: RedisClient,
   tamperAuthorizeRequest?: XmlTamperer,
   tamperMetadata?: XmlTamperer,
   preValidateResponse?: PreValidateResponseT
@@ -136,6 +138,7 @@ export function makeSpidStrategy(
       // `done` is a passport callback that signals success
       done(null, profile);
     },
+    redisClient,
     tamperAuthorizeRequest,
     tamperMetadata,
     preValidateResponse

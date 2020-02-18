@@ -18,6 +18,7 @@ import {
 } from "italia-ts-commons/lib/responses";
 import * as passport from "passport";
 import { SamlConfig } from "passport-saml";
+import { RedisClient } from "redis";
 import { Builder } from "xml2js";
 import { logger } from "./utils/logger";
 import {
@@ -111,6 +112,7 @@ const withSpidAuthMiddleware = (
 export function withSpid(
   appConfig: IApplicationConfig,
   samlConfig: SamlConfig,
+  redisClient: RedisClient,
   serviceProviderConfig: IServiceProviderConfig,
   app: express.Express,
   acs: AssertionConsumerServiceT,
@@ -139,6 +141,7 @@ export function withSpid(
       return makeSpidStrategy(
         spidStrategyOptions,
         getSamlOptions,
+        redisClient,
         authorizeRequestTamperer,
         metadataTamperer,
         preValidateResponse
