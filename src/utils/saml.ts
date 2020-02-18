@@ -1144,7 +1144,7 @@ export const preValidateResponse: PreValidateResponseT = (
           const missingAttributes = difference(setoidString)(
             // TODO: The next row must be fail with an exception
             // tslint:disable-next-line: no-any
-            (samlConfig as any).sp.attributes.attributes.attributes,
+            (samlConfig as any).attributes.attributes.attributes,
             Array.from(Attributes).reduce((prev, attr) => {
               const attribute = attr.getAttribute("Name");
               if (attribute) {
