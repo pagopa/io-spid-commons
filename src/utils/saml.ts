@@ -1154,11 +1154,7 @@ export const preValidateResponse: PreValidateResponseT = (
         validateIssuer(_.Assertion, _.SAMLResponseCache.idpIssuer)
       ).map(() => _)
     )
+    .bimap(callback, _ => callback(null, true, _.InResponseTo))
     .run()
-    .then(result =>
-      isLeft(result)
-        ? callback(result.value)
-        : callback(null, true, result.value.InResponseTo)
-    )
     .catch(callback);
 };
