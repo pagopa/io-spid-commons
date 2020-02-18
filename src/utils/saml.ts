@@ -16,6 +16,7 @@ import {
   right,
   toError
 } from "fp-ts/lib/Either";
+import { not } from "fp-ts/lib/function";
 import {
   fromEither,
   fromNullable,
@@ -615,7 +616,7 @@ const assertionValidation = (
   )
     .chain(
       fromPredicate(
-        node => !isEmptyNode(node),
+        not(isEmptyNode),
         () => new Error("Subject element must be not empty")
       )
     )
@@ -630,7 +631,7 @@ const assertionValidation = (
       )
         .chain(
           fromPredicate(
-            node => !isEmptyNode(node),
+            not(isEmptyNode),
             () => new Error("NameID element must be not empty")
           )
         )
@@ -673,7 +674,7 @@ const assertionValidation = (
       )
         .chain(
           fromPredicate(
-            node => !isEmptyNode(node),
+            not(isEmptyNode),
             () => new Error("SubjectConfirmation element must be not empty")
           )
         )
@@ -766,7 +767,7 @@ const assertionValidation = (
       )
         .chain(
           fromPredicate(
-            node => !isEmptyNode(node),
+            not(isEmptyNode),
             () => new Error("Conditions element must be provided")
           )
         )
@@ -800,7 +801,7 @@ const assertionValidation = (
           )
             .chain(
               fromPredicate(
-                node => !isEmptyNode(node),
+                not(isEmptyNode),
                 () =>
                   new Error(
                     "AudienceRestriction element must be present and not empty"
@@ -834,7 +835,7 @@ const assertionValidation = (
           )
             .chain(
               fromPredicate(
-                node => !isEmptyNode(node),
+                not(isEmptyNode),
                 () => new Error("Empty AuthnStatement")
               )
             )
@@ -849,7 +850,7 @@ const assertionValidation = (
               )
                 .chain(
                   fromPredicate(
-                    node => !isEmptyNode(node),
+                    not(isEmptyNode),
                     () => new Error("Empty AuthnContext")
                   )
                 )
@@ -864,7 +865,7 @@ const assertionValidation = (
                   )
                     .chain(
                       fromPredicate(
-                        node => !isEmptyNode(node),
+                        not(isEmptyNode),
                         () => new Error("Empty AuthnContextClassRef")
                       )
                     )
@@ -980,7 +981,7 @@ export const preValidateResponse: PreValidateResponseT = (
           )
           .chain(
             fromPredicate(
-              node => !isEmptyNode(node),
+              not(isEmptyNode),
               () => new Error("Status element must be present not empty")
             )
           )
@@ -1108,7 +1109,7 @@ export const preValidateResponse: PreValidateResponseT = (
         )
           .chain(
             fromPredicate(
-              node => !isEmptyNode(node),
+              not(isEmptyNode),
               () => new Error("Subject element must be not empty")
             )
           )
