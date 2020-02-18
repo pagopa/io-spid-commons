@@ -89,7 +89,7 @@ const withSpidAuthMiddleware = (
             maybeDoc
               .chain(getErrorCodeFromResponse)
               .map(errorCode => `?errorCode=${errorCode}`)
-              .getOrElse("")
+              .getOrElse(`?errorMessage=${err}`)
         );
       }
       if (!user) {

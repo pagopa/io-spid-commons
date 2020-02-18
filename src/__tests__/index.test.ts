@@ -63,7 +63,7 @@ const spidTestEnvUrl = "https://localhost:8088";
 const mockedIdpsRegistryHost = "https://mocked.registry.net";
 const mockedIdpsRegistryPath = "/idps/registry/path";
 const IDPMetadataUrl = mockedIdpsRegistryHost + mockedIdpsRegistryPath;
-const hasSpidValidatorEnabled = false;
+const spidValidatorUrl = "http://localhost:8080";
 
 const expectedLoginPath = "/login";
 const expectedSloPath = "/logout";

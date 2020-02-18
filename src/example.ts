@@ -55,7 +55,7 @@ const appConfig: IApplicationConfig = {
 const serviceProviderConfig: IServiceProviderConfig = {
   IDPMetadataUrl:
     "https://registry.spid.gov.it/metadata/idp/spid-entities-idps.xml",
-  hasSpidValidatorEnabled: true,
+  spidValidatorUrl: "http://localhost:8080",
   idpMetadataRefreshIntervalMillis: 120000,
   organization: {
     URL: "https://example.com",
