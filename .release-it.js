@@ -10,11 +10,10 @@ module.exports = {
       "npx auto-changelog --config .auto-changelog.json --stdout --commit-limit false --unreleased --template preview.hbs"
   },
   hooks: {
-    // "after:bump": "npx auto-changelog --package",
-    // "before:release": [
-    //   "npx auto-changelog --config .auto-changelog.json --package",
-    //   "git add CHANGELOG.md"
-    // ]
+    "before:release": [
+      "npx auto-changelog --config .auto-changelog.json --package",
+      "git add CHANGELOG.md"
+    ]
   },
   github: {
     release: true
