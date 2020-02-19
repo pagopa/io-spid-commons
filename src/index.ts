@@ -20,7 +20,7 @@ import * as passport from "passport";
 import { SamlConfig } from "passport-saml";
 import { RedisClient } from "redis";
 import { Builder } from "xml2js";
-import { overrideCacheProvider } from "./strategy/redis_cache_provider";
+import { noopCacheProvider } from "./strategy/redis_cache_provider";
 import { logger } from "./utils/logger";
 import {
   getSpidStrategyOptionsUpdater,
@@ -59,9 +59,7 @@ export interface IApplicationConfig {
 }
 
 // re-export
-export { overrideCacheProvider };
-export { IServiceProviderConfig };
-export { SamlConfig };
+export { noopCacheProvider, IServiceProviderConfig, SamlConfig };
 
 /**
  * Wraps assertion consumer service handler
@@ -118,12 +116,15 @@ const withSpidAuthMiddleware = (
 export function withSpid(
   appConfig: IApplicationConfig,
   samlConfig: SamlConfig,
-  redisClient: RedisClient,
   serviceProviderConfig: IServiceProviderConfig,
+  redisClient: RedisClient,
   app: express.Express,
   acs: AssertionConsumerServiceT,
   logout: LogoutT
-): TaskEither<Error, express.Express> {
+): TaskEither<
+  Error,
+  { app: express.Express; startIdpMetadataRefreshTimer: () => NodeJS.Timeout }
+> {
   const loadSpidStrategyOptions = getSpidStrategyOptionsUpdater(
     samlConfig,
     serviceProviderConfig
@@ -156,19 +157,20 @@ export function withSpid(
     .map(spidStrategy => {
       // Schedule get and refresh
       // SPID passport strategy options
-      const idpMetadataRefreshTimer = setInterval(
-        () =>
-          loadSpidStrategyOptions()
-            .map(opts => setSpidStrategyOption(app, opts))
-            .run()
-            .catch(e => {
-              logger.error("loadSpidStrategyOptions|error:%s", e);
-            }),
-        serviceProviderConfig.idpMetadataRefreshIntervalMillis
-      );
-
-      // Avoid hanging when express server exits
-      app.on("server:stop", () => clearInterval(idpMetadataRefreshTimer));
+      const startIdpMetadataRefreshTimer = () =>
+        // Remember to call
+        // app.on("server:stop", () => clearInterval(idpMetadataRefreshTimer));
+        // to avoid hanging when express server exits
+        setInterval(
+          () =>
+            loadSpidStrategyOptions()
+              .map(opts => setSpidStrategyOption(app, opts))
+              .run()
+              .catch(e => {
+                logger.error("loadSpidStrategyOptions|error:%s", e);
+              }),
+          serviceProviderConfig.idpMetadataRefreshIntervalMillis
+        );
 
       // Initializes SpidStrategy for passport
       passport.use("spid", spidStrategy);
@@ -225,6 +227,6 @@ export function withSpid(
       // Setup logout handler
       app.post(appConfig.sloPath, toExpressHandler(logout));
 
-      return app;
+      return { app, startIdpMetadataRefreshTimer };
     });
 }

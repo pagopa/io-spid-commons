@@ -14,7 +14,8 @@ import { RedisClient } from "redis";
 import { MultiSamlConfig } from "passport-saml/multiSamlStrategy";
 import {
   getExtendedRedisCacheProvider,
-  IExtendedCacheProvider
+  IExtendedCacheProvider,
+  noopCacheProvider
 } from "./redis_cache_provider";
 import { CustomSamlClient } from "./saml_client";
 
@@ -56,20 +57,15 @@ export class SpidStrategy extends SamlStrategy {
       // 8 hours
       options.requestIdExpirationPeriodMs = 28800000;
     }
+
+    // use our custom cache provider
     this.extendedRedisCacheProvider = getExtendedRedisCacheProvider(
       this.redisClient,
       options.requestIdExpirationPeriodMs
     );
-    if (!options.cacheProvider) {
-      // WARNING: you cannot use this one if you have
-      // multiple instances of the express app running
-      // (ie. multiple pods on Kubernetes).
-      // Use a RedisCacheProvider instead which can be
-      // safely shared between instances.
-      options.cacheProvider = new InMemoryCacheProvider({
-        keyExpirationPeriodMs: options.requestIdExpirationPeriodMs
-      });
-    }
+
+    // bypass passport-saml cache provider
+    options.cacheProvider = noopCacheProvider();
   }
 
   public authenticate(

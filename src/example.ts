@@ -17,7 +17,6 @@ import {
   LogoutT,
   withSpid
 } from ".";
-import { overrideCacheProvider } from "./strategy/redis_cache_provider";
 import { logger } from "./utils/logger";
 import { IServiceProviderConfig } from "./utils/middleware";
 
@@ -85,7 +84,6 @@ const samlConfig: SamlConfig = {
   acceptedClockSkewMs: 0,
   attributeConsumingServiceIndex: "0",
   authnContext: "https://www.spid.gov.it/SpidL1",
-  cacheProvider: overrideCacheProvider(),
   callbackUrl: "http://localhost:3000" + appConfig.assertionConsumerServicePath,
   // decryptionPvk: fs.readFileSync("./certs/key.pem", "utf-8"),
   identifierFormat: "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
@@ -112,16 +110,26 @@ app.use(passport.initialize());
 withSpid(
   appConfig,
   samlConfig,
-  redisClient,
   serviceProviderConfig,
+  redisClient,
   app,
   acs,
   logout
 )
-  .map(withSpidApp => {
-    withSpidApp.get("/success", (_, res) => res.json({ success: "success" }));
+  .map(({ app: withSpidApp, startIdpMetadataRefreshTimer }) => {
+    const idpMetadataRefreshTimer = startIdpMetadataRefreshTimer();
+    withSpidApp.on("server:stop", () => clearInterval(idpMetadataRefreshTimer));
+    withSpidApp.get("/success", (_, res) =>
+      res.json({
+        success: "success"
+      })
+    );
     withSpidApp.get("/error", (_, res) =>
-      res.json({ error: "error" }).status(400)
+      res
+        .json({
+          error: "error"
+        })
+        .status(400)
     );
     withSpidApp.use(
       (
@@ -129,7 +137,10 @@ withSpid(
         _: express.Request,
         res: express.Response,
         ___: express.NextFunction
-      ) => res.status(505).send({ error: error.message })
+      ) =>
+        res.status(505).send({
+          error: error.message
+        })
     );
     withSpidApp.listen(3000);
   })

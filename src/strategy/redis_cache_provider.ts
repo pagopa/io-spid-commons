@@ -27,7 +27,7 @@ export interface IExtendedCacheProvider {
 // those methods must never fail since there's
 // practically no error handling in passport-saml
 // (a very bad lot of spaghetti code)
-export const overrideCacheProvider = (): CacheProvider => {
+export const noopCacheProvider = (): CacheProvider => {
   return {
     // saves the key with the optional value
     // invokes the callback with the value saved
