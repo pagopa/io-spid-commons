@@ -4,6 +4,7 @@
 import * as express from "express";
 import { array } from "fp-ts/lib/Array";
 import { taskEither, TaskEither } from "fp-ts/lib/TaskEither";
+import { NonEmptyString } from "italia-ts-commons/lib/strings";
 import { Profile, SamlConfig, VerifiedCallback } from "passport-saml";
 import { RedisClient } from "redis";
 import { SPID_IDP_IDENTIFIERS } from "../config";
@@ -58,12 +59,15 @@ export const getSpidStrategyOptionsUpdater = (
       SPID_IDP_IDENTIFIERS
     )
   ].concat(
-    serviceProviderConfig.spidValidatorUrl
+    NonEmptyString.is(serviceProviderConfig.spidValidatorUrl)
       ? [
-          fetchIdpsMetadata("http://spid-saml-check:8080/metadata.xml", {
-            // "https://validator.spid.gov.it" or "http://localhost:8080"
-            [serviceProviderConfig.spidValidatorUrl]: "xx_validator"
-          })
+          fetchIdpsMetadata(
+            `${serviceProviderConfig.spidValidatorUrl}/metadata.xml`,
+            {
+              // "https://validator.spid.gov.it" or "http://localhost:8080"
+              [serviceProviderConfig.spidValidatorUrl]: "xx_validator"
+            }
+          )
         ]
       : []
   );
