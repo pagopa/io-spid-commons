@@ -19,10 +19,6 @@ import {
 } from "./redis_cache_provider";
 import { CustomSamlClient } from "./saml_client";
 
-// tslint:disable-next-line: no-submodule-imports no-var-requires
-const InMemoryCacheProvider = require("passport-saml/lib/passport-saml/inmemory-cache-provider")
-  .CacheProvider;
-
 export type XmlTamperer = (xml: string) => TaskEither<Error, string>;
 
 export type PreValidateResponseT = (
