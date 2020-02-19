@@ -55,7 +55,8 @@ interface IEntrypointCerts {
 
 export const SAML_NAMESPACE = {
   ASSERTION: "urn:oasis:names:tc:SAML:2.0:assertion",
-  PROTOCOL: "urn:oasis:names:tc:SAML:2.0:protocol"
+  PROTOCOL: "urn:oasis:names:tc:SAML:2.0:protocol",
+  XMLDSIG: "http://www.w3.org/2000/09/xmldsig#"
 };
 
 const decodeBase64 = (s: string) => Buffer.from(s, "base64").toString("utf8");
@@ -599,319 +600,353 @@ const assertionValidation = (
   requestAuthnContextClassRef: string
   // tslint:disable-next-line: no-big-function
 ): Either<Error, HTMLCollectionOf<Element>> => {
-  return fromOption(new Error("Subject element must be present"))(
-    fromNullable(
-      Assertion.getElementsByTagNameNS(
-        SAML_NAMESPACE.ASSERTION,
-        "Subject"
-      ).item(0)
-    )
-  )
-    .chain(
-      fromPredicate(
-        not(isEmptyNode),
-        () => new Error("Subject element must be not empty")
+  return (
+    fromOption(new Error("Assertion must be signed"))(
+      fromNullable(
+        Assertion.getElementsByTagNameNS(
+          SAML_NAMESPACE.XMLDSIG,
+          "Signature"
+        ).item(0)
       )
     )
-    .chain(Subject =>
-      fromOption(new Error("NameID element must be present"))(
-        fromNullable(
-          Subject.getElementsByTagNameNS(
-            SAML_NAMESPACE.ASSERTION,
-            "NameID"
-          ).item(0)
-        )
-      )
-        .chain(
-          fromPredicate(
-            not(isEmptyNode),
-            () => new Error("NameID element must be not empty")
+      // tslint:disable-next-line: no-big-function
+      .chain(() =>
+        fromOption(new Error("Subject element must be present"))(
+          fromNullable(
+            Assertion.getElementsByTagNameNS(
+              SAML_NAMESPACE.ASSERTION,
+              "Subject"
+            ).item(0)
           )
         )
-        .chain(NameID =>
-          NonEmptyString.decode(NameID.getAttribute("Format"))
-            .mapLeft(
-              () =>
-                new Error(
-                  "Format attribute of NameID element must be a non empty string"
+          .chain(
+            fromPredicate(
+              not(isEmptyNode),
+              () => new Error("Subject element must be not empty")
+            )
+          )
+          .chain(Subject =>
+            fromOption(new Error("NameID element must be present"))(
+              fromNullable(
+                Subject.getElementsByTagNameNS(
+                  SAML_NAMESPACE.ASSERTION,
+                  "NameID"
+                ).item(0)
+              )
+            )
+              .chain(
+                fromPredicate(
+                  not(isEmptyNode),
+                  () => new Error("NameID element must be not empty")
                 )
-            )
-            .chain(
-              fromPredicate(
-                Format =>
-                  Format ===
-                  "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
-                () => new Error("Format attribute of NameID element is invalid")
               )
-            )
-            .map(() => NameID)
-        )
-        .chain(NameID =>
-          NonEmptyString.decode(NameID.getAttribute("NameQualifier")).mapLeft(
-            () =>
-              new Error(
-                "NameQualifier attribute of NameID element must be a non empty string"
-              )
-          )
-        )
-        .map(() => Subject)
-    )
-    .chain(Subject =>
-      fromOption(new Error("SubjectConfirmation element must be present"))(
-        fromNullable(
-          Subject.getElementsByTagNameNS(
-            SAML_NAMESPACE.ASSERTION,
-            "SubjectConfirmation"
-          ).item(0)
-        )
-      )
-        .chain(
-          fromPredicate(
-            not(isEmptyNode),
-            () => new Error("SubjectConfirmation element must be not empty")
-          )
-        )
-        .chain(SubjectConfirmation =>
-          NonEmptyString.decode(SubjectConfirmation.getAttribute("Method"))
-            .mapLeft(
-              () =>
-                new Error(
-                  "Method attribute of SubjectConfirmation element must be a non empty string"
-                )
-            )
-            .chain(
-              fromPredicate(
-                Method => Method === "urn:oasis:names:tc:SAML:2.0:cm:bearer",
-                () =>
-                  new Error(
-                    "Method attribute of SubjectConfirmation element is invalid"
-                  )
-              )
-            )
-            .map(() => SubjectConfirmation)
-        )
-        .chain(SubjectConfirmation =>
-          fromOption(
-            new Error("SubjectConfirmationData element must be provided")
-          )(
-            fromNullable(
-              SubjectConfirmation.getElementsByTagNameNS(
-                SAML_NAMESPACE.ASSERTION,
-                "SubjectConfirmationData"
-              ).item(0)
-            )
-          )
-            .chain(SubjectConfirmationData =>
-              NonEmptyString.decode(
-                SubjectConfirmationData.getAttribute("Recipient")
-              )
-                .mapLeft(
-                  () =>
-                    new Error(
-                      "Recipient attribute of SubjectConfirmationData element must be a non empty string"
-                    )
-                )
-                .chain(
-                  fromPredicate(
-                    Recipient => Recipient === samlConfig.callbackUrl,
+              .chain(NameID =>
+                NonEmptyString.decode(NameID.getAttribute("Format"))
+                  .mapLeft(
                     () =>
                       new Error(
-                        "Recipient attribute of SubjectConfirmationData element must be equal to AssertionConsumerServiceURL"
+                        "Format attribute of NameID element must be a non empty string"
                       )
                   )
-                )
-                .map(() => SubjectConfirmationData)
-            )
-            .chain(SubjectConfirmationData =>
-              notOnOrAfterValidation(SubjectConfirmationData).map(
-                () => SubjectConfirmationData
+                  .chain(
+                    fromPredicate(
+                      Format =>
+                        Format ===
+                        "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
+                      () =>
+                        new Error(
+                          "Format attribute of NameID element is invalid"
+                        )
+                    )
+                  )
+                  .map(() => NameID)
               )
-            )
-            .chain(SubjectConfirmationData =>
-              NonEmptyString.decode(
-                SubjectConfirmationData.getAttribute("InResponseTo")
-              )
-                .mapLeft(
+              .chain(NameID =>
+                NonEmptyString.decode(
+                  NameID.getAttribute("NameQualifier")
+                ).mapLeft(
                   () =>
                     new Error(
-                      "InResponseTo attribute of SubjectConfirmationData element must be a non empty string"
+                      "NameQualifier attribute of NameID element must be a non empty string"
                     )
                 )
-                .chain(
-                  fromPredicate(
-                    inResponseTo => inResponseTo === InResponseTo,
-                    () =>
-                      new Error(
-                        "InResponseTo attribute of SubjectConfirmationData element must be equal to Response InResponseTo"
-                      )
-                  )
-                )
-            )
-        )
-    )
-    .chain(() =>
-      fromOption(new Error("Conditions element must be provided"))(
-        fromNullable(
-          Assertion.getElementsByTagNameNS(
-            SAML_NAMESPACE.ASSERTION,
-            "Conditions"
-          ).item(0)
-        )
-      )
-        .chain(
-          fromPredicate(
-            not(isEmptyNode),
-            () => new Error("Conditions element must be provided")
+              )
+              .map(() => Subject)
           )
-        )
-        .chain(Conditions =>
-          notOnOrAfterValidation(Conditions).map(() => Conditions)
-        )
-        .chain(Conditions =>
-          NonEmptyString.decode(Conditions.getAttribute("NotBefore"))
-            .mapLeft(() => new Error("NotBefore must be a non empty string"))
-            .chain(NotBefore => utcStringToDate(NotBefore, "NotBefore"))
-            .chain(
-              fromPredicate(
-                NotBefore => NotBefore.getTime() <= Date.now(),
-                () => new Error("NotBefore must be in the past")
+          .chain(Subject =>
+            fromOption(
+              new Error("SubjectConfirmation element must be present")
+            )(
+              fromNullable(
+                Subject.getElementsByTagNameNS(
+                  SAML_NAMESPACE.ASSERTION,
+                  "SubjectConfirmation"
+                ).item(0)
               )
             )
-            .map(() => Conditions)
-        )
-        .chain(Conditions =>
-          fromOption(
-            new Error(
-              "AudienceRestriction element must be present and not empty"
-            )
-          )(
-            fromNullable(
-              Conditions.getElementsByTagNameNS(
-                SAML_NAMESPACE.ASSERTION,
-                "AudienceRestriction"
-              ).item(0)
-            )
+              .chain(
+                fromPredicate(
+                  not(isEmptyNode),
+                  () =>
+                    new Error("SubjectConfirmation element must be not empty")
+                )
+              )
+              .chain(SubjectConfirmation =>
+                NonEmptyString.decode(
+                  SubjectConfirmation.getAttribute("Method")
+                )
+                  .mapLeft(
+                    () =>
+                      new Error(
+                        "Method attribute of SubjectConfirmation element must be a non empty string"
+                      )
+                  )
+                  .chain(
+                    fromPredicate(
+                      Method =>
+                        Method === "urn:oasis:names:tc:SAML:2.0:cm:bearer",
+                      () =>
+                        new Error(
+                          "Method attribute of SubjectConfirmation element is invalid"
+                        )
+                    )
+                  )
+                  .map(() => SubjectConfirmation)
+              )
+              .chain(SubjectConfirmation =>
+                fromOption(
+                  new Error("SubjectConfirmationData element must be provided")
+                )(
+                  fromNullable(
+                    SubjectConfirmation.getElementsByTagNameNS(
+                      SAML_NAMESPACE.ASSERTION,
+                      "SubjectConfirmationData"
+                    ).item(0)
+                  )
+                )
+                  .chain(SubjectConfirmationData =>
+                    NonEmptyString.decode(
+                      SubjectConfirmationData.getAttribute("Recipient")
+                    )
+                      .mapLeft(
+                        () =>
+                          new Error(
+                            "Recipient attribute of SubjectConfirmationData element must be a non empty string"
+                          )
+                      )
+                      .chain(
+                        fromPredicate(
+                          Recipient => Recipient === samlConfig.callbackUrl,
+                          () =>
+                            new Error(
+                              "Recipient attribute of SubjectConfirmationData element must be equal to AssertionConsumerServiceURL"
+                            )
+                        )
+                      )
+                      .map(() => SubjectConfirmationData)
+                  )
+                  .chain(SubjectConfirmationData =>
+                    notOnOrAfterValidation(SubjectConfirmationData).map(
+                      () => SubjectConfirmationData
+                    )
+                  )
+                  .chain(SubjectConfirmationData =>
+                    NonEmptyString.decode(
+                      SubjectConfirmationData.getAttribute("InResponseTo")
+                    )
+                      .mapLeft(
+                        () =>
+                          new Error(
+                            "InResponseTo attribute of SubjectConfirmationData element must be a non empty string"
+                          )
+                      )
+                      .chain(
+                        fromPredicate(
+                          inResponseTo => inResponseTo === InResponseTo,
+                          () =>
+                            new Error(
+                              "InResponseTo attribute of SubjectConfirmationData element must be equal to Response InResponseTo"
+                            )
+                        )
+                      )
+                  )
+              )
           )
-            .chain(
-              fromPredicate(
-                not(isEmptyNode),
-                () =>
+          .chain(() =>
+            fromOption(new Error("Conditions element must be provided"))(
+              fromNullable(
+                Assertion.getElementsByTagNameNS(
+                  SAML_NAMESPACE.ASSERTION,
+                  "Conditions"
+                ).item(0)
+              )
+            )
+              .chain(
+                fromPredicate(
+                  not(isEmptyNode),
+                  () => new Error("Conditions element must be provided")
+                )
+              )
+              .chain(Conditions =>
+                notOnOrAfterValidation(Conditions).map(() => Conditions)
+              )
+              .chain(Conditions =>
+                NonEmptyString.decode(Conditions.getAttribute("NotBefore"))
+                  .mapLeft(
+                    () => new Error("NotBefore must be a non empty string")
+                  )
+                  .chain(NotBefore => utcStringToDate(NotBefore, "NotBefore"))
+                  .chain(
+                    fromPredicate(
+                      NotBefore => NotBefore.getTime() <= Date.now(),
+                      () => new Error("NotBefore must be in the past")
+                    )
+                  )
+                  .map(() => Conditions)
+              )
+              .chain(Conditions =>
+                fromOption(
                   new Error(
                     "AudienceRestriction element must be present and not empty"
                   )
-              )
-            )
-            .chain(AudienceRestriction =>
-              fromOption(new Error("Audience missing"))(
-                fromNullable(
-                  AudienceRestriction.getElementsByTagNameNS(
-                    SAML_NAMESPACE.ASSERTION,
-                    "Audience"
-                  ).item(0)
+                )(
+                  fromNullable(
+                    Conditions.getElementsByTagNameNS(
+                      SAML_NAMESPACE.ASSERTION,
+                      "AudienceRestriction"
+                    ).item(0)
+                  )
                 )
-              ).chain(
-                fromPredicate(
-                  Audience => Audience.textContent === samlConfig.issuer,
-                  () => new Error("Audience invalid")
+                  .chain(
+                    fromPredicate(
+                      not(isEmptyNode),
+                      () =>
+                        new Error(
+                          "AudienceRestriction element must be present and not empty"
+                        )
+                    )
+                  )
+                  .chain(AudienceRestriction =>
+                    fromOption(new Error("Audience missing"))(
+                      fromNullable(
+                        AudienceRestriction.getElementsByTagNameNS(
+                          SAML_NAMESPACE.ASSERTION,
+                          "Audience"
+                        ).item(0)
+                      )
+                    ).chain(
+                      fromPredicate(
+                        Audience => Audience.textContent === samlConfig.issuer,
+                        () => new Error("Audience invalid")
+                      )
+                    )
+                  )
+              )
+              .chain(() =>
+                fromOption(new Error("Missing AuthnStatement"))(
+                  fromNullable(
+                    Assertion.getElementsByTagNameNS(
+                      SAML_NAMESPACE.ASSERTION,
+                      "AuthnStatement"
+                    ).item(0)
+                  )
                 )
+                  .chain(
+                    fromPredicate(
+                      not(isEmptyNode),
+                      () => new Error("Empty AuthnStatement")
+                    )
+                  )
+                  .chain(AuthnStatement =>
+                    fromOption(new Error("Missing AuthnContext"))(
+                      fromNullable(
+                        AuthnStatement.getElementsByTagNameNS(
+                          SAML_NAMESPACE.ASSERTION,
+                          "AuthnContext"
+                        ).item(0)
+                      )
+                    )
+                      .chain(
+                        fromPredicate(
+                          not(isEmptyNode),
+                          () => new Error("Empty AuthnContext")
+                        )
+                      )
+                      .chain(AuthnContext =>
+                        fromOption(new Error("Missing AuthnContextClassRef"))(
+                          fromNullable(
+                            AuthnContext.getElementsByTagNameNS(
+                              SAML_NAMESPACE.ASSERTION,
+                              "AuthnContextClassRef"
+                            ).item(0)
+                          )
+                        )
+                          .chain(
+                            fromPredicate(
+                              not(isEmptyNode),
+                              () => new Error("Empty AuthnContextClassRef")
+                            )
+                          )
+                          .chain(
+                            fromPredicate(
+                              AuthnContextClassRef =>
+                                AuthnContextClassRef.textContent ===
+                                  SPID_LEVELS.SpidL1 ||
+                                AuthnContextClassRef.textContent ===
+                                  SPID_LEVELS.SpidL2 ||
+                                AuthnContextClassRef.textContent ===
+                                  SPID_LEVELS.SpidL3,
+                              () =>
+                                new Error("Invalid AuthnContextClassRef value")
+                            )
+                          )
+                          .chain(
+                            fromPredicate(
+                              AuthnContextClassRef => {
+                                return (
+                                  AuthnContextClassRef.textContent ===
+                                  requestAuthnContextClassRef
+                                );
+                              },
+                              () =>
+                                new Error(
+                                  "AuthnContextClassRef value not expected"
+                                )
+                            )
+                          )
+                      )
+                  )
               )
-            )
-        )
-        .chain(() =>
-          fromOption(new Error("Missing AuthnStatement"))(
-            fromNullable(
-              Assertion.getElementsByTagNameNS(
-                SAML_NAMESPACE.ASSERTION,
-                "AuthnStatement"
-              ).item(0)
-            )
-          )
-            .chain(
-              fromPredicate(
-                not(isEmptyNode),
-                () => new Error("Empty AuthnStatement")
-              )
-            )
-            .chain(AuthnStatement =>
-              fromOption(new Error("Missing AuthnContext"))(
-                fromNullable(
-                  AuthnStatement.getElementsByTagNameNS(
-                    SAML_NAMESPACE.ASSERTION,
-                    "AuthnContext"
-                  ).item(0)
-                )
-              )
-                .chain(
+              .chain(() =>
+                fromOption(
+                  new Error("AttributeStatement must contains Attributes")
+                )(
+                  fromNullable(
+                    Assertion.getElementsByTagNameNS(
+                      SAML_NAMESPACE.ASSERTION,
+                      "AttributeStatement"
+                    ).item(0)
+                  ).map(AttributeStatement =>
+                    AttributeStatement.getElementsByTagNameNS(
+                      SAML_NAMESPACE.ASSERTION,
+                      "Attribute"
+                    )
+                  )
+                ).chain(
                   fromPredicate(
-                    not(isEmptyNode),
-                    () => new Error("Empty AuthnContext")
+                    Attributes =>
+                      Attributes.length > 0 &&
+                      !Array.from(Attributes).some(isEmptyNode),
+                    () =>
+                      new Error(
+                        "Attribute element must be present and not empty"
+                      )
                   )
                 )
-                .chain(AuthnContext =>
-                  fromOption(new Error("Missing AuthnContextClassRef"))(
-                    fromNullable(
-                      AuthnContext.getElementsByTagNameNS(
-                        SAML_NAMESPACE.ASSERTION,
-                        "AuthnContextClassRef"
-                      ).item(0)
-                    )
-                  )
-                    .chain(
-                      fromPredicate(
-                        not(isEmptyNode),
-                        () => new Error("Empty AuthnContextClassRef")
-                      )
-                    )
-                    .chain(
-                      fromPredicate(
-                        AuthnContextClassRef =>
-                          AuthnContextClassRef.textContent ===
-                            SPID_LEVELS.SpidL1 ||
-                          AuthnContextClassRef.textContent ===
-                            SPID_LEVELS.SpidL2 ||
-                          AuthnContextClassRef.textContent ===
-                            SPID_LEVELS.SpidL3,
-                        () => new Error("Invalid AuthnContextClassRef value")
-                      )
-                    )
-                    .chain(
-                      fromPredicate(
-                        AuthnContextClassRef => {
-                          return (
-                            AuthnContextClassRef.textContent ===
-                            requestAuthnContextClassRef
-                          );
-                        },
-                        () =>
-                          new Error("AuthnContextClassRef value not expected")
-                      )
-                    )
-                )
-            )
-        )
-        .chain(() =>
-          fromOption(new Error("AttributeStatement must contains Attributes"))(
-            fromNullable(
-              Assertion.getElementsByTagNameNS(
-                SAML_NAMESPACE.ASSERTION,
-                "AttributeStatement"
-              ).item(0)
-            ).map(AttributeStatement =>
-              AttributeStatement.getElementsByTagNameNS(
-                SAML_NAMESPACE.ASSERTION,
-                "Attribute"
               )
-            )
-          ).chain(
-            fromPredicate(
-              Attributes =>
-                Attributes.length > 0 &&
-                !Array.from(Attributes).some(isEmptyNode),
-              () => new Error("Attribute element must be present and not empty")
-            )
           )
-        )
-    );
+      )
+  );
 };
 
 export const preValidateResponse: PreValidateResponseT = (
