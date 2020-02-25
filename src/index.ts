@@ -17,6 +17,7 @@ import {
   ResponseSuccessXml
 } from "italia-ts-commons/lib/responses";
 import * as passport from "passport";
+import { Passport } from "passport";
 import { SamlConfig } from "passport-saml";
 import { RedisClient } from "redis";
 import { Builder } from "xml2js";
@@ -145,16 +146,9 @@ export function withSpid(
   return loadSpidStrategyOptions()
     .map(spidStrategyOptions => {
       setSpidStrategyOption(app, spidStrategyOptions);
-      return makeSpidStrategy(
-        spidStrategyOptions,
-        getSamlOptions,
-        redisClient,
-        authorizeRequestTamperer,
-        metadataTamperer,
-        preValidateResponse
-      );
+      return spidStrategyOptions;
     })
-    .map(spidStrategy => {
+    .map(spidStrategyOptions => {
       // Schedule get and refresh
       // SPID passport strategy options
       const startIdpMetadataRefreshTimer = () =>
@@ -172,12 +166,24 @@ export function withSpid(
           serviceProviderConfig.idpMetadataRefreshIntervalMillis
         );
 
-      // Initializes SpidStrategy for passport
-      passport.use("spid", spidStrategy);
+      const newSpidStrategy = () =>
+        makeSpidStrategy(
+          spidStrategyOptions,
+          getSamlOptions,
+          redisClient,
+          authorizeRequestTamperer,
+          metadataTamperer,
+          preValidateResponse
+        );
 
-      const spidAuth = passport.authenticate("spid", {
-        session: false
-      });
+      // Initializes SpidStrategy for passport
+      const spidAuth = () => {
+        const passportInstance = new Passport();
+        passportInstance.use("spid", newSpidStrategy());
+        return passportInstance.authenticate("spid", {
+          session: false
+        });
+      };
 
       // Setup SPID login handler
       app.get(appConfig.loginPath, spidAuth);
@@ -190,7 +196,7 @@ export function withSpid(
             req
           ): Promise<IResponseErrorInternal | IResponseSuccessXml<string>> =>
             new Promise(resolve =>
-              spidStrategy.generateServiceProviderMetadataAsync(
+              newSpidStrategy().generateServiceProviderMetadataAsync(
                 req,
                 null, // certificate used for encryption / decryption
                 serviceProviderConfig.publicCert,
