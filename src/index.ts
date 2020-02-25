@@ -16,7 +16,6 @@ import {
   ResponseErrorInternal,
   ResponseSuccessXml
 } from "italia-ts-commons/lib/responses";
-import * as passport from "passport";
 import { Passport } from "passport";
 import { SamlConfig } from "passport-saml";
 import { RedisClient } from "redis";
