@@ -22,6 +22,7 @@ import { SamlConfig } from "passport-saml";
 import { RedisClient } from "redis";
 import { Builder } from "xml2js";
 import { noopCacheProvider } from "./strategy/redis_cache_provider";
+import { SpidStrategy } from "./strategy/spid";
 import { logger } from "./utils/logger";
 import {
   getSpidStrategyOptionsUpdater,
@@ -68,6 +69,7 @@ export { noopCacheProvider, IServiceProviderConfig, SamlConfig };
  */
 const withSpidAuthMiddleware = (
   acs: AssertionConsumerServiceT,
+  spidStrategy: SpidStrategy,
   clientLoginRedirectionUrl: string,
   clientErrorRedirectionUrl: string
 ): ((
@@ -80,7 +82,9 @@ const withSpidAuthMiddleware = (
     res: express.Response,
     next: express.NextFunction
   ) => {
-    passport.authenticate("spid", async (err, user) => {
+    const passportInstance = new Passport();
+    passportInstance.use("spid", spidStrategy);
+    passportInstance.authenticate("spid", async (err, user) => {
       const maybeDoc = getXmlFromSamlResponse(req.body);
       const issuer = maybeDoc.chain(getSamlIssuer).getOrElse("UNKNOWN");
       if (err) {
@@ -176,7 +180,12 @@ export function withSpid(
           preValidateResponse
         );
 
-      // Initializes SpidStrategy for passport
+      // Initializes SpidStrategy for passport.
+
+      // As SpidStrategy (a singleton) unsafely changes 'this._saml' in inner method calls,
+      // we avoid concurrent updates of the property creating a new instance for every request
+      // see https://github.com/bergie/passport-saml/pull/276#issuecomment-415057654
+
       const spidAuth = () => {
         const passportInstance = new Passport();
         passportInstance.use("spid", newSpidStrategy());
@@ -186,7 +195,7 @@ export function withSpid(
       };
 
       // Setup SPID login handler
-      app.get(appConfig.loginPath, spidAuth);
+      app.get(appConfig.loginPath, spidAuth());
 
       // Setup SPID metadata handler
       app.get(
@@ -225,6 +234,7 @@ export function withSpid(
         appConfig.assertionConsumerServicePath,
         withSpidAuthMiddleware(
           acs,
+          newSpidStrategy(),
           appConfig.clientLoginRedirectionUrl,
           appConfig.clientErrorRedirectionUrl
         )
