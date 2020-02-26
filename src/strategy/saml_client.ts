@@ -1,15 +1,11 @@
 import * as express from "express";
 import { fromNullable } from "fp-ts/lib/Option";
 import { SamlConfig } from "passport-saml";
-import { SAML } from "passport-saml";
-import * as log from "util";
-import {
-  IExtendedCacheProvider,
-  SAMLRequestCacheItem
-} from "./redis_cache_provider";
+import * as PassportSaml from "passport-saml";
+import { IExtendedCacheProvider } from "./redis_cache_provider";
 import { PreValidateResponseT, XmlTamperer } from "./spid";
 
-export class CustomSamlClient extends SAML {
+export class CustomSamlClient extends PassportSaml.SAML {
   constructor(
     private config: SamlConfig,
     private extededCacheProvider: IExtendedCacheProvider,
@@ -18,7 +14,10 @@ export class CustomSamlClient extends SAML {
   ) {
     // validateInResponseTo must be set to false to disable
     // internal cacheProvider of passport-saml
-    super({ ...config, validateInResponseTo: false });
+    super({
+      ...config,
+      validateInResponseTo: false
+    });
   }
 
   /**
@@ -42,11 +41,12 @@ export class CustomSamlClient extends SAML {
           // go on with checks in case no error is found
           return super.validatePostResponse(body, (error, __, ___) => {
             if (!error && isValid && AuthnRequestID) {
+              // tslint:disable-next-line: no-floating-promises
               this.extededCacheProvider
                 .remove(AuthnRequestID)
-                .run()
-                .finally(() => callback(error, __, ___))
-                .catch(e => log.error("Error deleting SAML Request: %s", e));
+                .map(_ => callback(error, __, ___))
+                .mapLeft(callback)
+                .run();
             } else {
               callback(error, __, ___);
             }
@@ -67,21 +67,19 @@ export class CustomSamlClient extends SAML {
     callback: (err: Error, xml?: string) => void
   ): void {
     const newCallback = fromNullable(this.tamperAuthorizeRequest)
-      .map(tamperAuthorizeRequest => (e: Error, xml?: string) =>
+      .map(tamperAuthorizeRequest => (e: Error, xml?: string) => {
         xml
           ? tamperAuthorizeRequest(xml)
               .chain(tamperedXml =>
                 this.extededCacheProvider.save(tamperedXml, this.config)
               )
-              .fold(callback, (tamperedXml: SAMLRequestCacheItem) => {
-                // There is a type error on @types/passport-saml
-                // Error argument in callback can be null but the
-                // Implemented interface expect only Error type
-                callback((null as unknown) as Error, tamperedXml.RequestXML);
-              })
+              .mapLeft(error => callback(error))
+              .map(cache =>
+                callback((null as unknown) as Error, cache.RequestXML)
+              )
               .run()
-          : callback(e)
-      )
+          : callback(e);
+      })
       .getOrElse(callback);
     super.generateAuthorizeRequest(req, isPassive, newCallback);
   }
