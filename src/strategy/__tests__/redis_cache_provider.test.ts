@@ -5,6 +5,7 @@ import { SamlConfig } from "passport-saml";
 import { RedisClient } from "redis";
 import {
   getExtendedRedisCacheProvider,
+  noopCacheProvider,
   SAMLRequestCacheItem
 } from "../redis_cache_provider";
 
@@ -12,7 +13,8 @@ const mockSet = jest.fn();
 const mockGet = jest.fn();
 const mockDel = jest.fn();
 
-const mockRedisClient: RedisClient = createMockRedis().createClient();
+// tslint:disable-next-line: no-any
+const mockRedisClient: RedisClient = (createMockRedis() as any).createClient();
 mockRedisClient.set = mockSet;
 mockRedisClient.get = mockGet;
 mockRedisClient.del = mockDel;
@@ -35,6 +37,30 @@ const SAMLRequest = `<?xml version="1.0"?>
 const samlConfig: SamlConfig = {
   idpIssuer: "http://localhost:8080/"
 };
+
+describe("noopCacheProvider", () => {
+  const mockCallback = jest.fn();
+  const expectedKey = "SAML-XXX";
+  const expectedValue = "Value";
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+  it("should save method of noopCacheProvider do noting", () => {
+    noopCacheProvider().save(expectedKey, expectedValue, mockCallback);
+    expect(mockCallback).toBeCalledWith(null, {
+      createdAt: expect.any(Date),
+      value: expectedValue
+    });
+  });
+  it("should get method of noopCacheProvider do noting", () => {
+    noopCacheProvider().get(expectedKey, mockCallback);
+    expect(mockCallback).toBeCalledWith(null, {});
+  });
+  it("should remove method of noopCacheProvider do noting", () => {
+    noopCacheProvider().remove(expectedKey, mockCallback);
+    expect(mockCallback).toBeCalledWith(null, expectedKey);
+  });
+});
 
 describe("getExtendedRedisCacheProvider#save", () => {
   beforeEach(() => {
