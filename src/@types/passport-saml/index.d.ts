@@ -8,6 +8,7 @@ import * as express from "express";
 
 declare module "passport-saml" {
   export class SAML {
+    private options: unknown;
     constructor(config: SamlConfig);
 
     validatePostResponse(
