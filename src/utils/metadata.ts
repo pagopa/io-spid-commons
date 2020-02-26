@@ -1,7 +1,12 @@
 /**
  * Methods to fetch and parse Identity service providers metadata.
  */
-import { Either, right, toError, tryCatch2v } from "fp-ts/lib/Either";
+import {
+  Either,
+  fromPredicate as fromPredicateEither,
+  right,
+  toError
+} from "fp-ts/lib/Either";
 import {
   fromEither,
   fromPredicate,
@@ -31,68 +36,72 @@ const SingleLogoutServiceTAG = "md:SingleLogoutService";
 export function parseIdpMetadata(
   ipdMetadataPage: string
 ): Either<Error, ReadonlyArray<IDPEntityDescriptor>> {
-  return tryCatch2v(
-    () => new DOMParser().parseFromString(ipdMetadataPage),
-    err => {
-      logger.error("parseIdpMetadata() | %s", err);
-      return toError(err);
-    }
-  ).chain(domParser => {
-    const entityDescriptors = domParser.getElementsByTagName(
-      EntityDescriptorTAG
-    );
-    return right(
-      Array.from(entityDescriptors).reduce(
-        (idps: ReadonlyArray<IDPEntityDescriptor>, element: Element) => {
-          const certs = Array.from(
-            element.getElementsByTagName(X509CertificateTAG)
-          ).map(_ =>
-            _.textContent ? _.textContent.replace(/[\n\s]/g, "") : ""
-          );
-          try {
-            return IDPEntityDescriptor.decode({
-              cert: certs,
-              entityID: element.getAttribute("entityID"),
-              entryPoint: Array.from(
-                element.getElementsByTagName(SingleSignOnServiceTAG)
-              )
-                .filter(
-                  _ =>
-                    _.getAttribute("Binding") ===
-                    "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
-                )[0]
-                .getAttribute("Location"),
-              logoutUrl: Array.from(
-                element.getElementsByTagName(SingleLogoutServiceTAG)
-              )
-                .filter(
-                  _ =>
-                    _.getAttribute("Binding") ===
-                    "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
-                )[0]
-                .getAttribute("Location")
-            }).fold(
-              errs => {
-                logger.warn(
-                  "Invalid md:EntityDescriptor. %s",
-                  errorsToReadableMessages(errs).join(" / ")
-                );
-                return idps;
-              },
-              elementInfo => [...idps, elementInfo]
-            );
-          } catch {
-            logger.warn(
-              "Invalid md:EntityDescriptor. %s",
-              new Error("Unable to parse element info")
-            );
-            return idps;
-          }
-        },
-        []
+  return right<Error, Document>(
+    new DOMParser().parseFromString(ipdMetadataPage)
+  )
+    .chain(
+      fromPredicateEither(
+        domParser =>
+          domParser && !domParser.getElementsByTagName("parsererror").item(0),
+        () => new Error("XML parser error")
       )
-    );
-  });
+    )
+    .chain(domParser => {
+      const entityDescriptors = domParser.getElementsByTagName(
+        EntityDescriptorTAG
+      );
+      return right(
+        Array.from(entityDescriptors).reduce(
+          (idps: ReadonlyArray<IDPEntityDescriptor>, element: Element) => {
+            const certs = Array.from(
+              element.getElementsByTagName(X509CertificateTAG)
+            ).map(_ =>
+              _.textContent ? _.textContent.replace(/[\n\s]/g, "") : ""
+            );
+            try {
+              return IDPEntityDescriptor.decode({
+                cert: certs,
+                entityID: element.getAttribute("entityID"),
+                entryPoint: Array.from(
+                  element.getElementsByTagName(SingleSignOnServiceTAG)
+                )
+                  .filter(
+                    _ =>
+                      _.getAttribute("Binding") ===
+                      "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
+                  )[0]
+                  .getAttribute("Location"),
+                logoutUrl: Array.from(
+                  element.getElementsByTagName(SingleLogoutServiceTAG)
+                )
+                  .filter(
+                    _ =>
+                      _.getAttribute("Binding") ===
+                      "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
+                  )[0]
+                  .getAttribute("Location")
+              }).fold(
+                errs => {
+                  logger.warn(
+                    "Invalid md:EntityDescriptor. %s",
+                    errorsToReadableMessages(errs).join(" / ")
+                  );
+                  return idps;
+                },
+                elementInfo => [...idps, elementInfo]
+              );
+            } catch {
+              logger.warn(
+                "Invalid md:EntityDescriptor. %s",
+                new Error("Unable to parse element info")
+              );
+              return idps;
+            }
+          },
+          []
+        )
+      );
+    });
 }
 
 /**
@@ -126,6 +135,12 @@ export function fetchIdpsMetadata(
     logger.info("Fetching SPID metadata from [%s]...", idpMetadataUrl);
     return nodeFetch(idpMetadataUrl);
   }, toError)
+    .chain(
+      fromPredicate(
+        p => p.status >= 200 && p.status < 300,
+        () => new Error("Error fetching remote metadata")
+      )
+    )
     .chain(p => tryCatch(() => p.text(), toError))
     .chain(idpMetadataXML => {
       logger.info("Parsing SPID metadata...");
