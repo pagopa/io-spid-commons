@@ -35,8 +35,6 @@ export type PreValidateResponseT = (
 ) => void;
 
 export class SpidStrategy extends SamlStrategy {
-  // tslint:disable-next-line: variable-name no-any
-  private _saml: any;
   private extendedRedisCacheProvider: IExtendedCacheProvider;
 
   constructor(
@@ -72,14 +70,25 @@ export class SpidStrategy extends SamlStrategy {
       if (err) {
         return this.error(err);
       }
-      // tslint:disable-next-line: no-object-mutation
-      this._saml = new CustomSamlClient(
-        { ...this.options, ...samlOptions },
+      const samlService = new CustomSamlClient(
+        {
+          ...this.options,
+          ...samlOptions
+        },
         this.extendedRedisCacheProvider,
         this.tamperAuthorizeRequest,
         this.preValidateResponse
       );
-      super.authenticate(req, options);
+      // we clone the original strategy to avoid race conditions
+      // see https://github.com/bergie/passport-saml/pull/426/files
+      const strategy = Object.setPrototypeOf(
+        {
+          ...this,
+          _saml: samlService
+        },
+        this
+      );
+      super.authenticate.call(strategy, req, options);
     });
   }
 
@@ -91,12 +100,23 @@ export class SpidStrategy extends SamlStrategy {
       if (err) {
         return this.error(err);
       }
-      // tslint:disable-next-line: no-object-mutation
-      this._saml = new CustomSamlClient(
-        { ...this.options, ...samlOptions },
+      const samlService = new CustomSamlClient(
+        {
+          ...this.options,
+          ...samlOptions
+        },
         this.extendedRedisCacheProvider
       );
-      super.logout(req, callback);
+      // we clone the original strategy to avoid race conditions
+      // see https://github.com/bergie/passport-saml/pull/426/files
+      const strategy = Object.setPrototypeOf(
+        {
+          ...this,
+          _saml: samlService
+        },
+        this
+      );
+      super.logout.call(strategy, req, callback);
     });
   }
 
@@ -110,13 +130,26 @@ export class SpidStrategy extends SamlStrategy {
       if (err) {
         return this.error(err);
       }
-      // tslint:disable-next-line: no-object-mutation
-      this._saml = new CustomSamlClient(
-        { ...this.options, ...samlOptions },
+      const samlService = new CustomSamlClient(
+        {
+          ...this.options,
+          ...samlOptions
+        },
         this.extendedRedisCacheProvider
       );
 
-      const originalXml = super.generateServiceProviderMetadata(
+      // we clone the original strategy to avoid race conditions
+      // see https://github.com/bergie/passport-saml/pull/426/files
+      const strategy = Object.setPrototypeOf(
+        {
+          ...this,
+          _saml: samlService
+        },
+        this
+      );
+
+      const originalXml = super.generateServiceProviderMetadata.call(
+        strategy,
         decryptionCert,
         signingCert
       );
