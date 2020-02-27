@@ -3,7 +3,7 @@
  */
 import {
   Either,
-  fromPredicate as fromPredicateEither,
+  fromPredicate as eitherFromPredicate,
   right,
   toError
 } from "fp-ts/lib/Either";
@@ -40,7 +40,7 @@ export function parseIdpMetadata(
     new DOMParser().parseFromString(ipdMetadataPage)
   )
     .chain(
-      fromPredicateEither(
+      eitherFromPredicate(
         domParser =>
           domParser && !domParser.getElementsByTagName("parsererror").item(0),
         () => new Error("XML parser error")
