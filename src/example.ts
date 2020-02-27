@@ -81,6 +81,7 @@ const redisClient = redis.createClient({
 });
 
 const samlConfig: SamlConfig = {
+  RACComparison: "minimum",
   acceptedClockSkewMs: 0,
   attributeConsumingServiceIndex: "0",
   authnContext: "https://www.spid.gov.it/SpidL1",

@@ -7,7 +7,13 @@
 import { distanceInWordsToNow, isAfter, subDays } from "date-fns";
 import { Request as ExpressRequest } from "express";
 import { difference, flatten } from "fp-ts/lib/Array";
-import { Either, fromOption, fromPredicate, toError } from "fp-ts/lib/Either";
+import {
+  Either,
+  fromOption,
+  fromPredicate,
+  right,
+  toError
+} from "fp-ts/lib/Either";
 import { not } from "fp-ts/lib/function";
 import {
   fromEither,
@@ -58,6 +64,8 @@ export const SAML_NAMESPACE = {
   PROTOCOL: "urn:oasis:names:tc:SAML:2.0:protocol",
   XMLDSIG: "http://www.w3.org/2000/09/xmldsig#"
 };
+
+const ISSUER_FORMAT = "urn:oasis:names:tc:SAML:2.0:nameid-format:entity";
 
 const decodeBase64 = (s: string) => Buffer.from(s, "base64").toString("utf8");
 
@@ -477,8 +485,7 @@ export const getAuthorizeRequestTamperer = (
         // tslint:disable-next-line: no-object-mutation
         authnRequest["saml:Issuer"][0].$.NameQualifier = samlConfig.issuer;
         // tslint:disable-next-line: no-object-mutation
-        authnRequest["saml:Issuer"][0].$.Format =
-          "urn:oasis:names:tc:SAML:2.0:nameid-format:entity";
+        authnRequest["saml:Issuer"][0].$.Format = ISSUER_FORMAT;
         return o;
       }, toError)
     )
@@ -497,44 +504,26 @@ const utcStringToDate = (value: string, tag: string): Either<Error, Date> =>
 const validateIssuer = (
   fatherElement: Element,
   idpIssuer: string
-): Either<Error, void> =>
+): Either<Error, Element> =>
   fromOption(new Error("Issuer element must be present"))(
     fromNullable(
       fatherElement
         .getElementsByTagNameNS(SAML_NAMESPACE.ASSERTION, "Issuer")
         .item(0)
     )
-  )
-    .chain(Issuer =>
-      NonEmptyString.decode(Issuer.textContent)
-        .mapLeft(() => new Error("Issuer element must be not empty"))
-        .chain(
-          fromPredicate(
-            IssuerTextContent => {
-              return IssuerTextContent === idpIssuer;
-            },
-            () => new Error(`Invalid Issuer. Expected value is ${idpIssuer}`)
-          )
+  ).chain(Issuer =>
+    NonEmptyString.decode(Issuer.textContent)
+      .mapLeft(() => new Error("Issuer element must be not empty"))
+      .chain(
+        fromPredicate(
+          IssuerTextContent => {
+            return IssuerTextContent === idpIssuer;
+          },
+          () => new Error(`Invalid Issuer. Expected value is ${idpIssuer}`)
         )
-        .map(() => Issuer)
-    )
-    .chain(Issuer =>
-      NonEmptyString.decode(Issuer.getAttribute("Format"))
-        .mapLeft(
-          () =>
-            new Error(
-              "Format attribute of Issuer element must be a non empty string"
-            )
-        )
-        .chain(
-          fromPredicate(
-            Format =>
-              Format === "urn:oasis:names:tc:SAML:2.0:nameid-format:entity",
-            () => new Error("Format attribute of Issuer element is invalid")
-          )
-        )
-    )
-    .map(() => undefined);
+      )
+      .map(() => Issuer)
+  );
 
 const mainAttributeValidation = (
   requestOrAssertion: Element
@@ -900,13 +889,28 @@ const assertionValidation = (
                                 new Error("Invalid AuthnContextClassRef value")
                             )
                           )
+                          .map(
+                            AuthnContextClassRef =>
+                              AuthnContextClassRef.textContent
+                          )
                           .chain(
                             fromPredicate(
                               AuthnContextClassRef => {
-                                return (
-                                  AuthnContextClassRef.textContent ===
-                                  requestAuthnContextClassRef
-                                );
+                                return requestAuthnContextClassRef ===
+                                  SPID_LEVELS.SpidL2
+                                  ? AuthnContextClassRef ===
+                                      SPID_LEVELS.SpidL2 ||
+                                      AuthnContextClassRef ===
+                                        SPID_LEVELS.SpidL3
+                                  : requestAuthnContextClassRef ===
+                                    SPID_LEVELS.SpidL1
+                                  ? AuthnContextClassRef ===
+                                      SPID_LEVELS.SpidL1 ||
+                                    AuthnContextClassRef ===
+                                      SPID_LEVELS.SpidL2 ||
+                                    AuthnContextClassRef === SPID_LEVELS.SpidL3
+                                  : requestAuthnContextClassRef ===
+                                    AuthnContextClassRef;
                               },
                               () =>
                                 new Error(
@@ -1136,8 +1140,10 @@ export const preValidateResponse: PreValidateResponseT = (
               () => new Error("Subject element must be not empty")
             )
           )
-          .chain(AuthnContextClassRef =>
-            NonEmptyString.decode(AuthnContextClassRef.textContent).mapLeft(
+          .chain(RequestAuthnContextClassRef =>
+            NonEmptyString.decode(
+              RequestAuthnContextClassRef.textContent
+            ).mapLeft(
               () =>
                 new Error(
                   "AuthnContextClassRef inside cached Request must be a non empty string"
@@ -1146,9 +1152,11 @@ export const preValidateResponse: PreValidateResponseT = (
           )
           .chain(
             fromPredicate(
-              authnContextClassRef =>
-                authnContextClassRef === samlConfig.authnContext,
-              () => new Error("Unexpected authnContextClassRef value")
+              reqAuthnContextClassRef =>
+                reqAuthnContextClassRef === SPID_LEVELS.SpidL1 ||
+                reqAuthnContextClassRef === SPID_LEVELS.SpidL2 ||
+                reqAuthnContextClassRef === SPID_LEVELS.SpidL3,
+              () => new Error("Unexpected Request authnContextClassRef value")
             )
           )
           .map(rACCR => ({
@@ -1194,12 +1202,41 @@ export const preValidateResponse: PreValidateResponseT = (
     )
     .chain(_ =>
       fromEitherToTaskEither(
-        validateIssuer(_.Response, _.SAMLResponseCache.idpIssuer).map(() => _)
-      )
+        validateIssuer(_.Response, _.SAMLResponseCache.idpIssuer).chain(
+          Issuer =>
+            fromOption("Format missing")(
+              fromNullable(Issuer.getAttribute("Format"))
+            ).fold(
+              () => right(_),
+              _1 =>
+                fromPredicate(
+                  FormatValue => !FormatValue || FormatValue === ISSUER_FORMAT,
+                  () =>
+                    new Error("Format attribute of Issuer element is invalid")
+                )(_1)
+            )
+        )
+      ).map(() => _)
     )
     .chain(_ =>
       fromEitherToTaskEither(
-        validateIssuer(_.Assertion, _.SAMLResponseCache.idpIssuer)
+        validateIssuer(_.Assertion, _.SAMLResponseCache.idpIssuer).chain(
+          Issuer =>
+            NonEmptyString.decode(Issuer.getAttribute("Format"))
+              .mapLeft(
+                () =>
+                  new Error(
+                    "Format attribute of Issuer element must be a non empty string into Assertion"
+                  )
+              )
+              .chain(
+                fromPredicate(
+                  Format => Format === ISSUER_FORMAT,
+                  () =>
+                    new Error("Format attribute of Issuer element is invalid")
+                )
+              )
+        )
       ).map(() => _)
     )
     .bimap(callback, _ => callback(null, true, _.InResponseTo))
