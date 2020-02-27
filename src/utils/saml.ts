@@ -119,7 +119,7 @@ export function getErrorCodeFromResponse(doc: Document): Option<string> {
 export const getSamlIssuer = (doc: Document): Option<string> => {
   return fromNullable(
     doc.getElementsByTagNameNS(SAML_NAMESPACE.ASSERTION, "Issuer").item(0)
-  ).mapNullable(_ => _.textContent);
+  ).mapNullable(_ => _.textContent?.trim());
 };
 
 /**
@@ -512,7 +512,7 @@ const validateIssuer = (
         .item(0)
     )
   ).chain(Issuer =>
-    NonEmptyString.decode(Issuer.textContent)
+    NonEmptyString.decode(Issuer.textContent?.trim())
       .mapLeft(() => new Error("Issuer element must be not empty"))
       .chain(
         fromPredicate(
@@ -825,7 +825,8 @@ const assertionValidation = (
                       )
                     ).chain(
                       fromPredicate(
-                        Audience => Audience.textContent === samlConfig.issuer,
+                        Audience =>
+                          Audience.textContent?.trim() === samlConfig.issuer,
                         () => new Error("Audience invalid")
                       )
                     )
@@ -879,19 +880,18 @@ const assertionValidation = (
                           .chain(
                             fromPredicate(
                               AuthnContextClassRef =>
-                                AuthnContextClassRef.textContent ===
+                                AuthnContextClassRef.textContent?.trim() ===
                                   SPID_LEVELS.SpidL1 ||
-                                AuthnContextClassRef.textContent ===
+                                AuthnContextClassRef.textContent?.trim() ===
                                   SPID_LEVELS.SpidL2 ||
-                                AuthnContextClassRef.textContent ===
+                                AuthnContextClassRef.textContent?.trim() ===
                                   SPID_LEVELS.SpidL3,
                               () =>
                                 new Error("Invalid AuthnContextClassRef value")
                             )
                           )
-                          .map(
-                            AuthnContextClassRef =>
-                              AuthnContextClassRef.textContent
+                          .map(AuthnContextClassRef =>
+                            AuthnContextClassRef.textContent?.trim()
                           )
                           .chain(
                             fromPredicate(
@@ -1142,7 +1142,7 @@ export const preValidateResponse: PreValidateResponseT = (
           )
           .chain(RequestAuthnContextClassRef =>
             NonEmptyString.decode(
-              RequestAuthnContextClassRef.textContent
+              RequestAuthnContextClassRef.textContent?.trim()
             ).mapLeft(
               () =>
                 new Error(
