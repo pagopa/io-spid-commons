@@ -11,6 +11,7 @@ import {
   Either,
   fromOption,
   fromPredicate,
+  left,
   right,
   toError
 } from "fp-ts/lib/Either";
@@ -57,6 +58,11 @@ interface IEntrypointCerts {
   cert: NonEmptyString[];
   entryPoint?: string;
   idpIssuer?: string;
+  additionalParams?: {
+    // tslint:disable-next-line: readonly-array
+    attributes?: string[];
+    skipIssuerFormatValidation?: boolean;
+  };
 }
 
 export const SAML_NAMESPACE = {
@@ -140,6 +146,10 @@ const getEntrypointCerts = (
     .chain(entityID =>
       fromNullable(idps[entityID]).map(
         (idp): IEntrypointCerts => ({
+          additionalParams: {
+            attributes: idp.attributes,
+            skipIssuerFormatValidation: idp.skipIssuerFormatValidation
+          },
           cert: idp.cert.toArray(),
           entryPoint: idp.entryPoint,
           idpIssuer: idp.entityID
@@ -1176,10 +1186,11 @@ export const preValidateResponse: PreValidateResponseT = (
       )
         .chain(Attributes => {
           const missingAttributes = difference(setoidString)(
-            // tslint:disable-next-line: no-any
-            (samlConfig as any).attributes?.attributes?.attributes || [
-              "Request attributes must be defined"
-            ],
+            samlConfig.additionalParams?.attributes ||
+              // tslint:disable-next-line: no-any
+              (samlConfig as any).attributes?.attributes?.attributes || [
+                "Request attributes must be defined"
+              ],
             Array.from(Attributes).reduce((prev, attr) => {
               const attribute = attr.getAttribute("Name");
               if (attribute) {
@@ -1235,6 +1246,13 @@ export const preValidateResponse: PreValidateResponseT = (
                   () =>
                     new Error("Format attribute of Issuer element is invalid")
                 )
+              )
+              .fold(
+                err =>
+                  samlConfig?.additionalParams?.skipIssuerFormatValidation
+                    ? right(_)
+                    : left(err),
+                _1 => right(_)
               )
         )
       ).map(() => _)

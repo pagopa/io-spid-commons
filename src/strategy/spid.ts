@@ -73,7 +73,11 @@ export class SpidStrategy extends SamlStrategy {
       const samlService = new CustomSamlClient(
         {
           ...this.options,
-          ...samlOptions
+          ...samlOptions,
+          additionalParams: {
+            ...this.options.additionalParams,
+            ...samlOptions?.additionalParams
+          }
         },
         this.extendedRedisCacheProvider,
         this.tamperAuthorizeRequest,
@@ -103,7 +107,10 @@ export class SpidStrategy extends SamlStrategy {
       const samlService = new CustomSamlClient(
         {
           ...this.options,
-          ...samlOptions
+          ...samlOptions,
+          additionalParams: {
+            ...this.options.additionalParams
+          }
         },
         this.extendedRedisCacheProvider
       );
@@ -133,7 +140,10 @@ export class SpidStrategy extends SamlStrategy {
       const samlService = new CustomSamlClient(
         {
           ...this.options,
-          ...samlOptions
+          ...samlOptions,
+          additionalParams: {
+            ...this.options.additionalParams
+          }
         },
         this.extendedRedisCacheProvider
       );
