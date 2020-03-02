@@ -4,8 +4,20 @@ import { fromEither } from "fp-ts/lib/TaskEither";
 import { SamlConfig } from "passport-saml";
 import { DOMParser } from "xmldom";
 import { samlRequest, samlResponse, samlResponseCIE } from "../__mocks__/saml";
-import { getXmlFromSamlResponse, preValidateResponse } from "../saml";
+import { StrictResponseValidationOptions } from "../middleware";
+import { getPreValidateResponse, getXmlFromSamlResponse } from "../saml";
 import * as saml from "../saml";
+
+const samlConfig: SamlConfig = ({
+  attributes: {
+    attributes: {
+      attributes: ["name", "fiscalNumber", "familyName", "mobilePhone", "email"]
+    }
+  },
+  authnContext: "https://www.spid.gov.it/SpidL2",
+  callbackUrl: "https://app-backend.dev.io.italia.it/assertionConsumerService",
+  issuer: "https://app-backend.dev.io.italia.it"
+} as unknown) as SamlConfig;
 
 describe("getXmlFromSamlResponse", () => {
   it("should parse a well formatted response body", () => {
@@ -58,23 +70,11 @@ describe("preValidateResponse", () => {
         })
       );
     });
-    preValidateResponse(
-      ({
-        attributes: {
-          attributes: {
-            attributes: [
-              "name",
-              "fiscalNumber",
-              "familyName",
-              "mobilePhone",
-              "email"
-            ]
-          }
-        },
-        authnContext: "https://www.spid.gov.it/SpidL2",
-        callbackUrl: "http://localhost:3000/acs",
-        issuer: "https://spid.agid.gov.it/cd"
-      } as unknown) as SamlConfig,
+    const strictValidationOption: StrictResponseValidationOptions = {
+      "http://localhost:8080": true
+    };
+    getPreValidateResponse(strictValidationOption)(
+      samlConfig,
       mockBody,
       mockRedisCacheProvider,
       mockCallback
@@ -99,28 +99,8 @@ describe("preValidateResponse", () => {
         })
       );
     });
-    preValidateResponse(
-      ({
-        additionalParams: {
-          attributes: ["name", "fiscalNumber", "familyName", "dateOfBirth"],
-          skipIssuerFormatValidation: true
-        },
-        attributes: {
-          attributes: {
-            attributes: [
-              "name",
-              "fiscalNumber",
-              "familyName",
-              "mobilePhone",
-              "email"
-            ]
-          }
-        },
-        authnContext: "https://www.spid.gov.it/SpidL2",
-        callbackUrl:
-          "https://app-backend.dev.io.italia.it/assertionConsumerService",
-        issuer: "https://app-backend.dev.io.italia.it"
-      } as unknown) as SamlConfig,
+    getPreValidateResponse()(
+      samlConfig,
       mockBody,
       mockRedisCacheProvider,
       mockCallback

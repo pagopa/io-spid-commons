@@ -73,7 +73,11 @@ const serviceProviderConfig: IServiceProviderConfig = {
     name: "Required attrs"
   },
   spidTestEnvUrl: "https://spid-testenv2:8088",
-  spidValidatorUrl: "http://localhost:8080"
+  spidValidatorUrl: "http://localhost:8080",
+  strictResponseValidation: {
+    "http://localhost:8080": true,
+    "https://spid-testenv2:8088": true
+  }
 };
 
 const redisClient = redis.createClient({

@@ -48,7 +48,8 @@ import { logger } from "./logger";
 import {
   getSpidStrategyOption,
   IServiceProviderConfig,
-  ISpidStrategyOptions
+  ISpidStrategyOptions,
+  StrictResponseValidationOptions
 } from "./middleware";
 
 export type SamlAttributeT = keyof typeof SPID_USER_ATTRIBUTES;
@@ -58,11 +59,6 @@ interface IEntrypointCerts {
   cert: NonEmptyString[];
   entryPoint?: string;
   idpIssuer?: string;
-  additionalParams?: {
-    // tslint:disable-next-line: readonly-array
-    attributes?: string[];
-    skipIssuerFormatValidation?: boolean;
-  };
 }
 
 export const SAML_NAMESPACE = {
@@ -146,10 +142,6 @@ const getEntrypointCerts = (
     .chain(entityID =>
       fromNullable(idps[entityID]).map(
         (idp): IEntrypointCerts => ({
-          additionalParams: {
-            attributes: idp.attributes,
-            skipIssuerFormatValidation: idp.skipIssuerFormatValidation
-          },
           cert: idp.cert.toArray(),
           entryPoint: idp.entryPoint,
           idpIssuer: idp.entityID
@@ -963,7 +955,10 @@ const assertionValidation = (
   );
 };
 
-export const preValidateResponse: PreValidateResponseT = (
+export const getPreValidateResponse = (
+  strictValidationOptions?: StrictResponseValidationOptions
+  // tslint:disable-next-line: no-big-function
+): PreValidateResponseT => (
   samlConfig,
   body,
   extendedCacheProvider,
@@ -1076,7 +1071,7 @@ export const preValidateResponse: PreValidateResponseT = (
     .chain(_ =>
       extendedCacheProvider
         .get(_.InResponseTo)
-        .map(SAMLResponseCache => ({ ..._, SAMLResponseCache }))
+        .map(SAMLRequestCache => ({ ..._, SAMLRequestCache }))
     )
     .chain(_ =>
       fromEitherToTaskEither(
@@ -1084,7 +1079,7 @@ export const preValidateResponse: PreValidateResponseT = (
           new Error("An error occurs parsing the cached SAML Request")
         )(
           optionTryCatch(() =>
-            new DOMParser().parseFromString(_.SAMLResponseCache.RequestXML)
+            new DOMParser().parseFromString(_.SAMLRequestCache.RequestXML)
           )
         )
       ).map(Request => ({ ..._, Request }))
@@ -1185,12 +1180,20 @@ export const preValidateResponse: PreValidateResponseT = (
         )
       )
         .chain(Attributes => {
+          if (
+            !strictValidationOptions ||
+            !strictValidationOptions[_.SAMLRequestCache.idpIssuer]
+          ) {
+            // Skip Attribute validation if IDP has non-strict validation option
+            return fromEitherToTaskEither(
+              right<Error, HTMLCollectionOf<Element>>(Attributes)
+            );
+          }
           const missingAttributes = difference(setoidString)(
-            samlConfig.additionalParams?.attributes ||
-              // tslint:disable-next-line: no-any
-              (samlConfig as any).attributes?.attributes?.attributes || [
-                "Request attributes must be defined"
-              ],
+            // tslint:disable-next-line: no-any
+            (samlConfig as any).attributes?.attributes?.attributes || [
+              "Request attributes must be defined"
+            ],
             Array.from(Attributes).reduce((prev, attr) => {
               const attribute = attr.getAttribute("Name");
               if (attribute) {
@@ -1213,25 +1216,23 @@ export const preValidateResponse: PreValidateResponseT = (
     )
     .chain(_ =>
       fromEitherToTaskEither(
-        validateIssuer(_.Response, _.SAMLResponseCache.idpIssuer).chain(
-          Issuer =>
-            fromOption("Format missing")(
-              fromNullable(Issuer.getAttribute("Format"))
-            ).fold(
-              () => right(_),
-              _1 =>
-                fromPredicate(
-                  FormatValue => !FormatValue || FormatValue === ISSUER_FORMAT,
-                  () =>
-                    new Error("Format attribute of Issuer element is invalid")
-                )(_1)
-            )
+        validateIssuer(_.Response, _.SAMLRequestCache.idpIssuer).chain(Issuer =>
+          fromOption("Format missing")(
+            fromNullable(Issuer.getAttribute("Format"))
+          ).fold(
+            () => right(_),
+            _1 =>
+              fromPredicate(
+                FormatValue => !FormatValue || FormatValue === ISSUER_FORMAT,
+                () => new Error("Format attribute of Issuer element is invalid")
+              )(_1)
+          )
         )
       ).map(() => _)
     )
     .chain(_ =>
       fromEitherToTaskEither(
-        validateIssuer(_.Assertion, _.SAMLResponseCache.idpIssuer).chain(
+        validateIssuer(_.Assertion, _.SAMLRequestCache.idpIssuer).chain(
           Issuer =>
             NonEmptyString.decode(Issuer.getAttribute("Format"))
               .mapLeft(
@@ -1249,7 +1250,9 @@ export const preValidateResponse: PreValidateResponseT = (
               )
               .fold(
                 err =>
-                  samlConfig?.additionalParams?.skipIssuerFormatValidation
+                  // Skip Issuer Format validation if IDP has non-strict validation option
+                  !strictValidationOptions ||
+                  !strictValidationOptions[_.SAMLRequestCache.idpIssuer]
                     ? right(_)
                     : left(err),
                 _1 => right(_)

@@ -3,20 +3,14 @@ import * as t from "io-ts";
 import { createNonEmptyArrayFromArray } from "io-ts-types/lib/fp-ts/createNonEmptyArrayFromArray";
 import { NonEmptyString } from "italia-ts-commons/lib/strings";
 
-export const IDPEntityDescriptor = t.intersection([
-  t.interface({
-    cert: createNonEmptyArrayFromArray(NonEmptyString),
+export const IDPEntityDescriptor = t.interface({
+  cert: createNonEmptyArrayFromArray(NonEmptyString),
 
-    entityID: t.string,
+  entityID: t.string,
 
-    entryPoint: t.string,
+  entryPoint: t.string,
 
-    logoutUrl: t.string
-  }),
-  t.partial({
-    attributes: t.array(t.string),
-    skipIssuerFormatValidation: t.boolean
-  })
-]);
+  logoutUrl: t.string
+});
 
 export type IDPEntityDescriptor = t.TypeOf<typeof IDPEntityDescriptor>;
