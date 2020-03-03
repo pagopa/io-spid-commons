@@ -19,10 +19,15 @@ import { DOMParser } from "xmldom";
 import { IDPEntityDescriptor } from "../types/IDPEntityDescriptor";
 import { logger } from "./logger";
 
-const EntityDescriptorTAG = "md:EntityDescriptor";
-const X509CertificateTAG = "ds:X509Certificate";
-const SingleSignOnServiceTAG = "md:SingleSignOnService";
-const SingleLogoutServiceTAG = "md:SingleLogoutService";
+const EntityDescriptorTAG = "EntityDescriptor";
+const X509CertificateTAG = "X509Certificate";
+const SingleSignOnServiceTAG = "SingleSignOnService";
+const SingleLogoutServiceTAG = "SingleLogoutService";
+
+const METADATA_NAMESPACES = {
+  METADATA: "urn:oasis:names:tc:SAML:2.0:metadata",
+  XMLDSIG: "http://www.w3.org/2000/09/xmldsig#"
+};
 
 /**
  * Parse a string that represents an XML file containing
@@ -47,56 +52,61 @@ export function parseIdpMetadata(
       )
     )
     .chain(domParser => {
-      const entityDescriptors = domParser.getElementsByTagName(
+      const entityDescriptors = domParser.getElementsByTagNameNS(
+        METADATA_NAMESPACES.METADATA,
         EntityDescriptorTAG
       );
       return right(
         Array.from(entityDescriptors).reduce(
           (idps: ReadonlyArray<IDPEntityDescriptor>, element: Element) => {
             const certs = Array.from(
-              element.getElementsByTagName(X509CertificateTAG)
+              element.getElementsByTagNameNS(
+                METADATA_NAMESPACES.XMLDSIG,
+                X509CertificateTAG
+              )
             ).map(_ =>
               _.textContent ? _.textContent.replace(/[\n\s]/g, "") : ""
             );
-            try {
-              return IDPEntityDescriptor.decode({
-                cert: certs,
-                entityID: element.getAttribute("entityID"),
-                entryPoint: Array.from(
-                  element.getElementsByTagName(SingleSignOnServiceTAG)
+            return IDPEntityDescriptor.decode({
+              cert: certs,
+              entityID: element.getAttribute("entityID"),
+              entryPoint: Array.from(
+                element.getElementsByTagNameNS(
+                  METADATA_NAMESPACES.METADATA,
+                  SingleSignOnServiceTAG
+                )
+              )
+                .filter(
+                  _ =>
+                    _.getAttribute("Binding") ===
+                    "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
+                )[0]
+                ?.getAttribute("Location"),
+              logoutUrl:
+                Array.from(
+                  element.getElementsByTagNameNS(
+                    METADATA_NAMESPACES.METADATA,
+                    SingleLogoutServiceTAG
+                  )
                 )
                   .filter(
                     _ =>
                       _.getAttribute("Binding") ===
                       "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
                   )[0]
-                  .getAttribute("Location"),
-                logoutUrl: Array.from(
-                  element.getElementsByTagName(SingleLogoutServiceTAG)
-                )
-                  .filter(
-                    _ =>
-                      _.getAttribute("Binding") ===
-                      "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
-                  )[0]
-                  .getAttribute("Location")
-              }).fold(
-                errs => {
-                  logger.warn(
-                    "Invalid md:EntityDescriptor. %s",
-                    errorsToReadableMessages(errs).join(" / ")
-                  );
-                  return idps;
-                },
-                elementInfo => [...idps, elementInfo]
-              );
-            } catch {
-              logger.warn(
-                "Invalid md:EntityDescriptor. %s",
-                new Error("Unable to parse element info")
-              );
-              return idps;
-            }
+                  // If SingleLogoutService is missing will be return an empty string
+                  // Needed for CIE Metadata
+                  ?.getAttribute("Location") || ""
+            }).fold(
+              errs => {
+                logger.warn(
+                  "Invalid md:EntityDescriptor. %s",
+                  errorsToReadableMessages(errs).join(" / ")
+                );
+                return idps;
+              },
+              elementInfo => [...idps, elementInfo]
+            );
           },
           []
         )
