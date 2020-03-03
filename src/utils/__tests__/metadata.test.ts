@@ -1,10 +1,10 @@
 import { isLeft, isRight, left } from "fp-ts/lib/Either";
+import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
 import * as nock from "nock";
 import { CIE_IDP_IDENTIFIERS, SPID_IDP_IDENTIFIERS } from "../../config";
 import cieIdpMetadata from "../__mocks__/cie-idp-metadata";
 import idpsMetadata from "../__mocks__/idps-metatata";
 import { fetchIdpsMetadata } from "../metadata";
-import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
 
 const mockedIdpsRegistryHost = "https://mocked.registry.net";
 
