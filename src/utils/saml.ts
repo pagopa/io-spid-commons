@@ -971,6 +971,10 @@ export const getPreValidateResponse = (
   }
   const doc = maybeDoc.value;
 
+  const hasStrictValidation = fromNullable(strictValidationOptions)
+    .chain(_ => getSamlIssuer(doc).mapNullable(issuer => _[issuer]))
+    .getOrElse(false);
+
   fromEitherToTaskEither(
     fromOption(new Error("Missing Reponse element inside SAML Response"))(
       fromNullable(
@@ -1180,10 +1184,7 @@ export const getPreValidateResponse = (
         )
       )
         .chain(Attributes => {
-          if (
-            !strictValidationOptions ||
-            !strictValidationOptions[_.SAMLRequestCache.idpIssuer]
-          ) {
+          if (!hasStrictValidation) {
             // Skip Attribute validation if IDP has non-strict validation option
             return fromEitherToTaskEither(
               right<Error, HTMLCollectionOf<Element>>(Attributes)
@@ -1251,10 +1252,7 @@ export const getPreValidateResponse = (
               .fold(
                 err =>
                   // Skip Issuer Format validation if IDP has non-strict validation option
-                  !strictValidationOptions ||
-                  !strictValidationOptions[_.SAMLRequestCache.idpIssuer]
-                    ? right(_)
-                    : left(err),
+                  !hasStrictValidation ? right(_) : left(err),
                 _1 => right(_)
               )
         )
