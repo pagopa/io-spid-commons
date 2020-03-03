@@ -10,6 +10,13 @@ export const SPID_IDP_IDENTIFIERS = {
   "https://spid.register.it": "spiditalia"
 };
 
+export const CIE_IDP_IDENTIFIERS = {
+  "https://idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SSO":
+    "xx_servizicie",
+  "https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/POST/SSO":
+    "xx_servizicie_test"
+};
+
 /*
  * @see https://www.agid.gov.it/sites/default/files/repository_files/regole_tecniche/tabella_attributi_idp.pdf
  */

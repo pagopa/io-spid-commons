@@ -1,6 +1,8 @@
 import { isLeft, isRight, left } from "fp-ts/lib/Either";
+import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
 import * as nock from "nock";
-import { SPID_IDP_IDENTIFIERS } from "../../config";
+import { CIE_IDP_IDENTIFIERS, SPID_IDP_IDENTIFIERS } from "../../config";
+import cieIdpMetadata from "../__mocks__/cie-idp-metadata";
 import idpsMetadata from "../__mocks__/idps-metatata";
 import { fetchIdpsMetadata } from "../metadata";
 
@@ -56,5 +58,25 @@ describe("fetchIdpsMetadata", () => {
       SPID_IDP_IDENTIFIERS
     ).run();
     expect(isRight(result)).toBeTruthy();
+  });
+
+  it("should resolve with the fetched CIE IdP options", async () => {
+    const validCieMetadataPath = "/mocked-cie-path";
+    nock(mockedIdpsRegistryHost)
+      .get(validCieMetadataPath)
+      .reply(200, cieIdpMetadata);
+    const result = await fetchIdpsMetadata(
+      mockedIdpsRegistryHost + validCieMetadataPath,
+      CIE_IDP_IDENTIFIERS
+    ).run();
+    expect(isRight(result)).toBeTruthy();
+    expect(result.value).toHaveProperty("xx_servizicie_test", {
+      cert: expect.any(NonEmptyArray),
+      entityID:
+        "https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/POST/SSO",
+      entryPoint:
+        "https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/Redirect/SSO",
+      logoutUrl: ""
+    });
   });
 });

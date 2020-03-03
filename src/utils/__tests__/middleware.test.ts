@@ -1,10 +1,10 @@
 // tslint:disable-next-line: ordered-imports
-import { isLeft, isRight, right, left } from "fp-ts/lib/Either";
+import { isLeft, isRight, left, right } from "fp-ts/lib/Either";
 import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
 import { fromEither } from "fp-ts/lib/TaskEither";
 import { NonEmptyString } from "italia-ts-commons/lib/strings";
 import { SamlConfig } from "passport-saml";
-import { SPID_IDP_IDENTIFIERS } from "../../config";
+import { CIE_IDP_IDENTIFIERS, SPID_IDP_IDENTIFIERS } from "../../config";
 import { IDPEntityDescriptor } from "../../types/IDPEntityDescriptor";
 import * as metadata from "../metadata";
 import {
@@ -12,12 +12,14 @@ import {
   IServiceProviderConfig
 } from "../middleware";
 
-import getCieIpdOption from "../../providers/xx_servizicie_test";
 import getSpidTestIpdOption from "../../providers/xx_testenv2";
 
 const mockFetchIdpsMetadata = jest.spyOn(metadata, "fetchIdpsMetadata");
 
 const idpMetadataUrl = "http://ipd.metadata.example/metadata.xml";
+const cieMetadataUrl =
+  "https://idserver.servizicie.interno.gov.it:8443/idp/shibboleth";
+
 const serviceProviderConfig: IServiceProviderConfig = {
   IDPMetadataUrl: idpMetadataUrl,
   idpMetadataRefreshIntervalMillis: 120000,
@@ -38,7 +40,19 @@ const serviceProviderConfig: IServiceProviderConfig = {
     ],
     name: "Required attrs"
   },
+  spidCieUrl: cieMetadataUrl,
   spidTestEnvUrl: "https://spid-testenv2:8088"
+};
+
+const expectedCIEIdpMetadata: Record<string, IDPEntityDescriptor> = {
+  xx_servizicie_test: {
+    cert: (["CERT"] as unknown) as NonEmptyArray<NonEmptyString>,
+    entityID:
+      "https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/POST/SSO",
+    entryPoint:
+      "https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/Redirect/SSO",
+    logoutUrl: ""
+  }
 };
 
 describe("getSpidStrategyOptionsUpdater", () => {
@@ -57,9 +71,16 @@ describe("getSpidStrategyOptionsUpdater", () => {
         logoutUrl: "https://spid.intesa.it/logout"
       }
     };
-    mockFetchIdpsMetadata.mockImplementation(() => {
+    mockFetchIdpsMetadata.mockImplementationOnce(() => {
       return fromEither(
         right<Error, Record<string, IDPEntityDescriptor>>(expectedIdpMetadata)
+      );
+    });
+    mockFetchIdpsMetadata.mockImplementationOnce(() => {
+      return fromEither(
+        right<Error, Record<string, IDPEntityDescriptor>>(
+          expectedCIEIdpMetadata
+        )
       );
     });
 
@@ -82,11 +103,17 @@ describe("getSpidStrategyOptionsUpdater", () => {
       expectedSamlConfig,
       serviceProviderConfig
     )().run();
-    expect(mockFetchIdpsMetadata).toBeCalledWith(
+    expect(mockFetchIdpsMetadata).toBeCalledTimes(2);
+    expect(mockFetchIdpsMetadata).toHaveBeenNthCalledWith(
+      1,
       idpMetadataUrl,
       SPID_IDP_IDENTIFIERS
     );
-    expect(mockFetchIdpsMetadata).toBeCalledTimes(1);
+    expect(mockFetchIdpsMetadata).toHaveBeenNthCalledWith(
+      2,
+      cieMetadataUrl,
+      CIE_IDP_IDENTIFIERS
+    );
     expect(isRight(updatedSpidStrategyOption)).toBeTruthy();
     expect(updatedSpidStrategyOption.value).toHaveProperty(
       "sp",
@@ -94,27 +121,41 @@ describe("getSpidStrategyOptionsUpdater", () => {
     );
     expect(updatedSpidStrategyOption.value).toHaveProperty("idp", {
       ...expectedIdpMetadata,
-      xx_servizicie_test: getCieIpdOption(),
+      ...expectedCIEIdpMetadata,
       xx_testenv2: getSpidTestIpdOption(serviceProviderConfig.spidTestEnvUrl)
     });
   });
 
   it("should returns an error if fetch of remote idp metadata fail", async () => {
     const expectedFetchError = new Error("fetch Error");
-    mockFetchIdpsMetadata.mockImplementation(() => {
+    mockFetchIdpsMetadata.mockImplementationOnce(() => {
       return fromEither(
         left<Error, Record<string, IDPEntityDescriptor>>(expectedFetchError)
+      );
+    });
+    // tslint:disable-next-line: no-identical-functions
+    mockFetchIdpsMetadata.mockImplementationOnce(() => {
+      return fromEither(
+        right<Error, Record<string, IDPEntityDescriptor>>(
+          expectedCIEIdpMetadata
+        )
       );
     });
     const updatedSpidStrategyOption = await getSpidStrategyOptionsUpdater(
       {},
       serviceProviderConfig
     )().run();
-    expect(mockFetchIdpsMetadata).toBeCalledWith(
+    expect(mockFetchIdpsMetadata).toBeCalledTimes(2);
+    expect(mockFetchIdpsMetadata).toHaveBeenNthCalledWith(
+      1,
       idpMetadataUrl,
       SPID_IDP_IDENTIFIERS
     );
-    expect(mockFetchIdpsMetadata).toBeCalledTimes(1);
+    expect(mockFetchIdpsMetadata).toHaveBeenNthCalledWith(
+      2,
+      cieMetadataUrl,
+      CIE_IDP_IDENTIFIERS
+    );
     expect(isLeft(updatedSpidStrategyOption)).toBeTruthy();
     expect(updatedSpidStrategyOption.value).toEqual(expectedFetchError);
   });
