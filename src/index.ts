@@ -31,10 +31,10 @@ import {
 import {
   getAuthorizeRequestTamperer,
   getErrorCodeFromResponse,
+  getPreValidateResponse,
   getSamlIssuer,
   getSamlOptions,
-  getXmlFromSamlResponse,
-  preValidateResponse
+  getXmlFromSamlResponse
 } from "./utils/saml";
 import { getMetadataTamperer } from "./utils/saml";
 
@@ -151,7 +151,7 @@ export function withSpid(
         redisClient,
         authorizeRequestTamperer,
         metadataTamperer,
-        preValidateResponse
+        getPreValidateResponse(serviceProviderConfig.strictResponseValidation)
       );
     })
     .map(spidStrategy => {

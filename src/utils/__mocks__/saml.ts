@@ -1,4 +1,4 @@
-export const samlResponse = `<samlp:Response Destination="http://localhost:3000/acs" ID="_7080f453-78cb-4f57-9692-62dc8a5c23e8" InResponseTo="_2d2a89e99c7583e221b4" IssueInstant="2020-02-26T07:27:42Z" Version="2.0" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol">
+export const samlResponse = `<samlp:Response Destination="https://app-backend.dev.io.italia.it/assertionConsumerService" ID="_7080f453-78cb-4f57-9692-62dc8a5c23e8" InResponseTo="_2d2a89e99c7583e221b4" IssueInstant="2020-02-26T07:27:42Z" Version="2.0" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol">
 <saml:Issuer Format="urn:oasis:names:tc:SAML:2.0:nameid-format:entity">
     http://localhost:8080
 </saml:Issuer>
@@ -67,14 +67,14 @@ export const samlResponse = `<samlp:Response Destination="http://localhost:3000/
         </saml:NameID>
         <saml:SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer">
             <saml:SubjectConfirmationData InResponseTo="_2d2a89e99c7583e221b4" NotOnOrAfter="${new Date().getFullYear() +
-              1}-02-26T07:32:05Z" Recipient="http://localhost:3000/acs"/>
+              1}-02-26T07:32:05Z" Recipient="https://app-backend.dev.io.italia.it/assertionConsumerService"/>
         </saml:SubjectConfirmation>
     </saml:Subject>
     <saml:Conditions NotBefore="2020-02-26T07:27:42Z" NotOnOrAfter="${new Date().getFullYear() +
       1}-02-26T07:32:05Z">
         <saml:AudienceRestriction>
             <saml:Audience>
-                https://spid.agid.gov.it/cd
+              https://app-backend.dev.io.italia.it
             </saml:Audience>
         </saml:AudienceRestriction>
     </saml:Conditions>
@@ -132,3 +132,102 @@ export const samlRequest = `<?xml version="1.0"?>
         </saml:AuthnContextClassRef>
     </samlp:RequestedAuthnContext>
 </samlp:AuthnRequest>`;
+
+export const samlResponseCIE = `<?xml version="1.0" encoding="UTF-8"?>
+<saml2p:Response Destination="https://app-backend.dev.io.italia.it/assertionConsumerService" ID="_36e7b2c177afab6db4302732a68403cb" InResponseTo="_61395d807fb9fe6a869b" IssueInstant="2020-02-27T13:40:57.746Z" Version="2.0" 
+  xmlns:saml2p="urn:oasis:names:tc:SAML:2.0:protocol" 
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <saml2:Issuer xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion">https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/POST/SSO</saml2:Issuer>
+  <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+    <ds:SignedInfo>
+      <ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+      <ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/>
+      <ds:Reference URI="#_36e7b2c177afab6db4302732a68403cb">
+        <ds:Transforms>
+          <ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
+          <ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#">
+            <ec:InclusiveNamespaces PrefixList="xsd" 
+              xmlns:ec="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+          </ds:Transform>
+        </ds:Transforms>
+        <ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>
+        <ds:DigestValue>3UGuOlUuag/oPOIif31jpuIJT829Eab+2dSEDegDlmU=</ds:DigestValue>
+      </ds:Reference>
+    </ds:SignedInfo>
+    <ds:SignatureValue>
+AIa2vTA8uOKizFvCqNchj4Dby8eDOi5UaOEZYJ4NV0RorEj2wkSFbhX65FYLt68VUGY5YR1tqDfl d0ApvcdtkH4gucq2aCd1zTq8yk5dXp10IC49YdLXlDCRh3QcgulIDZhZs/K2nTEzrrfHC7dibYv/ vk/tY5AOih2jIqNslt1gxopuLREUTyG1NC7CcqfwhxCxxs1z5ngcN1D/cZv9sQT85lzwGCU65+5G ySdiSr0WzHEEcT1k9WnDwqW27i0tbCwC2NZ3xOHl0X7mKb35TzhdMpAz74ADnalk833EjZdVHu6x XdG5KqmjIW+mrddO71jDRXQ1eMrQBeCAfRQ0Mg==
+    </ds:SignatureValue>
+    <ds:KeyInfo>
+      <ds:X509Data>
+        <ds:X509Certificate>MIIDdTCCAl2gAwIBAgIUU79XEfveueyClDtLkqUlSPZ2o8owDQYJKoZIhvcNAQELBQAwLTErMCkG A1UEAwwiaWRzZXJ2ZXIuc2Vydml6aWNpZS5pbnRlcm5vLmdvdi5pdDAeFw0xODEwMTkwODM1MDVa Fw0zODEwMTkwODM1MDVaMC0xKzApBgNVBAMMImlkc2VydmVyLnNlcnZpemljaWUuaW50ZXJuby5n b3YuaXQwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDHraj3iOTCIILTlOzicSEuFt03 kKvQDqGWRd5o7s1W7SP2EtcTmg3xron/sbrLEL/eMUQV/Biz6J4pEGoFpMZQHGxOVypmO7Nc8pkF ot7yUTApr6Ikuy4cUtbx0g5fkQLNb3upIg0Vg1jSnRXEvUCygr/9EeKCUOi/2ptmOVSLad+dT7Ti RsZTwY3FvRWcleDfyYwcIMgz5dLSNLMZqwzQZK1DzvWeD6aGtBKCYPRftacHoESD+6bhukHZ6w95 foRMJLOaBpkp+XfugFQioYvrM0AB1YQZ5DCQRhhc8jejwdY+bOB3eZ1lJY7Oannfu6XPW2fcknel yPt7PGf22rNfAgMBAAGjgYwwgYkwHQYDVR0OBBYEFK3Ah+Do3/zB9XjZ66i4biDpUEbAMGgGA1Ud EQRhMF+CImlkc2VydmVyLnNlcnZpemljaWUuaW50ZXJuby5nb3YuaXSGOWh0dHBzOi8vaWRzZXJ2 ZXIuc2Vydml6aWNpZS5pbnRlcm5vLmdvdi5pdC9pZHAvc2hpYmJvbGV0aDANBgkqhkiG9w0BAQsF AAOCAQEAVtpn/s+lYVf42pAtdgJnGTaSIy8KxHeZobKNYNFEY/XTaZEt9QeV5efUMBVVhxKTTHN0 046DR96WFYXs4PJ9Fpyq6Hmy3k/oUdmHJ1c2bwWF/nZ82CwOO081Yg0GBcfPEmKLUGOBK8T55ncW +RSZadvWTyhTtQhLUtLKcWyzKB5aS3kEE5LSzR8sw3owln9P41Mz+QtL3WeNESRHW0qoQkFotYXX W6Rvh69+GyzJLxvq2qd7D1qoJgOMrarshBKKPk+ABaLYoEf/cru4e0RDIp2mD0jkGOGDkn9XUl+3 ddALq/osTki6CEawkhiZEo6ABEAjEWNkH9W3/ZzvJnWo6Q==</ds:X509Certificate>
+      </ds:X509Data>
+    </ds:KeyInfo>
+  </ds:Signature>
+  <saml2p:Status>
+    <saml2p:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/>
+  </saml2p:Status>
+  <saml2:Assertion ID="_6aa64187239cb0852096c42c33e176ca" IssueInstant="2020-02-27T13:40:57.746Z" Version="2.0" 
+    xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" 
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <saml2:Issuer>https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/POST/SSO</saml2:Issuer>
+    <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+      <ds:SignedInfo>
+        <ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+        <ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/>
+        <ds:Reference URI="#_6aa64187239cb0852096c42c33e176ca">
+          <ds:Transforms>
+            <ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
+            <ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#">
+              <ec:InclusiveNamespaces PrefixList="xsd" 
+                xmlns:ec="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+            </ds:Transform>
+          </ds:Transforms>
+          <ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>
+          <ds:DigestValue>5nSMW/zHmyhaVE4vWyxZvHMBDQWgktouXeWl9fKe504=</ds:DigestValue>
+        </ds:Reference>
+      </ds:SignedInfo>
+      <ds:SignatureValue>
+UJ23xMKOYhCcRVunnDgor2WLqHEgYeyaAhHr16+kkO6poPog2a9PoiqGUU0Dg+YMvHRJVq0h0sKz M1zeVN1eR3JHIB8HAYtWDDxqTe/rTZcQ1lPWEA+bGqUlLTVc2ukvC4NSB17FT1j7VDIBL3UcdlQc SvR7W6Xw/D+J9Row4iX+rmsJRTy0I+8xj3FdRxMRGR+mSPhpZ1NbINMcSwOV9b+NXbQKqbHhqfH7 SJTGbS/RBZTzFX42jmrAM57TCRG/hwyt6TZyCY29n4dsa0xHGD8sLOvQZ5Zk7qB0HD2DSp31Fjpw zyklYfmGoXrkjdUNnUVyWck+cQXHaXJyokaTNA==
+      </ds:SignatureValue>
+      <ds:KeyInfo>
+        <ds:X509Data>
+          <ds:X509Certificate>MIIDdTCCAl2gAwIBAgIUU79XEfveueyClDtLkqUlSPZ2o8owDQYJKoZIhvcNAQELBQAwLTErMCkG A1UEAwwiaWRzZXJ2ZXIuc2Vydml6aWNpZS5pbnRlcm5vLmdvdi5pdDAeFw0xODEwMTkwODM1MDVa Fw0zODEwMTkwODM1MDVaMC0xKzApBgNVBAMMImlkc2VydmVyLnNlcnZpemljaWUuaW50ZXJuby5n b3YuaXQwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDHraj3iOTCIILTlOzicSEuFt03 kKvQDqGWRd5o7s1W7SP2EtcTmg3xron/sbrLEL/eMUQV/Biz6J4pEGoFpMZQHGxOVypmO7Nc8pkF ot7yUTApr6Ikuy4cUtbx0g5fkQLNb3upIg0Vg1jSnRXEvUCygr/9EeKCUOi/2ptmOVSLad+dT7Ti RsZTwY3FvRWcleDfyYwcIMgz5dLSNLMZqwzQZK1DzvWeD6aGtBKCYPRftacHoESD+6bhukHZ6w95 foRMJLOaBpkp+XfugFQioYvrM0AB1YQZ5DCQRhhc8jejwdY+bOB3eZ1lJY7Oannfu6XPW2fcknel yPt7PGf22rNfAgMBAAGjgYwwgYkwHQYDVR0OBBYEFK3Ah+Do3/zB9XjZ66i4biDpUEbAMGgGA1Ud EQRhMF+CImlkc2VydmVyLnNlcnZpemljaWUuaW50ZXJuby5nb3YuaXSGOWh0dHBzOi8vaWRzZXJ2 ZXIuc2Vydml6aWNpZS5pbnRlcm5vLmdvdi5pdC9pZHAvc2hpYmJvbGV0aDANBgkqhkiG9w0BAQsF AAOCAQEAVtpn/s+lYVf42pAtdgJnGTaSIy8KxHeZobKNYNFEY/XTaZEt9QeV5efUMBVVhxKTTHN0 046DR96WFYXs4PJ9Fpyq6Hmy3k/oUdmHJ1c2bwWF/nZ82CwOO081Yg0GBcfPEmKLUGOBK8T55ncW +RSZadvWTyhTtQhLUtLKcWyzKB5aS3kEE5LSzR8sw3owln9P41Mz+QtL3WeNESRHW0qoQkFotYXX W6Rvh69+GyzJLxvq2qd7D1qoJgOMrarshBKKPk+ABaLYoEf/cru4e0RDIp2mD0jkGOGDkn9XUl+3 ddALq/osTki6CEawkhiZEo6ABEAjEWNkH9W3/ZzvJnWo6Q==</ds:X509Certificate>
+        </ds:X509Data>
+      </ds:KeyInfo>
+    </ds:Signature>
+    <saml2:Subject>
+      <saml2:NameID Format="urn:oasis:names:tc:SAML:2.0:nameid-format:transient" NameQualifier="https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/POST/SSO" SPNameQualifier="https://app-backend.dev.io.italia.it">AAdzZWNyZXQxqDU6XhTO1MGlMAoXjWFIOcPfK4AhIPsnBAoTNelku/jA7/XaogQJhOrgxCiAIqavL2GUQqQ7VMYPRryyteifD34fsyrHmbPNr1Tz2YJe8wgENUlDvaY31unC/P1kwqTZ17jQYw3qoVZs4neWi9ZUo9j8BoiDAHdoyOOoTiVbDA==</saml2:NameID>
+      <saml2:SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer">
+        <saml2:SubjectConfirmationData Address="85.44.51.73" InResponseTo="_61395d807fb9fe6a869b" NotOnOrAfter="${new Date().getFullYear() +
+          1}-02-26T07:32:05Z" Recipient="https://app-backend.dev.io.italia.it/assertionConsumerService"/>
+      </saml2:SubjectConfirmation>
+    </saml2:Subject>
+    <saml2:Conditions NotBefore="2020-02-27T13:40:57.746Z" NotOnOrAfter="${new Date().getFullYear() +
+      1}-02-26T07:32:05Z">
+      <saml2:AudienceRestriction>
+        <saml2:Audience>https://app-backend.dev.io.italia.it</saml2:Audience>
+      </saml2:AudienceRestriction>
+    </saml2:Conditions>
+    <saml2:AuthnStatement AuthnInstant="2020-02-27T13:40:50.087Z" SessionIndex="_ce30d320de8285858cc8f6383750b09e">
+      <saml2:SubjectLocality Address="85.44.51.73"/>
+      <saml2:AuthnContext>
+        <saml2:AuthnContextClassRef>https://www.spid.gov.it/SpidL3</saml2:AuthnContextClassRef>
+      </saml2:AuthnContext>
+    </saml2:AuthnStatement>
+    <saml2:AttributeStatement>
+      <saml2:Attribute FriendlyName="Data di Nascita" Name="dateOfBirth" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic">
+        <saml2:AttributeValue xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="xsd:string">1964-12-30</saml2:AttributeValue>
+      </saml2:Attribute>
+      <saml2:Attribute FriendlyName="Codice Fiscale" Name="fiscalNumber" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic">
+        <saml2:AttributeValue xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="xsd:string">TINIT-RSSBNC64T70G677R</saml2:AttributeValue>
+      </saml2:Attribute>
+      <saml2:Attribute FriendlyName="Nome" Name="name" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic">
+        <saml2:AttributeValue xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="xsd:string">BIANCA</saml2:AttributeValue>
+      </saml2:Attribute>
+      <saml2:Attribute FriendlyName="Cognome" Name="familyName" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:basic">
+        <saml2:AttributeValue xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="xsd:string">ROSSI</saml2:AttributeValue>
+      </saml2:Attribute>
+    </saml2:AttributeStatement>
+  </saml2:Assertion>
+</saml2p:Response>
+`;

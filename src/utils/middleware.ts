@@ -35,7 +35,13 @@ export interface IServiceProviderConfig {
   publicCert: string;
   idpMetadataRefreshIntervalMillis: number;
   spidValidatorUrl?: string;
+  strictResponseValidation?: StrictResponseValidationOptions;
 }
+
+export type StrictResponseValidationOptions = Record<
+  string,
+  boolean | undefined
+>;
 
 export interface ISpidStrategyOptions {
   idp: { [key: string]: IDPEntityDescriptor | undefined };

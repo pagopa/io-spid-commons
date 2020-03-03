@@ -11,6 +11,7 @@ import {
   Either,
   fromOption,
   fromPredicate,
+  left,
   right,
   toError
 } from "fp-ts/lib/Either";
@@ -47,7 +48,8 @@ import { logger } from "./logger";
 import {
   getSpidStrategyOption,
   IServiceProviderConfig,
-  ISpidStrategyOptions
+  ISpidStrategyOptions,
+  StrictResponseValidationOptions
 } from "./middleware";
 
 export type SamlAttributeT = keyof typeof SPID_USER_ATTRIBUTES;
@@ -953,7 +955,10 @@ const assertionValidation = (
   );
 };
 
-export const preValidateResponse: PreValidateResponseT = (
+export const getPreValidateResponse = (
+  strictValidationOptions?: StrictResponseValidationOptions
+  // tslint:disable-next-line: no-big-function
+): PreValidateResponseT => (
   samlConfig,
   body,
   extendedCacheProvider,
@@ -965,6 +970,10 @@ export const preValidateResponse: PreValidateResponseT = (
     throw new Error("Empty SAML response");
   }
   const doc = maybeDoc.value;
+
+  const hasStrictValidation = fromNullable(strictValidationOptions)
+    .chain(_ => getSamlIssuer(doc).mapNullable(issuer => _[issuer]))
+    .getOrElse(false);
 
   fromEitherToTaskEither(
     fromOption(new Error("Missing Reponse element inside SAML Response"))(
@@ -1066,7 +1075,7 @@ export const preValidateResponse: PreValidateResponseT = (
     .chain(_ =>
       extendedCacheProvider
         .get(_.InResponseTo)
-        .map(SAMLResponseCache => ({ ..._, SAMLResponseCache }))
+        .map(SAMLRequestCache => ({ ..._, SAMLRequestCache }))
     )
     .chain(_ =>
       fromEitherToTaskEither(
@@ -1074,7 +1083,7 @@ export const preValidateResponse: PreValidateResponseT = (
           new Error("An error occurs parsing the cached SAML Request")
         )(
           optionTryCatch(() =>
-            new DOMParser().parseFromString(_.SAMLResponseCache.RequestXML)
+            new DOMParser().parseFromString(_.SAMLRequestCache.RequestXML)
           )
         )
       ).map(Request => ({ ..._, Request }))
@@ -1175,6 +1184,12 @@ export const preValidateResponse: PreValidateResponseT = (
         )
       )
         .chain(Attributes => {
+          if (!hasStrictValidation) {
+            // Skip Attribute validation if IDP has non-strict validation option
+            return fromEitherToTaskEither(
+              right<Error, HTMLCollectionOf<Element>>(Attributes)
+            );
+          }
           const missingAttributes = difference(setoidString)(
             // tslint:disable-next-line: no-any
             (samlConfig as any).attributes?.attributes?.attributes || [
@@ -1202,25 +1217,23 @@ export const preValidateResponse: PreValidateResponseT = (
     )
     .chain(_ =>
       fromEitherToTaskEither(
-        validateIssuer(_.Response, _.SAMLResponseCache.idpIssuer).chain(
-          Issuer =>
-            fromOption("Format missing")(
-              fromNullable(Issuer.getAttribute("Format"))
-            ).fold(
-              () => right(_),
-              _1 =>
-                fromPredicate(
-                  FormatValue => !FormatValue || FormatValue === ISSUER_FORMAT,
-                  () =>
-                    new Error("Format attribute of Issuer element is invalid")
-                )(_1)
-            )
+        validateIssuer(_.Response, _.SAMLRequestCache.idpIssuer).chain(Issuer =>
+          fromOption("Format missing")(
+            fromNullable(Issuer.getAttribute("Format"))
+          ).fold(
+            () => right(_),
+            _1 =>
+              fromPredicate(
+                FormatValue => !FormatValue || FormatValue === ISSUER_FORMAT,
+                () => new Error("Format attribute of Issuer element is invalid")
+              )(_1)
+          )
         )
       ).map(() => _)
     )
     .chain(_ =>
       fromEitherToTaskEither(
-        validateIssuer(_.Assertion, _.SAMLResponseCache.idpIssuer).chain(
+        validateIssuer(_.Assertion, _.SAMLRequestCache.idpIssuer).chain(
           Issuer =>
             NonEmptyString.decode(Issuer.getAttribute("Format"))
               .mapLeft(
@@ -1235,6 +1248,12 @@ export const preValidateResponse: PreValidateResponseT = (
                   () =>
                     new Error("Format attribute of Issuer element is invalid")
                 )
+              )
+              .fold(
+                err =>
+                  // Skip Issuer Format validation if IDP has non-strict validation option
+                  !hasStrictValidation ? right(_) : left(err),
+                _1 => right(_)
               )
         )
       ).map(() => _)
