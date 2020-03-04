@@ -148,31 +148,31 @@ export function fetchIdpsMetadata(
     .chain(
       fromPredicate(
         p => p.status >= 200 && p.status < 300,
-        () => new Error("Error fetching remote metadata")
+        () => {
+          logger.warn("Error fetching remote metadata for %s", idpMetadataUrl);
+          return new Error("Error fetching remote metadata");
+        }
       )
     )
     .chain(p => tryCatch(() => p.text(), toError))
     .chain(idpMetadataXML => {
-      logger.info("Parsing SPID metadata...");
+      logger.info("Parsing SPID metadata for %s", idpMetadataUrl);
       return fromEither(parseIdpMetadata(idpMetadataXML));
     })
     .chain(
       fromPredicate(
         idpMetadata => idpMetadata.length > 0,
         () => {
-          logger.error(
-            "No SPID metadata found from the url: %s",
-            idpMetadataUrl
-          );
+          logger.error("No SPID metadata found for %s", idpMetadataUrl);
           return new Error("No SPID metadata found");
         }
       )
     )
     .map(idpMetadata => {
-      if (idpMetadata.length < Object.keys(idpIds).length) {
-        logger.warn("Missing SPID metadata on [%s]", idpMetadataUrl);
+      if (!idpMetadata.length) {
+        logger.warn("Missing SPID metadata on %s", idpMetadataUrl);
       }
-      logger.info("Configuring IdPs...");
+      logger.info("Configuring IdPs for %s", idpMetadataUrl);
       return mapIpdMetadata(idpMetadata, idpIds);
     });
 }
