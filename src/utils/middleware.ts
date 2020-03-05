@@ -8,7 +8,6 @@ import { NonEmptyString } from "italia-ts-commons/lib/strings";
 import { Profile, SamlConfig, VerifiedCallback } from "passport-saml";
 import { RedisClient } from "redis";
 import { CIE_IDP_IDENTIFIERS, SPID_IDP_IDENTIFIERS } from "../config";
-import getSpidTestIpdOption from "../providers/xx_testenv2";
 import {
   PreValidateResponseT,
   SpidStrategy,
@@ -24,8 +23,9 @@ export interface IServiceProviderConfig {
     attributes: ReadonlyArray<SamlAttributeT>;
     name: string;
   };
-  spidTestEnvUrl: string;
-  spidCieUrl: string;
+  spidCieUrl?: string;
+  spidTestEnvUrl?: string;
+  spidValidatorUrl?: string;
   IDPMetadataUrl: string;
   organization: {
     URL: string;
@@ -34,7 +34,6 @@ export interface IServiceProviderConfig {
   };
   publicCert: string;
   idpMetadataRefreshIntervalMillis: number;
-  spidValidatorUrl?: string;
   strictResponseValidation?: StrictResponseValidationOptions;
 }
 
@@ -78,9 +77,28 @@ export const getSpidStrategyOptionsUpdater = (
           ]
         : []
     )
-    .concat([
-      fetchIdpsMetadata(serviceProviderConfig.spidCieUrl, CIE_IDP_IDENTIFIERS)
-    ]);
+    .concat(
+      NonEmptyString.is(serviceProviderConfig.spidCieUrl)
+        ? [
+            fetchIdpsMetadata(
+              serviceProviderConfig.spidCieUrl,
+              CIE_IDP_IDENTIFIERS
+            )
+          ]
+        : []
+    )
+    .concat(
+      NonEmptyString.is(serviceProviderConfig.spidTestEnvUrl)
+        ? [
+            fetchIdpsMetadata(
+              `${serviceProviderConfig.spidTestEnvUrl}/metadata`,
+              {
+                [serviceProviderConfig.spidTestEnvUrl]: "xx_testenv2"
+              }
+            )
+          ]
+        : []
+    );
   return array
     .sequence(taskEither)(idpOptionsTasks)
     .map(idpOptionsRecords =>
@@ -89,12 +107,7 @@ export const getSpidStrategyOptionsUpdater = (
     .map(idpOptionsRecord => {
       logSamlCertExpiration(serviceProviderConfig.publicCert);
       return {
-        idp: {
-          ...idpOptionsRecord,
-          xx_testenv2: getSpidTestIpdOption(
-            serviceProviderConfig.spidTestEnvUrl
-          )
-        },
+        idp: idpOptionsRecord,
         sp: {
           ...samlConfig,
           attributes: {

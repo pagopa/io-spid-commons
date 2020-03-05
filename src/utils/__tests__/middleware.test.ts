@@ -12,13 +12,12 @@ import {
   IServiceProviderConfig
 } from "../middleware";
 
-import getSpidTestIpdOption from "../../providers/xx_testenv2";
-
 const mockFetchIdpsMetadata = jest.spyOn(metadata, "fetchIdpsMetadata");
 
 const idpMetadataUrl = "http://ipd.metadata.example/metadata.xml";
 const cieMetadataUrl =
   "https://idserver.servizicie.interno.gov.it:8443/idp/shibboleth";
+const spidTestEnvUrl = "https://spid-testenv2:8088";
 
 const serviceProviderConfig: IServiceProviderConfig = {
   IDPMetadataUrl: idpMetadataUrl,
@@ -41,7 +40,21 @@ const serviceProviderConfig: IServiceProviderConfig = {
     name: "Required attrs"
   },
   spidCieUrl: cieMetadataUrl,
-  spidTestEnvUrl: "https://spid-testenv2:8088"
+  spidTestEnvUrl
+};
+const expectedSamlConfig: SamlConfig = {
+  callbackUrl: "http://localhost:3000/callback",
+  entryPoint: "http://localhost:3000/acs",
+  forceAuthn: true
+};
+
+const expectedIdpMetadata: Record<string, IDPEntityDescriptor> = {
+  intesaid: {
+    cert: (["CERT"] as unknown) as NonEmptyArray<NonEmptyString>,
+    entityID: spidTestEnvUrl,
+    entryPoint: "https://spid.intesa.it/acs",
+    logoutUrl: "https://spid.intesa.it/logout"
+  }
 };
 
 const expectedCIEIdpMetadata: Record<string, IDPEntityDescriptor> = {
@@ -55,6 +68,15 @@ const expectedCIEIdpMetadata: Record<string, IDPEntityDescriptor> = {
   }
 };
 
+const expectedTestenvIdpMetadata: Record<string, IDPEntityDescriptor> = {
+  xx_testenv2: {
+    cert: (["CERT"] as unknown) as NonEmptyArray<NonEmptyString>,
+    entityID: "https://spid-testenv.dev.io.italia.it",
+    entryPoint: "https://spid-testenv.dev.io.italia.it/sso",
+    logoutUrl: "https://spid-testenv.dev.io.italia.it/slo"
+  }
+};
+
 describe("getSpidStrategyOptionsUpdater", () => {
   beforeEach(() => {
     jest.resetAllMocks();
@@ -63,14 +85,6 @@ describe("getSpidStrategyOptionsUpdater", () => {
     jest.restoreAllMocks();
   });
   it("should returns updated spid options from remote idps metadata", async () => {
-    const expectedIdpMetadata: Record<string, IDPEntityDescriptor> = {
-      intesaid: {
-        cert: (["CERT"] as unknown) as NonEmptyArray<NonEmptyString>,
-        entityID: "https://spid.intesa.it",
-        entryPoint: "https://spid.intesa.it/acs",
-        logoutUrl: "https://spid.intesa.it/logout"
-      }
-    };
     mockFetchIdpsMetadata.mockImplementationOnce(() => {
       return fromEither(
         right<Error, Record<string, IDPEntityDescriptor>>(expectedIdpMetadata)
@@ -83,12 +97,14 @@ describe("getSpidStrategyOptionsUpdater", () => {
         )
       );
     });
+    mockFetchIdpsMetadata.mockImplementationOnce(() => {
+      return fromEither(
+        right<Error, Record<string, IDPEntityDescriptor>>(
+          expectedTestenvIdpMetadata
+        )
+      );
+    });
 
-    const expectedSamlConfig: SamlConfig = {
-      callbackUrl: "http://localhost:3000/callback",
-      entryPoint: "http://localhost:3000/acs",
-      forceAuthn: true
-    };
     const expectedSPProperty = {
       ...expectedSamlConfig,
       attributes: {
@@ -103,7 +119,7 @@ describe("getSpidStrategyOptionsUpdater", () => {
       expectedSamlConfig,
       serviceProviderConfig
     )().run();
-    expect(mockFetchIdpsMetadata).toBeCalledTimes(2);
+    expect(mockFetchIdpsMetadata).toBeCalledTimes(3);
     expect(mockFetchIdpsMetadata).toHaveBeenNthCalledWith(
       1,
       idpMetadataUrl,
@@ -114,6 +130,13 @@ describe("getSpidStrategyOptionsUpdater", () => {
       cieMetadataUrl,
       CIE_IDP_IDENTIFIERS
     );
+    expect(mockFetchIdpsMetadata).toHaveBeenNthCalledWith(
+      3,
+      `${spidTestEnvUrl}/metadata`,
+      {
+        [spidTestEnvUrl]: "xx_testenv2"
+      }
+    );
     expect(isRight(updatedSpidStrategyOption)).toBeTruthy();
     expect(updatedSpidStrategyOption.value).toHaveProperty(
       "sp",
@@ -122,7 +145,7 @@ describe("getSpidStrategyOptionsUpdater", () => {
     expect(updatedSpidStrategyOption.value).toHaveProperty("idp", {
       ...expectedIdpMetadata,
       ...expectedCIEIdpMetadata,
-      xx_testenv2: getSpidTestIpdOption(serviceProviderConfig.spidTestEnvUrl)
+      ...expectedTestenvIdpMetadata
     });
   });
 
@@ -141,11 +164,19 @@ describe("getSpidStrategyOptionsUpdater", () => {
         )
       );
     });
+    // tslint:disable-next-line: no-identical-functions
+    mockFetchIdpsMetadata.mockImplementationOnce(() => {
+      return fromEither(
+        right<Error, Record<string, IDPEntityDescriptor>>(
+          expectedTestenvIdpMetadata
+        )
+      );
+    });
     const updatedSpidStrategyOption = await getSpidStrategyOptionsUpdater(
       {},
       serviceProviderConfig
     )().run();
-    expect(mockFetchIdpsMetadata).toBeCalledTimes(2);
+    expect(mockFetchIdpsMetadata).toBeCalledTimes(3);
     expect(mockFetchIdpsMetadata).toHaveBeenNthCalledWith(
       1,
       idpMetadataUrl,
@@ -156,7 +187,53 @@ describe("getSpidStrategyOptionsUpdater", () => {
       cieMetadataUrl,
       CIE_IDP_IDENTIFIERS
     );
+    expect(mockFetchIdpsMetadata).toHaveBeenNthCalledWith(
+      3,
+      `${spidTestEnvUrl}/metadata`,
+      {
+        [spidTestEnvUrl]: "xx_testenv2"
+      }
+    );
     expect(isLeft(updatedSpidStrategyOption)).toBeTruthy();
     expect(updatedSpidStrategyOption.value).toEqual(expectedFetchError);
+  });
+
+  it("should call fetchIdpsMetadata only one time if are missing CIE and TestEnv urls", async () => {
+    const serviceProviderConfigWithoutOptional: IServiceProviderConfig = {
+      IDPMetadataUrl: idpMetadataUrl,
+      idpMetadataRefreshIntervalMillis: 120000,
+      organization: {
+        URL: "https://example.com",
+        displayName: "Organization display name",
+        name: "Organization name"
+      },
+      publicCert: "",
+      requiredAttributes: {
+        attributes: [
+          "address",
+          "email",
+          "name",
+          "familyName",
+          "fiscalNumber",
+          "mobilePhone"
+        ],
+        name: "Required attrs"
+      }
+    };
+    // tslint:disable-next-line: no-identical-functions
+    mockFetchIdpsMetadata.mockImplementationOnce(() => {
+      return fromEither(
+        right<Error, Record<string, IDPEntityDescriptor>>(expectedIdpMetadata)
+      );
+    });
+    await getSpidStrategyOptionsUpdater(
+      expectedSamlConfig,
+      serviceProviderConfigWithoutOptional
+    )().run();
+    expect(mockFetchIdpsMetadata).toBeCalledTimes(1);
+    expect(mockFetchIdpsMetadata).toBeCalledWith(
+      idpMetadataUrl,
+      SPID_IDP_IDENTIFIERS
+    );
   });
 });
