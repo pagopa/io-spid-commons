@@ -12,13 +12,12 @@ import {
   IServiceProviderConfig
 } from "../middleware";
 
-import getSpidTestIpdOption from "../../providers/xx_testenv2";
-
 const mockFetchIdpsMetadata = jest.spyOn(metadata, "fetchIdpsMetadata");
 
 const idpMetadataUrl = "http://ipd.metadata.example/metadata.xml";
 const cieMetadataUrl =
   "https://idserver.servizicie.interno.gov.it:8443/idp/shibboleth";
+const spidTestEnvUrl = "https://spid-testenv2:8088";
 
 const serviceProviderConfig: IServiceProviderConfig = {
   IDPMetadataUrl: idpMetadataUrl,
@@ -41,7 +40,7 @@ const serviceProviderConfig: IServiceProviderConfig = {
     name: "Required attrs"
   },
   spidCieUrl: cieMetadataUrl,
-  spidTestEnvUrl: "https://spid-testenv2:8088"
+  spidTestEnvUrl
 };
 
 const expectedCIEIdpMetadata: Record<string, IDPEntityDescriptor> = {
@@ -52,6 +51,15 @@ const expectedCIEIdpMetadata: Record<string, IDPEntityDescriptor> = {
     entryPoint:
       "https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/Redirect/SSO",
     logoutUrl: ""
+  }
+};
+
+const expectedTestenvIdpMetadata: Record<string, IDPEntityDescriptor> = {
+  xx_testenv2: {
+    cert: (["CERT"] as unknown) as NonEmptyArray<NonEmptyString>,
+    entityID: "https://spid-testenv.dev.io.italia.it",
+    entryPoint: "https://spid-testenv.dev.io.italia.it/sso",
+    logoutUrl: "https://spid-testenv.dev.io.italia.it/slo"
   }
 };
 
@@ -66,7 +74,7 @@ describe("getSpidStrategyOptionsUpdater", () => {
     const expectedIdpMetadata: Record<string, IDPEntityDescriptor> = {
       intesaid: {
         cert: (["CERT"] as unknown) as NonEmptyArray<NonEmptyString>,
-        entityID: "https://spid.intesa.it",
+        entityID: spidTestEnvUrl,
         entryPoint: "https://spid.intesa.it/acs",
         logoutUrl: "https://spid.intesa.it/logout"
       }
@@ -80,6 +88,13 @@ describe("getSpidStrategyOptionsUpdater", () => {
       return fromEither(
         right<Error, Record<string, IDPEntityDescriptor>>(
           expectedCIEIdpMetadata
+        )
+      );
+    });
+    mockFetchIdpsMetadata.mockImplementationOnce(() => {
+      return fromEither(
+        right<Error, Record<string, IDPEntityDescriptor>>(
+          expectedTestenvIdpMetadata
         )
       );
     });
@@ -103,7 +118,7 @@ describe("getSpidStrategyOptionsUpdater", () => {
       expectedSamlConfig,
       serviceProviderConfig
     )().run();
-    expect(mockFetchIdpsMetadata).toBeCalledTimes(2);
+    expect(mockFetchIdpsMetadata).toBeCalledTimes(3);
     expect(mockFetchIdpsMetadata).toHaveBeenNthCalledWith(
       1,
       idpMetadataUrl,
@@ -114,6 +129,13 @@ describe("getSpidStrategyOptionsUpdater", () => {
       cieMetadataUrl,
       CIE_IDP_IDENTIFIERS
     );
+    expect(mockFetchIdpsMetadata).toHaveBeenNthCalledWith(
+      3,
+      `${spidTestEnvUrl}/metadata`,
+      {
+        [spidTestEnvUrl]: "xx_testenv2"
+      }
+    );
     expect(isRight(updatedSpidStrategyOption)).toBeTruthy();
     expect(updatedSpidStrategyOption.value).toHaveProperty(
       "sp",
@@ -122,7 +144,7 @@ describe("getSpidStrategyOptionsUpdater", () => {
     expect(updatedSpidStrategyOption.value).toHaveProperty("idp", {
       ...expectedIdpMetadata,
       ...expectedCIEIdpMetadata,
-      xx_testenv2: getSpidTestIpdOption(serviceProviderConfig.spidTestEnvUrl)
+      ...expectedTestenvIdpMetadata
     });
   });
 
@@ -141,11 +163,19 @@ describe("getSpidStrategyOptionsUpdater", () => {
         )
       );
     });
+    // tslint:disable-next-line: no-identical-functions
+    mockFetchIdpsMetadata.mockImplementationOnce(() => {
+      return fromEither(
+        right<Error, Record<string, IDPEntityDescriptor>>(
+          expectedTestenvIdpMetadata
+        )
+      );
+    });
     const updatedSpidStrategyOption = await getSpidStrategyOptionsUpdater(
       {},
       serviceProviderConfig
     )().run();
-    expect(mockFetchIdpsMetadata).toBeCalledTimes(2);
+    expect(mockFetchIdpsMetadata).toBeCalledTimes(3);
     expect(mockFetchIdpsMetadata).toHaveBeenNthCalledWith(
       1,
       idpMetadataUrl,
@@ -155,6 +185,13 @@ describe("getSpidStrategyOptionsUpdater", () => {
       2,
       cieMetadataUrl,
       CIE_IDP_IDENTIFIERS
+    );
+    expect(mockFetchIdpsMetadata).toHaveBeenNthCalledWith(
+      3,
+      `${spidTestEnvUrl}/metadata`,
+      {
+        [spidTestEnvUrl]: "xx_testenv2"
+      }
     );
     expect(isLeft(updatedSpidStrategyOption)).toBeTruthy();
     expect(updatedSpidStrategyOption.value).toEqual(expectedFetchError);

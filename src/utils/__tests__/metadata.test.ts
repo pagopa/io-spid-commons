@@ -4,9 +4,11 @@ import * as nock from "nock";
 import { CIE_IDP_IDENTIFIERS, SPID_IDP_IDENTIFIERS } from "../../config";
 import cieIdpMetadata from "../__mocks__/cie-idp-metadata";
 import idpsMetadata from "../__mocks__/idps-metatata";
+import testenvIdpMetadata from "../__mocks__/testenv-idp-metadata";
 import { fetchIdpsMetadata } from "../metadata";
 
 const mockedIdpsRegistryHost = "https://mocked.registry.net";
+const expectedTestenvEntityId = "https://spid-testenv.dev.io.italia.it";
 
 describe("fetchIdpsMetadata", () => {
   it("should reject if the IdP metadata are fetched from a wrong path", async () => {
@@ -77,6 +79,26 @@ describe("fetchIdpsMetadata", () => {
       entryPoint:
         "https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/Redirect/SSO",
       logoutUrl: ""
+    });
+  });
+
+  it("should resolve with the fetched TestEnv IdP options", async () => {
+    const validTestenvMetadataPath = "/mocked-testenv-path";
+    nock(mockedIdpsRegistryHost)
+      .get(validTestenvMetadataPath)
+      .reply(200, testenvIdpMetadata);
+    const result = await fetchIdpsMetadata(
+      mockedIdpsRegistryHost + validTestenvMetadataPath,
+      {
+        [expectedTestenvEntityId]: "xx_testenv2"
+      }
+    ).run();
+    expect(isRight(result)).toBeTruthy();
+    expect(result.value).toHaveProperty("xx_testenv2", {
+      cert: expect.any(NonEmptyArray),
+      entityID: expectedTestenvEntityId,
+      entryPoint: "https://spid-testenv.dev.io.italia.it/sso",
+      logoutUrl: "https://spid-testenv.dev.io.italia.it/slo"
     });
   });
 });

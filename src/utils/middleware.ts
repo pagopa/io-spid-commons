@@ -8,7 +8,6 @@ import { NonEmptyString } from "italia-ts-commons/lib/strings";
 import { Profile, SamlConfig, VerifiedCallback } from "passport-saml";
 import { RedisClient } from "redis";
 import { CIE_IDP_IDENTIFIERS, SPID_IDP_IDENTIFIERS } from "../config";
-import getSpidTestIpdOption from "../providers/xx_testenv2";
 import {
   PreValidateResponseT,
   SpidStrategy,
@@ -80,6 +79,11 @@ export const getSpidStrategyOptionsUpdater = (
     )
     .concat([
       fetchIdpsMetadata(serviceProviderConfig.spidCieUrl, CIE_IDP_IDENTIFIERS)
+    ])
+    .concat([
+      fetchIdpsMetadata(`${serviceProviderConfig.spidTestEnvUrl}/metadata`, {
+        [serviceProviderConfig.spidTestEnvUrl]: "xx_testenv2"
+      })
     ]);
   return array
     .sequence(taskEither)(idpOptionsTasks)
@@ -89,12 +93,7 @@ export const getSpidStrategyOptionsUpdater = (
     .map(idpOptionsRecord => {
       logSamlCertExpiration(serviceProviderConfig.publicCert);
       return {
-        idp: {
-          ...idpOptionsRecord,
-          xx_testenv2: getSpidTestIpdOption(
-            serviceProviderConfig.spidTestEnvUrl
-          )
-        },
+        idp: idpOptionsRecord,
         sp: {
           ...samlConfig,
           attributes: {
