@@ -23,8 +23,9 @@ export interface IServiceProviderConfig {
     attributes: ReadonlyArray<SamlAttributeT>;
     name: string;
   };
-  spidTestEnvUrl: string;
-  spidCieUrl: string;
+  spidCieUrl?: string;
+  spidTestEnvUrl?: string;
+  spidValidatorUrl?: string;
   IDPMetadataUrl: string;
   organization: {
     URL: string;
@@ -33,7 +34,6 @@ export interface IServiceProviderConfig {
   };
   publicCert: string;
   idpMetadataRefreshIntervalMillis: number;
-  spidValidatorUrl?: string;
   strictResponseValidation?: StrictResponseValidationOptions;
 }
 
@@ -77,14 +77,28 @@ export const getSpidStrategyOptionsUpdater = (
           ]
         : []
     )
-    .concat([
-      fetchIdpsMetadata(serviceProviderConfig.spidCieUrl, CIE_IDP_IDENTIFIERS)
-    ])
-    .concat([
-      fetchIdpsMetadata(`${serviceProviderConfig.spidTestEnvUrl}/metadata`, {
-        [serviceProviderConfig.spidTestEnvUrl]: "xx_testenv2"
-      })
-    ]);
+    .concat(
+      NonEmptyString.is(serviceProviderConfig.spidCieUrl)
+        ? [
+            fetchIdpsMetadata(
+              serviceProviderConfig.spidCieUrl,
+              CIE_IDP_IDENTIFIERS
+            )
+          ]
+        : []
+    )
+    .concat(
+      NonEmptyString.is(serviceProviderConfig.spidTestEnvUrl)
+        ? [
+            fetchIdpsMetadata(
+              `${serviceProviderConfig.spidTestEnvUrl}/metadata`,
+              {
+                [serviceProviderConfig.spidTestEnvUrl]: "xx_testenv2"
+              }
+            )
+          ]
+        : []
+    );
   return array
     .sequence(taskEither)(idpOptionsTasks)
     .map(idpOptionsRecords =>
