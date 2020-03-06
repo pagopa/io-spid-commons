@@ -16,6 +16,7 @@ import {
 import { errorsToReadableMessages } from "italia-ts-commons/lib/reporters";
 import nodeFetch from "node-fetch";
 import { DOMParser } from "xmldom";
+import { CIE_IDP_IDENTIFIERS, SPID_IDP_IDENTIFIERS } from "../config";
 import { IDPEntityDescriptor } from "../types/IDPEntityDescriptor";
 import { logger } from "./logger";
 
@@ -175,4 +176,22 @@ export function fetchIdpsMetadata(
       logger.info("Configuring IdPs for %s", idpMetadataUrl);
       return mapIpdMetadata(idpMetadata, idpIds);
     });
+}
+
+export function parseStartupSpidStrategy(
+  idpsMetadata: Record<string, string>
+): Record<string, IDPEntityDescriptor> {
+  return mapIpdMetadata(
+    Object.values(idpsMetadata).reduce(
+      (prev, metadataXML) => [
+        ...prev,
+        ...parseIdpMetadata(metadataXML).fold(
+          () => [],
+          _ => _
+        )
+      ],
+      [] as ReadonlyArray<IDPEntityDescriptor>
+    ),
+    { ...SPID_IDP_IDENTIFIERS, ...CIE_IDP_IDENTIFIERS } // TODO: Add TestEnv IDP identifier
+  );
 }

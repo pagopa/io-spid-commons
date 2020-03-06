@@ -48,6 +48,26 @@ export interface ISpidStrategyOptions {
   sp: SamlConfig;
 }
 
+export function bindSpidStrategyOptions(
+  samlConfig: SamlConfig,
+  serviceProviderConfig: IServiceProviderConfig,
+  idpOptionsRecord: Record<string, IDPEntityDescriptor>
+): ISpidStrategyOptions {
+  return {
+    idp: idpOptionsRecord,
+    sp: {
+      ...samlConfig,
+      attributes: {
+        attributes: serviceProviderConfig.requiredAttributes,
+        name: "Required attributes"
+      },
+      identifierFormat: "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
+      organization: serviceProviderConfig.organization,
+      signatureAlgorithm: "sha256"
+    } as SamlConfig
+  };
+}
+
 /**
  * Merge strategy configuration with metadata from IDP.
  *
@@ -118,20 +138,11 @@ export const getSpidStrategyOptionsUpdater = (
     )
     .map(idpOptionsRecord => {
       logSamlCertExpiration(serviceProviderConfig.publicCert);
-      return {
-        idp: idpOptionsRecord,
-        sp: {
-          ...samlConfig,
-          attributes: {
-            attributes: serviceProviderConfig.requiredAttributes,
-            name: "Required attributes"
-          },
-          identifierFormat:
-            "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
-          organization: serviceProviderConfig.organization,
-          signatureAlgorithm: "sha256"
-        }
-      };
+      return bindSpidStrategyOptions(
+        samlConfig,
+        serviceProviderConfig,
+        idpOptionsRecord
+      );
     });
 };
 
