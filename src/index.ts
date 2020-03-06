@@ -6,7 +6,7 @@
  * and a scheduled process to refresh IDP metadata from providers.
  */
 import * as express from "express";
-import { TaskEither } from "fp-ts/lib/TaskEither";
+import { Task } from "fp-ts/lib/Task";
 import { toExpressHandler } from "italia-ts-commons/lib/express";
 import {
   IResponseErrorInternal,
@@ -26,7 +26,7 @@ import {
   getSpidStrategyOptionsUpdater,
   IServiceProviderConfig,
   makeSpidStrategy,
-  setSpidStrategyOption
+  upsertSpidStrategyOption
 } from "./utils/middleware";
 import {
   getAuthorizeRequestTamperer,
@@ -121,10 +121,10 @@ export function withSpid(
   app: express.Express,
   acs: AssertionConsumerServiceT,
   logout: LogoutT
-): TaskEither<
-  Error,
-  { app: express.Express; startIdpMetadataRefreshTimer: () => NodeJS.Timeout }
-> {
+): Task<{
+  app: express.Express;
+  startIdpMetadataRefreshTimer: () => NodeJS.Timeout;
+}> {
   const loadSpidStrategyOptions = getSpidStrategyOptionsUpdater(
     samlConfig,
     serviceProviderConfig
@@ -144,7 +144,7 @@ export function withSpid(
 
   return loadSpidStrategyOptions()
     .map(spidStrategyOptions => {
-      setSpidStrategyOption(app, spidStrategyOptions);
+      upsertSpidStrategyOption(app, spidStrategyOptions);
       return makeSpidStrategy(
         spidStrategyOptions,
         getSamlOptions,
@@ -164,7 +164,7 @@ export function withSpid(
         setInterval(
           () =>
             loadSpidStrategyOptions()
-              .map(opts => setSpidStrategyOption(app, opts))
+              .map(opts => upsertSpidStrategyOption(app, opts))
               .run()
               .catch(e => {
                 logger.error("loadSpidStrategyOptions|error:%s", e);

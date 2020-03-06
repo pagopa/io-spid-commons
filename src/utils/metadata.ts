@@ -121,7 +121,7 @@ export function parseIdpMetadata(
 export const mapIpdMetadata = (
   idpMetadata: ReadonlyArray<IDPEntityDescriptor>,
   idpIds: Record<string, string>
-) =>
+): Record<string, IDPEntityDescriptor> =>
   idpMetadata.reduce<Record<string, IDPEntityDescriptor>>((prev, idp) => {
     const idpKey = idpIds[idp.entityID];
     if (idpKey) {
