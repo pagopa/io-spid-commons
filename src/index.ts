@@ -148,7 +148,7 @@ export function withSpid(
 
   const maybeStartupIdpsMetadata = fromNullable(appConfig.startupIdpsMetadata);
   // If `startupIdpsMetadata` is provided, IDP metadata
-  //  are initially taken from its value when the backend starts
+  // are initially taken from its value when the backend starts
   return maybeStartupIdpsMetadata
     .map(parseStartupIdpsMetadata)
     .map(idpOptionsRecord =>
