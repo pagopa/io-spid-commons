@@ -47,7 +47,7 @@ function printIdpsMetadata(
     .map((_: string) =>
       fetchMetadataXML(_)
         .map<{ idps?: string }>(_1 => ({
-          idps: _1.replace(/[\r\n\ ]+/g, "")
+          idps: _1
         }))
         .getOrElse({})
     )
@@ -57,7 +57,7 @@ function printIdpsMetadata(
     .map((_: string) =>
       fetchMetadataXML(`${_}/metadata`)
         .map<{ xx_testenv2?: string }>(_1 => ({
-          xx_testenv2: _1.replace(/[\r\n\ ]+/g, "")
+          xx_testenv2: _1
         }))
         .getOrElse({})
     )
@@ -67,7 +67,7 @@ function printIdpsMetadata(
     .map((_: string) =>
       fetchMetadataXML(_)
         .map<{ xx_servizicie?: string }>(_1 => ({
-          xx_servizicie: _1.replace(/[\r\n\ ]+/g, "")
+          xx_servizicie: _1
         }))
         .getOrElse({})
     )

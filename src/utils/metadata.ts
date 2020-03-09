@@ -193,7 +193,7 @@ export function fetchIdpsMetadata(
  * and values are an XML string (idp metadata).
  * Provided metadatas are parsed and converted into IDP Entity Descriptor objects.
  */
-export function parseStartupSpidStrategy(
+export function parseStartupIdpsMetadata(
   idpsMetadata: Record<string, string>
 ): Record<string, IDPEntityDescriptor> {
   return mapIpdMetadata(

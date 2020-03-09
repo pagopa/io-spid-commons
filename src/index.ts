@@ -6,7 +6,7 @@
  * and a scheduled process to refresh IDP metadata from providers.
  */
 import * as express from "express";
-import { fromNullable } from "fp-ts/lib/Either";
+import { fromNullable, isSome } from "fp-ts/lib/Option";
 import { Task, task } from "fp-ts/lib/Task";
 import { toExpressHandler } from "italia-ts-commons/lib/express";
 import {
@@ -23,7 +23,7 @@ import { RedisClient } from "redis";
 import { Builder } from "xml2js";
 import { noopCacheProvider } from "./strategy/redis_cache_provider";
 import { logger } from "./utils/logger";
-import { parseStartupSpidStrategy } from "./utils/metadata";
+import { parseStartupIdpsMetadata } from "./utils/metadata";
 import {
   getSpidStrategyOptionsUpdater,
   IServiceProviderConfig,
@@ -145,21 +145,22 @@ export function withSpid(
     serviceProviderConfig,
     samlConfig
   );
+
+  const maybeStartupIdpsMetadata = fromNullable(appConfig.startupIdpsMetadata);
   // If `startupIdpsMetadata` is provided, Spid Strategy options are loaded
   // from that variable instead downloaded from remote idps metadata URL
-  return fromNullable(null)(appConfig.startupIdpsMetadata)
-    .map(parseStartupSpidStrategy)
-    .fold(
-      () => loadSpidStrategyOptions(),
-      idpOptionsRecord =>
-        task.of(
-          makeSpidStrategyOptions(
-            samlConfig,
-            serviceProviderConfig,
-            idpOptionsRecord
-          )
+  return maybeStartupIdpsMetadata
+    .map(parseStartupIdpsMetadata)
+    .map(idpOptionsRecord =>
+      task.of(
+        makeSpidStrategyOptions(
+          samlConfig,
+          serviceProviderConfig,
+          idpOptionsRecord
         )
+      )
     )
+    .getOrElse(loadSpidStrategyOptions())
     .map(spidStrategyOptions => {
       upsertSpidStrategyOption(app, spidStrategyOptions);
       return makeSpidStrategy(
@@ -172,14 +173,16 @@ export function withSpid(
       );
     })
     .map(spidStrategy => {
-      if (appConfig.startupIdpsMetadata) {
+      // If `startupIdpsMetadata` is provided SpidStrategy options are updated in background
+      // from remote metadata URLs provided in IServiceProviderConfig
+      maybeStartupIdpsMetadata.map(() => {
         loadSpidStrategyOptions()
           .map(opts => upsertSpidStrategyOption(app, opts))
           .run()
           .catch(e => {
             logger.error("loadSpidStrategyOptions|error:%s", e);
           });
-      }
+      });
       // Schedule get and refresh
       // SPID passport strategy options
       const startIdpMetadataRefreshTimer = () =>

@@ -332,7 +332,7 @@ export const getSamlOptions: MultiSamlConfig["getSamlOptions"] = (
     }
     const authOptions = maybeAuthOptions.getOrElse({});
     const options = {
-      ...maybeSpidStrategyOptions.value,
+      ...maybeSpidStrategyOptions.value.sp,
       ...authOptions,
       ...entrypointCerts
     };
