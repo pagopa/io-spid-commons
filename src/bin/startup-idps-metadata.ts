@@ -42,6 +42,8 @@ function printIdpsMetadata(
   testEnv2MetadataENV: string | undefined,
   cieMetadataENV: string | undefined
 ): Promise<IIDPSMetadataXML> {
+  // tslint:disable: no-object-mutation no-any no-empty
+  logger.info = (): any => {};
   const maybeIdpsMetadataURL = fromNullable(idpsMetadataENV)
     .mapNullable(_ => process.env[_])
     .map((_: string) =>
@@ -87,5 +89,6 @@ printIdpsMetadata(
   argv["testenv-metadata-url-env"],
   argv["cie-metadata-url-env"]
 )
-  .then(metadata => logger.info(JSON.stringify(metadata, null, 2)))
+  // tslint:disable-next-line: no-console
+  .then(metadata => console.log(JSON.stringify(metadata, null, 2)))
   .catch(() => logger.error("Error fetching IDP metadata"));
