@@ -147,8 +147,8 @@ export function withSpid(
   );
 
   const maybeStartupIdpsMetadata = fromNullable(appConfig.startupIdpsMetadata);
-  // If `startupIdpsMetadata` is provided, Spid Strategy options are loaded
-  // from that variable instead downloaded from remote idps metadata URL
+  // If `startupIdpsMetadata` is provided, IDP metadata
+  //  are initially taken from its value when the backend starts
   return maybeStartupIdpsMetadata
     .map(parseStartupIdpsMetadata)
     .map(idpOptionsRecord =>
@@ -173,8 +173,8 @@ export function withSpid(
       );
     })
     .map(spidStrategy => {
-      // If `startupIdpsMetadata` is provided SpidStrategy options are updated in background
-      // from remote metadata URLs provided in IServiceProviderConfig
+      // Even when `startupIdpsMetadata` is provided, we try to load
+      // IDP metadata from the remote registries
       maybeStartupIdpsMetadata.map(() => {
         loadSpidStrategyOptions()
           .map(opts => upsertSpidStrategyOption(app, opts))
