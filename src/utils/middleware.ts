@@ -18,6 +18,11 @@ import { logger } from "./logger";
 import { fetchIdpsMetadata } from "./metadata";
 import { logSamlCertExpiration, SamlAttributeT } from "./saml";
 
+interface IServiceProviderOrganization {
+  URL: string;
+  displayName: string;
+  name: string;
+}
 export interface IServiceProviderConfig {
   requiredAttributes: {
     attributes: ReadonlyArray<SamlAttributeT>;
@@ -27,11 +32,7 @@ export interface IServiceProviderConfig {
   spidTestEnvUrl?: string;
   spidValidatorUrl?: string;
   IDPMetadataUrl: string;
-  organization: {
-    URL: string;
-    displayName: string;
-    name: string;
-  };
+  organization: IServiceProviderOrganization;
   publicCert: string;
   idpMetadataRefreshIntervalMillis: number;
   strictResponseValidation?: StrictResponseValidationOptions;
@@ -45,10 +46,25 @@ export type StrictResponseValidationOptions = Record<
 export interface ISpidStrategyOptions {
   idp: { [key: string]: IDPEntityDescriptor | undefined };
   // tslint:disable-next-line: no-any
-  sp: SamlConfig;
+  sp: SamlConfig & {
+    attributes: {
+      attributes: {
+        attributes: ReadonlyArray<SamlAttributeT>;
+        name: string;
+      };
+      name: string;
+    };
+  } & {
+    organization: IServiceProviderOrganization;
+  };
 }
 
-export function bindSpidStrategyOptions(
+/**
+ * This method create a Spid Strategy Options object
+ * extending the provided SamlOption with the service provider configuration
+ * and the idps Options
+ */
+export function makeSpidStrategyOptions(
   samlConfig: SamlConfig,
   serviceProviderConfig: IServiceProviderConfig,
   idpOptionsRecord: Record<string, IDPEntityDescriptor>
@@ -64,7 +80,7 @@ export function bindSpidStrategyOptions(
       identifierFormat: "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
       organization: serviceProviderConfig.organization,
       signatureAlgorithm: "sha256"
-    } as SamlConfig
+    }
   };
 }
 
@@ -82,10 +98,7 @@ export const getSpidStrategyOptionsUpdater = (
     fetchIdpsMetadata(
       serviceProviderConfig.IDPMetadataUrl,
       SPID_IDP_IDENTIFIERS
-    ).fold(
-      () => ({}),
-      _ => _
-    )
+    ).getOrElse({})
   ]
     .concat(
       NonEmptyString.is(serviceProviderConfig.spidValidatorUrl)
@@ -96,10 +109,7 @@ export const getSpidStrategyOptionsUpdater = (
                 // "https://validator.spid.gov.it" or "http://localhost:8080"
                 [serviceProviderConfig.spidValidatorUrl]: "xx_validator"
               }
-            ).fold(
-              () => ({}),
-              _ => _
-            )
+            ).getOrElse({})
           ]
         : []
     )
@@ -109,10 +119,7 @@ export const getSpidStrategyOptionsUpdater = (
             fetchIdpsMetadata(
               serviceProviderConfig.spidCieUrl,
               CIE_IDP_IDENTIFIERS
-            ).fold(
-              () => ({}),
-              _ => _
-            )
+            ).getOrElse({})
           ]
         : []
     )
@@ -124,10 +131,7 @@ export const getSpidStrategyOptionsUpdater = (
               {
                 [serviceProviderConfig.spidTestEnvUrl]: "xx_testenv2"
               }
-            ).fold(
-              () => ({}),
-              _ => _
-            )
+            ).getOrElse({})
           ]
         : []
     );
@@ -138,7 +142,7 @@ export const getSpidStrategyOptionsUpdater = (
     )
     .map(idpOptionsRecord => {
       logSamlCertExpiration(serviceProviderConfig.publicCert);
-      return bindSpidStrategyOptions(
+      return makeSpidStrategyOptions(
         samlConfig,
         serviceProviderConfig,
         idpOptionsRecord
@@ -149,7 +153,18 @@ export const getSpidStrategyOptionsUpdater = (
 const SPID_STRATEGY_OPTIONS_KEY = "spidStrategyOptions";
 
 /**
- * upsertSpidStrategyOption() is called to set or update Spid Strategy Options.
+ * SPID strategy calls getSamlOptions() for every
+ * SAML request. It extracts the options from a
+ * shared variable set into the express app.
+ */
+export const getSpidStrategyOption = (
+  app: express.Application
+): ISpidStrategyOptions | undefined => {
+  return app.get(SPID_STRATEGY_OPTIONS_KEY);
+};
+
+/**
+ * This method is called to set or update Spid Strategy Options.
  * A selective update is performed to replace only new configurations provided,
  * keeping the others already stored inside the express app.
  */
@@ -157,9 +172,7 @@ export const upsertSpidStrategyOption = (
   app: express.Application,
   newSpidStrategyOpts: ISpidStrategyOptions
 ) => {
-  const spidStrategyOptions: ISpidStrategyOptions | undefined = app.get(
-    SPID_STRATEGY_OPTIONS_KEY
-  );
+  const spidStrategyOptions = getSpidStrategyOption(app);
   app.set(
     SPID_STRATEGY_OPTIONS_KEY,
     spidStrategyOptions
@@ -172,17 +185,6 @@ export const upsertSpidStrategyOption = (
         }
       : newSpidStrategyOpts
   );
-};
-
-/**
- * SPID strategy calls getSamlOptions() for every
- * SAML request. It extracts the options from a
- * shared variable set into the express app.
- */
-export const getSpidStrategyOption = (
-  app: express.Application
-): ISpidStrategyOptions => {
-  return app.get(SPID_STRATEGY_OPTIONS_KEY);
 };
 
 /**

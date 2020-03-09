@@ -7,7 +7,7 @@
  */
 import * as express from "express";
 import { fromNullable } from "fp-ts/lib/Either";
-import { Task } from "fp-ts/lib/Task";
+import { Task, task } from "fp-ts/lib/Task";
 import { toExpressHandler } from "italia-ts-commons/lib/express";
 import {
   IResponseErrorInternal,
@@ -25,10 +25,10 @@ import { noopCacheProvider } from "./strategy/redis_cache_provider";
 import { logger } from "./utils/logger";
 import { parseStartupSpidStrategy } from "./utils/metadata";
 import {
-  bindSpidStrategyOptions,
   getSpidStrategyOptionsUpdater,
   IServiceProviderConfig,
   makeSpidStrategy,
+  makeSpidStrategyOptions,
   upsertSpidStrategyOption
 } from "./utils/middleware";
 import {
@@ -145,19 +145,18 @@ export function withSpid(
     serviceProviderConfig,
     samlConfig
   );
-
+  // If `startupIdpsMetadata` is provided, Spid Strategy options are loaded
+  // from that variable instead downloaded from remote idps metadata URL
   return fromNullable(null)(appConfig.startupIdpsMetadata)
     .map(parseStartupSpidStrategy)
     .fold(
       () => loadSpidStrategyOptions(),
       idpOptionsRecord =>
-        new Task(() =>
-          Promise.resolve(
-            bindSpidStrategyOptions(
-              samlConfig,
-              serviceProviderConfig,
-              idpOptionsRecord
-            )
+        task.of(
+          makeSpidStrategyOptions(
+            samlConfig,
+            serviceProviderConfig,
+            idpOptionsRecord
           )
         )
     )

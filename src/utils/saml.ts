@@ -300,12 +300,18 @@ export const getSamlOptions: MultiSamlConfig["getSamlOptions"] = (
     logSpidResponse(req, decodedResponse);
 
     // Get SPID strategy options with IDPs metadata
-    const spidStrategyOptions = getSpidStrategyOption(req.app);
+    const maybeSpidStrategyOptions = fromNullable(
+      getSpidStrategyOption(req.app)
+    );
+    if (isNone(maybeSpidStrategyOptions)) {
+      throw new Error(
+        "Missing Spid Strategy Option configuration inside express App"
+      );
+    }
 
     // Get the correct entry within the IDP metadata object
-    const maybeEntrypointCerts = getEntrypointCerts(
-      req,
-      spidStrategyOptions.idp
+    const maybeEntrypointCerts = maybeSpidStrategyOptions.chain(
+      spidStrategyOptions => getEntrypointCerts(req, spidStrategyOptions.idp)
     );
     if (isNone(maybeEntrypointCerts)) {
       logger.debug(
@@ -326,7 +332,7 @@ export const getSamlOptions: MultiSamlConfig["getSamlOptions"] = (
     }
     const authOptions = maybeAuthOptions.getOrElse({});
     const options = {
-      ...spidStrategyOptions.sp,
+      ...maybeSpidStrategyOptions.value,
       ...authOptions,
       ...entrypointCerts
     };

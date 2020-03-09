@@ -7,6 +7,7 @@ import {
   right,
   toError
 } from "fp-ts/lib/Either";
+import { StrMap } from "fp-ts/lib/StrMap";
 import {
   fromEither,
   fromPredicate,
@@ -178,19 +179,21 @@ export function fetchIdpsMetadata(
     });
 }
 
+/**
+ * This method expects in input a Record where key are idp identifier
+ * and values are an XML string (idp metadata).
+ * Provided metadatas are parsed and converted into IDP Entity Descriptor objects.
+ */
 export function parseStartupSpidStrategy(
   idpsMetadata: Record<string, string>
 ): Record<string, IDPEntityDescriptor> {
   return mapIpdMetadata(
-    Object.values(idpsMetadata).reduce(
+    new StrMap(idpsMetadata).reduce(
+      [] as ReadonlyArray<IDPEntityDescriptor>,
       (prev, metadataXML) => [
         ...prev,
-        ...parseIdpMetadata(metadataXML).fold(
-          () => [],
-          _ => _
-        )
-      ],
-      [] as ReadonlyArray<IDPEntityDescriptor>
+        ...parseIdpMetadata(metadataXML).getOrElse([])
+      ]
     ),
     { ...SPID_IDP_IDENTIFIERS, ...CIE_IDP_IDENTIFIERS } // TODO: Add TestEnv IDP identifier
   );
