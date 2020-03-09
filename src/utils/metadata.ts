@@ -136,13 +136,11 @@ export const mapIpdMetadata = (
   }, {});
 
 /**
- * Load idp Metadata from a remote url, parse infos and return a mapped and whitelisted idp options
- * for spidStrategy object.
+ * Fetch an XML from a remote URL
  */
-export function fetchIdpsMetadata(
-  idpMetadataUrl: string,
-  idpIds: Record<string, string>
-): TaskEither<Error, Record<string, IDPEntityDescriptor>> {
+export function fetchMetadataXML(
+  idpMetadataUrl: string
+): TaskEither<Error, string> {
   return tryCatch(() => {
     logger.info("Fetching SPID metadata from [%s]...", idpMetadataUrl);
     return nodeFetch(idpMetadataUrl);
@@ -156,7 +154,18 @@ export function fetchIdpsMetadata(
         }
       )
     )
-    .chain(p => tryCatch(() => p.text(), toError))
+    .chain(p => tryCatch(() => p.text(), toError));
+}
+
+/**
+ * Load idp Metadata from a remote url, parse infos and return a mapped and whitelisted idp options
+ * for spidStrategy object.
+ */
+export function fetchIdpsMetadata(
+  idpMetadataUrl: string,
+  idpIds: Record<string, string>
+): TaskEither<Error, Record<string, IDPEntityDescriptor>> {
+  return fetchMetadataXML(idpMetadataUrl)
     .chain(idpMetadataXML => {
       logger.info("Parsing SPID metadata for %s", idpMetadataUrl);
       return fromEither(parseIdpMetadata(idpMetadataXML));
