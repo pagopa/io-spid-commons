@@ -191,7 +191,7 @@ export function fetchIdpsMetadata(
 /**
  * This method expects in input a Record where key are idp identifier
  * and values are an XML string (idp metadata).
- * Provided metadatas are parsed and converted into IDP Entity Descriptor objects.
+ * Provided metadata are parsed and converted into IDP Entity Descriptor objects.
  */
 export function parseStartupIdpsMetadata(
   idpsMetadata: Record<string, string>
