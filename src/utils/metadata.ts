@@ -7,6 +7,7 @@ import {
   right,
   toError
 } from "fp-ts/lib/Either";
+import { StrMap } from "fp-ts/lib/StrMap";
 import {
   fromEither,
   fromPredicate,
@@ -16,6 +17,7 @@ import {
 import { errorsToReadableMessages } from "italia-ts-commons/lib/reporters";
 import nodeFetch from "node-fetch";
 import { DOMParser } from "xmldom";
+import { CIE_IDP_IDENTIFIERS, SPID_IDP_IDENTIFIERS } from "../config";
 import { IDPEntityDescriptor } from "../types/IDPEntityDescriptor";
 import { logger } from "./logger";
 
@@ -121,7 +123,7 @@ export function parseIdpMetadata(
 export const mapIpdMetadata = (
   idpMetadata: ReadonlyArray<IDPEntityDescriptor>,
   idpIds: Record<string, string>
-) =>
+): Record<string, IDPEntityDescriptor> =>
   idpMetadata.reduce<Record<string, IDPEntityDescriptor>>((prev, idp) => {
     const idpKey = idpIds[idp.entityID];
     if (idpKey) {
@@ -134,13 +136,11 @@ export const mapIpdMetadata = (
   }, {});
 
 /**
- * Load idp Metadata from a remote url, parse infos and return a mapped and whitelisted idp options
- * for spidStrategy object.
+ * Fetch an XML from a remote URL
  */
-export function fetchIdpsMetadata(
-  idpMetadataUrl: string,
-  idpIds: Record<string, string>
-): TaskEither<Error, Record<string, IDPEntityDescriptor>> {
+export function fetchMetadataXML(
+  idpMetadataUrl: string
+): TaskEither<Error, string> {
   return tryCatch(() => {
     logger.info("Fetching SPID metadata from [%s]...", idpMetadataUrl);
     return nodeFetch(idpMetadataUrl);
@@ -154,7 +154,18 @@ export function fetchIdpsMetadata(
         }
       )
     )
-    .chain(p => tryCatch(() => p.text(), toError))
+    .chain(p => tryCatch(() => p.text(), toError));
+}
+
+/**
+ * Load idp Metadata from a remote url, parse infos and return a mapped and whitelisted idp options
+ * for spidStrategy object.
+ */
+export function fetchIdpsMetadata(
+  idpMetadataUrl: string,
+  idpIds: Record<string, string>
+): TaskEither<Error, Record<string, IDPEntityDescriptor>> {
+  return fetchMetadataXML(idpMetadataUrl)
     .chain(idpMetadataXML => {
       logger.info("Parsing SPID metadata for %s", idpMetadataUrl);
       return fromEither(parseIdpMetadata(idpMetadataXML));
@@ -175,4 +186,24 @@ export function fetchIdpsMetadata(
       logger.info("Configuring IdPs for %s", idpMetadataUrl);
       return mapIpdMetadata(idpMetadata, idpIds);
     });
+}
+
+/**
+ * This method expects in input a Record where key are idp identifier
+ * and values are an XML string (idp metadata).
+ * Provided metadata are parsed and converted into IDP Entity Descriptor objects.
+ */
+export function parseStartupIdpsMetadata(
+  idpsMetadata: Record<string, string>
+): Record<string, IDPEntityDescriptor> {
+  return mapIpdMetadata(
+    new StrMap(idpsMetadata).reduce(
+      [] as ReadonlyArray<IDPEntityDescriptor>,
+      (prev, metadataXML) => [
+        ...prev,
+        ...parseIdpMetadata(metadataXML).getOrElse([])
+      ]
+    ),
+    { ...SPID_IDP_IDENTIFIERS, ...CIE_IDP_IDENTIFIERS } // TODO: Add TestEnv IDP identifier
+  );
 }

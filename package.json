@@ -6,6 +6,9 @@
     "type": "git",
     "url": "git+https://github.com/pagopa/io-spid-commons.git"
   },
+  "bin": {
+    "startup-idps-metadata": "dist/print-startup-idps-metadata.js"
+  },
   "author": "https://pagopa.gov.it",
   "license": "MIT",
   "main": "dist/index.js",
@@ -30,6 +33,7 @@
     "@types/xml-crypto": "^1.4.1",
     "@types/xml2js": "^0.4.5",
     "@types/xmldom": "^0.1.29",
+    "@types/yargs": "^15.0.4",
     "danger": "^8.0.0",
     "danger-plugin-digitalcitizenship": "*",
     "express": "4.17.0",
@@ -61,7 +65,8 @@
     "winston": "^3.0.0",
     "xml-crypto": "^1.4.0",
     "xml2js": "^0.4.23",
-    "xmldom": "^0.1.27"
+    "xmldom": "^0.1.27",
+    "yargs": "^15.3.0"
   },
   "jest": {
     "testEnvironment": "node",

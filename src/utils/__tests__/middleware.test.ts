@@ -78,6 +78,17 @@ const expectedTestenvIdpMetadata: Record<string, IDPEntityDescriptor> = {
 };
 
 describe("getSpidStrategyOptionsUpdater", () => {
+  const expectedSPProperty = {
+    ...expectedSamlConfig,
+    attributes: {
+      attributes: serviceProviderConfig.requiredAttributes,
+      name: "Required attributes"
+    },
+    identifierFormat: "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
+    organization: serviceProviderConfig.organization,
+    signatureAlgorithm: "sha256"
+  };
+
   beforeEach(() => {
     jest.resetAllMocks();
   });
@@ -105,16 +116,6 @@ describe("getSpidStrategyOptionsUpdater", () => {
       );
     });
 
-    const expectedSPProperty = {
-      ...expectedSamlConfig,
-      attributes: {
-        attributes: serviceProviderConfig.requiredAttributes,
-        name: "Required attributes"
-      },
-      identifierFormat: "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
-      organization: serviceProviderConfig.organization,
-      signatureAlgorithm: "sha256"
-    };
     const updatedSpidStrategyOption = await getSpidStrategyOptionsUpdater(
       expectedSamlConfig,
       serviceProviderConfig
@@ -137,12 +138,8 @@ describe("getSpidStrategyOptionsUpdater", () => {
         [spidTestEnvUrl]: "xx_testenv2"
       }
     );
-    expect(isRight(updatedSpidStrategyOption)).toBeTruthy();
-    expect(updatedSpidStrategyOption.value).toHaveProperty(
-      "sp",
-      expectedSPProperty
-    );
-    expect(updatedSpidStrategyOption.value).toHaveProperty("idp", {
+    expect(updatedSpidStrategyOption).toHaveProperty("sp", expectedSPProperty);
+    expect(updatedSpidStrategyOption).toHaveProperty("idp", {
       ...expectedIdpMetadata,
       ...expectedCIEIdpMetadata,
       ...expectedTestenvIdpMetadata
@@ -173,7 +170,7 @@ describe("getSpidStrategyOptionsUpdater", () => {
       );
     });
     const updatedSpidStrategyOption = await getSpidStrategyOptionsUpdater(
-      {},
+      expectedSamlConfig,
       serviceProviderConfig
     )().run();
     expect(mockFetchIdpsMetadata).toBeCalledTimes(3);
@@ -194,8 +191,11 @@ describe("getSpidStrategyOptionsUpdater", () => {
         [spidTestEnvUrl]: "xx_testenv2"
       }
     );
-    expect(isLeft(updatedSpidStrategyOption)).toBeTruthy();
-    expect(updatedSpidStrategyOption.value).toEqual(expectedFetchError);
+    expect(updatedSpidStrategyOption).toHaveProperty("sp", expectedSPProperty);
+    expect(updatedSpidStrategyOption).toHaveProperty("idp", {
+      ...expectedCIEIdpMetadata,
+      ...expectedTestenvIdpMetadata
+    });
   });
 
   it("should call fetchIdpsMetadata only one time if are missing CIE and TestEnv urls", async () => {
