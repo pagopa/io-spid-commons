@@ -7,7 +7,7 @@
     "url": "git+https://github.com/pagopa/io-spid-commons.git"
   },
   "bin": {
-    "startup-idps-metadata": "dist/print-startup-idps-metadata.js"
+    "startup-idps-metadata": "dist/bin/startup-idps-metadata.js"
   },
   "author": "https://pagopa.gov.it",
   "license": "MIT",
