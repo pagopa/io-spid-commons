@@ -54,7 +54,6 @@ const appConfig: IApplicationConfig = {
 const serviceProviderConfig: IServiceProviderConfig = {
   IDPMetadataUrl:
     "https://registry.spid.gov.it/metadata/idp/spid-entities-idps.xml",
-  idpMetadataRefreshIntervalMillis: 1200000,
   organization: {
     URL: "https://example.com",
     displayName: "Organization display name",

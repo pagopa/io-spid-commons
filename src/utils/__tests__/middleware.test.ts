@@ -25,7 +25,6 @@ const spidTestEnvUrl = "https://spid-testenv2:8088";
 
 const serviceProviderConfig: IServiceProviderConfig = {
   IDPMetadataUrl: idpMetadataUrl,
-  idpMetadataRefreshIntervalMillis: 120000,
   organization: {
     URL: "https://example.com",
     displayName: "Organization display name",
@@ -172,7 +171,6 @@ describe("getSpidStrategyOptionsUpdater", () => {
   it("should call fetchIdpsMetadata only one time if are missing CIE and TestEnv urls", async () => {
     const serviceProviderConfigWithoutOptional: IServiceProviderConfig = {
       IDPMetadataUrl: idpMetadataUrl,
-      idpMetadataRefreshIntervalMillis: 120000,
       organization: {
         URL: "https://example.com",
         displayName: "Organization display name",

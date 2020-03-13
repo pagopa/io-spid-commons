@@ -114,7 +114,6 @@ const samlConfig: SamlConfig = {
 
 const serviceProviderConfig: IServiceProviderConfig = {
   IDPMetadataUrl,
-  idpMetadataRefreshIntervalMillis: 1200000,
   organization: {
     URL: "https://example.com",
     displayName: "Organization display name",
