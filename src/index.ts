@@ -127,7 +127,7 @@ export function withSpid(
   logout: LogoutT
 ): Task<{
   app: express.Express;
-  startIdpMetadataRefreshTimer: () => NodeJS.Timeout;
+  idpMetadataRefresher: () => Task<void>;
 }> {
   const loadSpidStrategyOptions = getSpidStrategyOptionsUpdater(
     samlConfig,
@@ -183,21 +183,10 @@ export function withSpid(
             logger.error("loadSpidStrategyOptions|error:%s", e);
           });
       });
-      // Schedule get and refresh
-      // SPID passport strategy options
-      const startIdpMetadataRefreshTimer = () =>
-        // Remember to call
-        // app.on("server:stop", () => clearInterval(idpMetadataRefreshTimer));
-        // to avoid hanging when express server exits
-        setInterval(
-          () =>
-            loadSpidStrategyOptions()
-              .map(opts => upsertSpidStrategyOption(app, opts))
-              .run()
-              .catch(e => {
-                logger.error("loadSpidStrategyOptions|error:%s", e);
-              }),
-          serviceProviderConfig.idpMetadataRefreshIntervalMillis
+      // Fetch IDPs metadata from remote URL and update SPID passport strategy options
+      const idpMetadataRefresher = () =>
+        loadSpidStrategyOptions().map(opts =>
+          upsertSpidStrategyOption(app, opts)
         );
 
       // Initializes SpidStrategy for passport
@@ -255,6 +244,6 @@ export function withSpid(
       // Setup logout handler
       app.post(appConfig.sloPath, toExpressHandler(logout));
 
-      return { app, startIdpMetadataRefreshTimer };
+      return { app, idpMetadataRefresher };
     });
 }

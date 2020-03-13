@@ -26,7 +26,6 @@ const redisCacheProvider = getExtendedRedisCacheProvider(mockRedisClient);
 const serviceProviderConfig: IServiceProviderConfig = {
   IDPMetadataUrl:
     "https://registry.spid.gov.it/metadata/idp/spid-entities-idps.xml",
-  idpMetadataRefreshIntervalMillis: 120000,
   organization: {
     URL: "https://example.com",
     displayName: "Organization display name",

@@ -54,7 +54,6 @@ const appConfig: IApplicationConfig = {
 const serviceProviderConfig: IServiceProviderConfig = {
   IDPMetadataUrl:
     "https://registry.spid.gov.it/metadata/idp/spid-entities-idps.xml",
-  idpMetadataRefreshIntervalMillis: 1200000,
   organization: {
     URL: "https://example.com",
     displayName: "Organization display name",
@@ -129,9 +128,7 @@ withSpid(
   acs,
   logout
 )
-  .map(({ app: withSpidApp, startIdpMetadataRefreshTimer }) => {
-    const idpMetadataRefreshTimer = startIdpMetadataRefreshTimer();
-    withSpidApp.on("server:stop", () => clearInterval(idpMetadataRefreshTimer));
+  .map(({ app: withSpidApp, idpMetadataRefresher }) => {
     withSpidApp.get("/success", (_, res) =>
       res.json({
         success: "success"
@@ -144,6 +141,12 @@ withSpid(
         })
         .status(400)
     );
+    withSpidApp.get("/refresh", async (_, res) => {
+      await idpMetadataRefresher().run();
+      res.json({
+        metadataUpdate: "completed"
+      });
+    });
     withSpidApp.use(
       (
         error: Error,

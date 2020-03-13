@@ -1,8 +1,6 @@
 // tslint:disable-next-line: ordered-imports
-import { isLeft, isRight, left, right } from "fp-ts/lib/Either";
-import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
+import { left, right } from "fp-ts/lib/Either";
 import { fromEither } from "fp-ts/lib/TaskEither";
-import { NonEmptyString } from "italia-ts-commons/lib/strings";
 import { SamlConfig } from "passport-saml";
 import { CIE_IDP_IDENTIFIERS, SPID_IDP_IDENTIFIERS } from "../../config";
 import { IDPEntityDescriptor } from "../../types/IDPEntityDescriptor";
@@ -11,6 +9,12 @@ import {
   getSpidStrategyOptionsUpdater,
   IServiceProviderConfig
 } from "../middleware";
+
+import {
+  mockCIEIdpMetadata,
+  mockIdpMetadata,
+  mockTestenvIdpMetadata
+} from "../../__mocks__/metadata";
 
 const mockFetchIdpsMetadata = jest.spyOn(metadata, "fetchIdpsMetadata");
 
@@ -21,7 +25,6 @@ const spidTestEnvUrl = "https://spid-testenv2:8088";
 
 const serviceProviderConfig: IServiceProviderConfig = {
   IDPMetadataUrl: idpMetadataUrl,
-  idpMetadataRefreshIntervalMillis: 120000,
   organization: {
     URL: "https://example.com",
     displayName: "Organization display name",
@@ -48,35 +51,6 @@ const expectedSamlConfig: SamlConfig = {
   forceAuthn: true
 };
 
-const expectedIdpMetadata: Record<string, IDPEntityDescriptor> = {
-  intesaid: {
-    cert: (["CERT"] as unknown) as NonEmptyArray<NonEmptyString>,
-    entityID: spidTestEnvUrl,
-    entryPoint: "https://spid.intesa.it/acs",
-    logoutUrl: "https://spid.intesa.it/logout"
-  }
-};
-
-const expectedCIEIdpMetadata: Record<string, IDPEntityDescriptor> = {
-  xx_servizicie_test: {
-    cert: (["CERT"] as unknown) as NonEmptyArray<NonEmptyString>,
-    entityID:
-      "https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/POST/SSO",
-    entryPoint:
-      "https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/Redirect/SSO",
-    logoutUrl: ""
-  }
-};
-
-const expectedTestenvIdpMetadata: Record<string, IDPEntityDescriptor> = {
-  xx_testenv2: {
-    cert: (["CERT"] as unknown) as NonEmptyArray<NonEmptyString>,
-    entityID: "https://spid-testenv.dev.io.italia.it",
-    entryPoint: "https://spid-testenv.dev.io.italia.it/sso",
-    logoutUrl: "https://spid-testenv.dev.io.italia.it/slo"
-  }
-};
-
 describe("getSpidStrategyOptionsUpdater", () => {
   const expectedSPProperty = {
     ...expectedSamlConfig,
@@ -98,20 +72,18 @@ describe("getSpidStrategyOptionsUpdater", () => {
   it("should returns updated spid options from remote idps metadata", async () => {
     mockFetchIdpsMetadata.mockImplementationOnce(() => {
       return fromEither(
-        right<Error, Record<string, IDPEntityDescriptor>>(expectedIdpMetadata)
+        right<Error, Record<string, IDPEntityDescriptor>>(mockIdpMetadata)
+      );
+    });
+    mockFetchIdpsMetadata.mockImplementationOnce(() => {
+      return fromEither(
+        right<Error, Record<string, IDPEntityDescriptor>>(mockCIEIdpMetadata)
       );
     });
     mockFetchIdpsMetadata.mockImplementationOnce(() => {
       return fromEither(
         right<Error, Record<string, IDPEntityDescriptor>>(
-          expectedCIEIdpMetadata
-        )
-      );
-    });
-    mockFetchIdpsMetadata.mockImplementationOnce(() => {
-      return fromEither(
-        right<Error, Record<string, IDPEntityDescriptor>>(
-          expectedTestenvIdpMetadata
+          mockTestenvIdpMetadata
         )
       );
     });
@@ -140,9 +112,9 @@ describe("getSpidStrategyOptionsUpdater", () => {
     );
     expect(updatedSpidStrategyOption).toHaveProperty("sp", expectedSPProperty);
     expect(updatedSpidStrategyOption).toHaveProperty("idp", {
-      ...expectedIdpMetadata,
-      ...expectedCIEIdpMetadata,
-      ...expectedTestenvIdpMetadata
+      ...mockIdpMetadata,
+      ...mockCIEIdpMetadata,
+      ...mockTestenvIdpMetadata
     });
   });
 
@@ -156,16 +128,14 @@ describe("getSpidStrategyOptionsUpdater", () => {
     // tslint:disable-next-line: no-identical-functions
     mockFetchIdpsMetadata.mockImplementationOnce(() => {
       return fromEither(
-        right<Error, Record<string, IDPEntityDescriptor>>(
-          expectedCIEIdpMetadata
-        )
+        right<Error, Record<string, IDPEntityDescriptor>>(mockCIEIdpMetadata)
       );
     });
     // tslint:disable-next-line: no-identical-functions
     mockFetchIdpsMetadata.mockImplementationOnce(() => {
       return fromEither(
         right<Error, Record<string, IDPEntityDescriptor>>(
-          expectedTestenvIdpMetadata
+          mockTestenvIdpMetadata
         )
       );
     });
@@ -193,15 +163,14 @@ describe("getSpidStrategyOptionsUpdater", () => {
     );
     expect(updatedSpidStrategyOption).toHaveProperty("sp", expectedSPProperty);
     expect(updatedSpidStrategyOption).toHaveProperty("idp", {
-      ...expectedCIEIdpMetadata,
-      ...expectedTestenvIdpMetadata
+      ...mockCIEIdpMetadata,
+      ...mockTestenvIdpMetadata
     });
   });
 
   it("should call fetchIdpsMetadata only one time if are missing CIE and TestEnv urls", async () => {
     const serviceProviderConfigWithoutOptional: IServiceProviderConfig = {
       IDPMetadataUrl: idpMetadataUrl,
-      idpMetadataRefreshIntervalMillis: 120000,
       organization: {
         URL: "https://example.com",
         displayName: "Organization display name",
@@ -223,7 +192,7 @@ describe("getSpidStrategyOptionsUpdater", () => {
     // tslint:disable-next-line: no-identical-functions
     mockFetchIdpsMetadata.mockImplementationOnce(() => {
       return fromEither(
-        right<Error, Record<string, IDPEntityDescriptor>>(expectedIdpMetadata)
+        right<Error, Record<string, IDPEntityDescriptor>>(mockIdpMetadata)
       );
     });
     await getSpidStrategyOptionsUpdater(

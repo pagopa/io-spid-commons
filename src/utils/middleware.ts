@@ -34,7 +34,6 @@ export interface IServiceProviderConfig {
   IDPMetadataUrl: string;
   organization: IServiceProviderOrganization;
   publicCert: string;
-  idpMetadataRefreshIntervalMillis: number;
   strictResponseValidation?: StrictResponseValidationOptions;
 }
 

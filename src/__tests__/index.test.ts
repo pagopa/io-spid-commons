@@ -1,3 +1,27 @@
+import * as express from "express";
+import { left, right } from "fp-ts/lib/Either";
+import { fromEither } from "fp-ts/lib/TaskEither";
+import { ResponsePermanentRedirect } from "italia-ts-commons/lib/responses";
+import { createMockRedis } from "mock-redis-client";
+import { RedisClient } from "redis";
+import {
+  IApplicationConfig,
+  IServiceProviderConfig,
+  SamlConfig,
+  withSpid
+} from "../";
+import { IDPEntityDescriptor } from "../types/IDPEntityDescriptor";
+import * as metadata from "../utils/metadata";
+import { getSpidStrategyOption } from "../utils/middleware";
+
+import {
+  mockCIEIdpMetadata,
+  mockIdpMetadata,
+  mockTestenvIdpMetadata
+} from "../__mocks__/metadata";
+
+const mockFetchIdpsMetadata = jest.spyOn(metadata, "fetchIdpsMetadata");
+
 // saml configuration vars
 const samlCert = `
 -----BEGIN CERTIFICATE-----
@@ -54,27 +78,130 @@ nCnxP/vK5rgVHU3nQfq+e/B6FVWZ
 -----END PRIVATE KEY-----
 `;
 
-const samlCallbackUrl = "http://io-backend/assertionConsumerService";
-const samlIssuer = "https://pagopa.gov.it/io";
-const samlAcceptedClockSkewMs = -1;
-const samlAttributeConsumingServiceIndex = 0;
-const spidAutologin = "";
 const spidTestEnvUrl = "https://localhost:8088";
-const mockedIdpsRegistryHost = "https://mocked.registry.net";
-const mockedIdpsRegistryPath = "/idps/registry/path";
-const IDPMetadataUrl = mockedIdpsRegistryHost + mockedIdpsRegistryPath;
-const spidValidatorUrl = "http://localhost:8080";
+const IDPMetadataUrl =
+  "https://registry.spid.gov.it/metadata/idp/spid-entities-idps.xml";
+const spidCieUrl =
+  "https://idserver.servizicie.interno.gov.it:8443/idp/shibboleth";
 
 const expectedLoginPath = "/login";
 const expectedSloPath = "/logout";
 const expectedAssertionConsumerServicePath = "/assertionConsumerService";
 const metadataPath = "/metadata";
 
-const clientErrorRedirectionUrl = "https://error";
-const clientLoginRedirectionUrl = "https://login";
+const appConfig: IApplicationConfig = {
+  assertionConsumerServicePath: expectedAssertionConsumerServicePath,
+  clientErrorRedirectionUrl: "/error",
+  clientLoginRedirectionUrl: "/success",
+  loginPath: expectedLoginPath,
+  metadataPath,
+  sloPath: expectedSloPath
+};
 
-describe("io-spid-commons", () => {
-  it("shoud pass", async () => {
-    expect(true).toBeTruthy();
+const samlConfig: SamlConfig = {
+  RACComparison: "minimum",
+  acceptedClockSkewMs: 0,
+  attributeConsumingServiceIndex: "0",
+  authnContext: "https://www.spid.gov.it/SpidL1",
+  callbackUrl: "http://localhost:3000" + appConfig.assertionConsumerServicePath,
+  // decryptionPvk: fs.readFileSync("./certs/key.pem", "utf-8"),
+  identifierFormat: "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
+  issuer: "https://spid.agid.gov.it/cd",
+  logoutCallbackUrl: "http://localhost:3000/slo",
+  privateCert: samlKey,
+  validateInResponseTo: true
+};
+
+const serviceProviderConfig: IServiceProviderConfig = {
+  IDPMetadataUrl,
+  organization: {
+    URL: "https://example.com",
+    displayName: "Organization display name",
+    name: "Organization name"
+  },
+  publicCert: samlCert,
+  requiredAttributes: {
+    attributes: [
+      "address",
+      "email",
+      "name",
+      "familyName",
+      "fiscalNumber",
+      "mobilePhone"
+    ],
+    name: "Required attrs"
+  },
+  spidCieUrl,
+  spidTestEnvUrl,
+  strictResponseValidation: {
+    "http://localhost:8080": true
+  }
+};
+
+// tslint:disable-next-line: no-any
+const mockRedisClient: RedisClient = (createMockRedis() as any).createClient();
+
+describe("io-spid-commons withSpid", () => {
+  it("shoud idpMetadataRefresher refresh idps metadata from remote url", async () => {
+    const app = express();
+    mockFetchIdpsMetadata.mockImplementation(() =>
+      fromEither(
+        left<Error, Record<string, IDPEntityDescriptor>>(new Error("Error."))
+      )
+    );
+    const spid = await withSpid(
+      appConfig,
+      samlConfig,
+      serviceProviderConfig,
+      mockRedisClient,
+      app,
+      async () => ResponsePermanentRedirect({ href: "/success?acs" }),
+      async () => ResponsePermanentRedirect({ href: "/success?logout" })
+    ).run();
+    expect(mockFetchIdpsMetadata).toBeCalledTimes(3);
+    const emptySpidStrategyOption = getSpidStrategyOption(spid.app);
+    expect(emptySpidStrategyOption).toHaveProperty("idp", {});
+
+    jest.resetAllMocks();
+
+    mockFetchIdpsMetadata.mockImplementationOnce(() => {
+      return fromEither(
+        right<Error, Record<string, IDPEntityDescriptor>>(mockIdpMetadata)
+      );
+    });
+    mockFetchIdpsMetadata.mockImplementationOnce(() => {
+      return fromEither(
+        right<Error, Record<string, IDPEntityDescriptor>>(mockCIEIdpMetadata)
+      );
+    });
+    mockFetchIdpsMetadata.mockImplementationOnce(() => {
+      return fromEither(
+        right<Error, Record<string, IDPEntityDescriptor>>(
+          mockTestenvIdpMetadata
+        )
+      );
+    });
+    await spid.idpMetadataRefresher().run();
+    expect(mockFetchIdpsMetadata).toHaveBeenNthCalledWith(
+      1,
+      IDPMetadataUrl,
+      expect.any(Object)
+    );
+    expect(mockFetchIdpsMetadata).toHaveBeenNthCalledWith(
+      2,
+      spidCieUrl,
+      expect.any(Object)
+    );
+    expect(mockFetchIdpsMetadata).toHaveBeenNthCalledWith(
+      3,
+      `${spidTestEnvUrl}/metadata`,
+      expect.any(Object)
+    );
+    const spidStrategyOption = getSpidStrategyOption(spid.app);
+    expect(spidStrategyOption).toHaveProperty("idp", {
+      ...mockIdpMetadata,
+      ...mockCIEIdpMetadata,
+      ...mockTestenvIdpMetadata
+    });
   });
 });
