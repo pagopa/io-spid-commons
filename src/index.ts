@@ -183,8 +183,7 @@ export function withSpid(
             logger.error("loadSpidStrategyOptions|error:%s", e);
           });
       });
-      // Schedule get and refresh
-      // SPID passport strategy options
+      // Fetch IDPs metadata from remote URL and udate SPID passport strategy options
       const idpMetadataRefresher = () =>
         loadSpidStrategyOptions().map(opts =>
           upsertSpidStrategyOption(app, opts)
