@@ -534,7 +534,8 @@ const validateIssuer = (
   );
 
 const mainAttributeValidation = (
-  requestOrAssertion: Element
+  requestOrAssertion: Element,
+  hasStrictValidation: boolean
 ): Either<Error, Date> => {
   return NonEmptyString.decode(requestOrAssertion.getAttribute("ID"))
     .mapLeft(() => new Error("Assertion must contain a non empty ID"))
@@ -553,7 +554,7 @@ const mainAttributeValidation = (
     .chain(IssueInstant => utcStringToDate(IssueInstant, "IssueInstant"))
     .chain(
       fromPredicate(
-        _ => _.getTime() < Date.now(),
+        _ => !hasStrictValidation || _.getTime() < Date.now(),
         () => new Error("IssueInstant must be in the past")
       )
     );
@@ -576,7 +577,10 @@ const isEmptyNode = (element: Element): boolean => {
   return true;
 };
 
-const notOnOrAfterValidation = (element: Element) => {
+const notOnOrAfterValidation = (
+  element: Element,
+  hasStrictValidation: boolean
+) => {
   return NonEmptyString.decode(element.getAttribute("NotOnOrAfter"))
     .mapLeft(
       () => new Error("NotOnOrAfter attribute must be a non empty string")
@@ -584,7 +588,8 @@ const notOnOrAfterValidation = (element: Element) => {
     .chain(NotOnOrAfter => utcStringToDate(NotOnOrAfter, "NotOnOrAfter"))
     .chain(
       fromPredicate(
-        NotOnOrAfter => NotOnOrAfter.getTime() > Date.now(),
+        NotOnOrAfter =>
+          !hasStrictValidation || NotOnOrAfter.getTime() > Date.now(),
         () => new Error("NotOnOrAfter must be in the future")
       )
     );
@@ -594,7 +599,8 @@ const assertionValidation = (
   Assertion: Element,
   samlConfig: SamlConfig,
   InResponseTo: string,
-  requestAuthnContextClassRef: string
+  requestAuthnContextClassRef: string,
+  hasStrictValidation: boolean
   // tslint:disable-next-line: no-big-function
 ): Either<Error, HTMLCollectionOf<Element>> => {
   return (
@@ -743,9 +749,10 @@ const assertionValidation = (
                       .map(() => SubjectConfirmationData)
                   )
                   .chain(SubjectConfirmationData =>
-                    notOnOrAfterValidation(SubjectConfirmationData).map(
-                      () => SubjectConfirmationData
-                    )
+                    notOnOrAfterValidation(
+                      SubjectConfirmationData,
+                      hasStrictValidation
+                    ).map(() => SubjectConfirmationData)
                   )
                   .chain(SubjectConfirmationData =>
                     NonEmptyString.decode(
@@ -785,7 +792,9 @@ const assertionValidation = (
                 )
               )
               .chain(Conditions =>
-                notOnOrAfterValidation(Conditions).map(() => Conditions)
+                notOnOrAfterValidation(Conditions, hasStrictValidation).map(
+                  () => Conditions
+                )
               )
               .chain(Conditions =>
                 NonEmptyString.decode(Conditions.getAttribute("NotBefore"))
@@ -795,7 +804,9 @@ const assertionValidation = (
                   .chain(NotBefore => utcStringToDate(NotBefore, "NotBefore"))
                   .chain(
                     fromPredicate(
-                      NotBefore => NotBefore.getTime() <= Date.now(),
+                      NotBefore =>
+                        !hasStrictValidation ||
+                        NotBefore.getTime() <= Date.now(),
                       () => new Error("NotBefore must be in the past")
                     )
                   )
@@ -988,10 +999,12 @@ export const getPreValidateResponse = (
       )
     )
       .chain(Response =>
-        mainAttributeValidation(Response).map(IssueInstant => ({
-          IssueInstant,
-          Response
-        }))
+        mainAttributeValidation(Response, hasStrictValidation).map(
+          IssueInstant => ({
+            IssueInstant,
+            Response
+          })
+        )
       )
       .chain(_ =>
         NonEmptyString.decode(_.Response.getAttribute("Destination"))
@@ -1072,10 +1085,12 @@ export const getPreValidateResponse = (
           .map(InResponseTo => ({ ..._, InResponseTo }))
       )
       .chain(_ =>
-        mainAttributeValidation(_.Assertion).map(IssueInstant => ({
-          AssertionIssueInstant: IssueInstant,
-          ..._
-        }))
+        mainAttributeValidation(_.Assertion, hasStrictValidation).map(
+          IssueInstant => ({
+            AssertionIssueInstant: IssueInstant,
+            ..._
+          })
+        )
       )
   )
     .chain(_ =>
@@ -1186,7 +1201,8 @@ export const getPreValidateResponse = (
           _.Assertion,
           samlConfig,
           _.InResponseTo,
-          _.RequestAuthnContextClassRef
+          _.RequestAuthnContextClassRef,
+          hasStrictValidation
         )
       )
         .chain(Attributes => {
