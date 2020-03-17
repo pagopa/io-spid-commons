@@ -535,7 +535,7 @@ const validateIssuer = (
 
 const mainAttributeValidation = (
   requestOrAssertion: Element,
-  hasStrictValidation: boolean
+  acceptedClockSkewMs: number = 0
 ): Either<Error, Date> => {
   return NonEmptyString.decode(requestOrAssertion.getAttribute("ID"))
     .mapLeft(() => new Error("Assertion must contain a non empty ID"))
@@ -554,7 +554,11 @@ const mainAttributeValidation = (
     .chain(IssueInstant => utcStringToDate(IssueInstant, "IssueInstant"))
     .chain(
       fromPredicate(
-        _ => !hasStrictValidation || _.getTime() < Date.now(),
+        _ =>
+          _.getTime() <
+          (acceptedClockSkewMs === -1
+            ? Infinity
+            : Date.now() + acceptedClockSkewMs),
         () => new Error("IssueInstant must be in the past")
       )
     );
@@ -579,7 +583,7 @@ const isEmptyNode = (element: Element): boolean => {
 
 const notOnOrAfterValidation = (
   element: Element,
-  hasStrictValidation: boolean
+  acceptedClockSkewMs: number = 0
 ) => {
   return NonEmptyString.decode(element.getAttribute("NotOnOrAfter"))
     .mapLeft(
@@ -589,7 +593,10 @@ const notOnOrAfterValidation = (
     .chain(
       fromPredicate(
         NotOnOrAfter =>
-          !hasStrictValidation || NotOnOrAfter.getTime() > Date.now(),
+          NotOnOrAfter.getTime() >
+          (acceptedClockSkewMs === -1
+            ? -Infinity
+            : Date.now() - acceptedClockSkewMs),
         () => new Error("NotOnOrAfter must be in the future")
       )
     );
@@ -599,10 +606,10 @@ const assertionValidation = (
   Assertion: Element,
   samlConfig: SamlConfig,
   InResponseTo: string,
-  requestAuthnContextClassRef: string,
-  hasStrictValidation: boolean
+  requestAuthnContextClassRef: string
   // tslint:disable-next-line: no-big-function
 ): Either<Error, HTMLCollectionOf<Element>> => {
+  const acceptedClockSkewMs = samlConfig.acceptedClockSkewMs || 0;
   return (
     fromOption(new Error("Assertion must be signed"))(
       fromNullable(
@@ -751,7 +758,7 @@ const assertionValidation = (
                   .chain(SubjectConfirmationData =>
                     notOnOrAfterValidation(
                       SubjectConfirmationData,
-                      hasStrictValidation
+                      acceptedClockSkewMs
                     ).map(() => SubjectConfirmationData)
                   )
                   .chain(SubjectConfirmationData =>
@@ -792,7 +799,7 @@ const assertionValidation = (
                 )
               )
               .chain(Conditions =>
-                notOnOrAfterValidation(Conditions, hasStrictValidation).map(
+                notOnOrAfterValidation(Conditions, acceptedClockSkewMs).map(
                   () => Conditions
                 )
               )
@@ -805,8 +812,10 @@ const assertionValidation = (
                   .chain(
                     fromPredicate(
                       NotBefore =>
-                        !hasStrictValidation ||
-                        NotBefore.getTime() <= Date.now(),
+                        NotBefore.getTime() <=
+                        (acceptedClockSkewMs === -1
+                          ? Infinity
+                          : Date.now() + acceptedClockSkewMs),
                       () => new Error("NotBefore must be in the past")
                     )
                   )
@@ -999,7 +1008,7 @@ export const getPreValidateResponse = (
       )
     )
       .chain(Response =>
-        mainAttributeValidation(Response, hasStrictValidation).map(
+        mainAttributeValidation(Response, samlConfig.acceptedClockSkewMs).map(
           IssueInstant => ({
             IssueInstant,
             Response
@@ -1085,12 +1094,13 @@ export const getPreValidateResponse = (
           .map(InResponseTo => ({ ..._, InResponseTo }))
       )
       .chain(_ =>
-        mainAttributeValidation(_.Assertion, hasStrictValidation).map(
-          IssueInstant => ({
-            AssertionIssueInstant: IssueInstant,
-            ..._
-          })
-        )
+        mainAttributeValidation(
+          _.Assertion,
+          samlConfig.acceptedClockSkewMs
+        ).map(IssueInstant => ({
+          AssertionIssueInstant: IssueInstant,
+          ..._
+        }))
       )
   )
     .chain(_ =>
@@ -1201,8 +1211,7 @@ export const getPreValidateResponse = (
           _.Assertion,
           samlConfig,
           _.InResponseTo,
-          _.RequestAuthnContextClassRef,
-          hasStrictValidation
+          _.RequestAuthnContextClassRef
         )
       )
         .chain(Attributes => {

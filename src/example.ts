@@ -86,7 +86,7 @@ const redisClient = redis.createClient({
 
 const samlConfig: SamlConfig = {
   RACComparison: "minimum",
-  acceptedClockSkewMs: 0,
+  acceptedClockSkewMs: -1,
   attributeConsumingServiceIndex: "0",
   authnContext: "https://www.spid.gov.it/SpidL1",
   callbackUrl: "http://localhost:3000" + appConfig.assertionConsumerServicePath,
