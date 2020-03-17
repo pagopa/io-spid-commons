@@ -92,7 +92,7 @@ describe("preValidateResponse", () => {
     await asyncExpectOnCallback(mockCallback);
   });
 
-  it("should preValidate succeded if timers are desyncronized and acceptedClockSkewMs is disabled", async () => {
+  it("should preValidate succeed if timers are desynchronized and acceptedClockSkewMs is disabled", async () => {
     mockGetXmlFromSamlResponse.mockImplementation(() =>
       tryCatch(() =>
         new DOMParser().parseFromString(
