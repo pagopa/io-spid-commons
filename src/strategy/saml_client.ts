@@ -1,5 +1,6 @@
 import * as express from "express";
 import { fromNullable } from "fp-ts/lib/Option";
+import { UTCISODateFromString } from "italia-ts-commons/lib/dates";
 import { SamlConfig } from "passport-saml";
 import * as PassportSaml from "passport-saml";
 import * as requestIp from "request-ip";
@@ -78,7 +79,9 @@ export class CustomSamlClient extends PassportSaml.SAML {
                   this.callback(
                     requestIp.getClientIp(req),
                     tamperedXml,
-                    new Date().toISOString(),
+                    UTCISODateFromString.decode(new Date()).getOrElse(
+                      new Date()
+                    ),
                     "REQUEST"
                   );
                 }

@@ -8,6 +8,7 @@
 import * as express from "express";
 import { fromNullable, isSome } from "fp-ts/lib/Option";
 import { Task, task } from "fp-ts/lib/Task";
+import { UTCISODateFromString } from "italia-ts-commons/lib/dates";
 import { toExpressHandler } from "italia-ts-commons/lib/express";
 import {
   IResponseErrorInternal,
@@ -57,7 +58,7 @@ export type CallbackPayloadType = "REQUEST" | "RESPONSE";
 export type WithSpidCallbackT = (
   sourceIp: string | null,
   payload: string,
-  timestamp: string,
+  createdAt: UTCISODateFromString,
   payloadType: CallbackPayloadType
 ) => void;
 // express endpoints configuration
@@ -121,7 +122,7 @@ const withSpidAuthMiddleware = (
         callback(
           requestIp.getClientIp(req),
           req.body,
-          new Date().toISOString(),
+          UTCISODateFromString.decode(new Date()).getOrElse(new Date()),
           "RESPONSE"
         );
       }
