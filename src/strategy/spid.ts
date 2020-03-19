@@ -44,7 +44,13 @@ export class SpidStrategy extends SamlStrategy {
     private redisClient: RedisClient,
     private tamperAuthorizeRequest?: XmlTamperer,
     private tamperMetadata?: XmlTamperer,
-    private preValidateResponse?: PreValidateResponseT
+    private preValidateResponse?: PreValidateResponseT,
+    private logCallback?: (
+      sourceIp: string | null,
+      payload: string,
+      timestamp: string,
+      isRequest: boolean
+    ) => void
   ) {
     super(options, verify);
     if (!options.requestIdExpirationPeriodMs) {
@@ -77,7 +83,8 @@ export class SpidStrategy extends SamlStrategy {
         },
         this.extendedRedisCacheProvider,
         this.tamperAuthorizeRequest,
-        this.preValidateResponse
+        this.preValidateResponse,
+        this.logCallback
       );
       // we clone the original strategy to avoid race conditions
       // see https://github.com/bergie/passport-saml/pull/426/files

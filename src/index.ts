@@ -6,7 +6,7 @@
  * and a scheduled process to refresh IDP metadata from providers.
  */
 import * as express from "express";
-import { fromNullable } from "fp-ts/lib/Option";
+import { fromNullable, isSome } from "fp-ts/lib/Option";
 import { Task, task } from "fp-ts/lib/Task";
 import { toExpressHandler } from "italia-ts-commons/lib/express";
 import {
@@ -20,6 +20,7 @@ import {
 import * as passport from "passport";
 import { SamlConfig } from "passport-saml";
 import { RedisClient } from "redis";
+import * as requestIp from "request-ip";
 import { Builder } from "xml2js";
 import { noopCacheProvider } from "./strategy/redis_cache_provider";
 import { logger } from "./utils/logger";
@@ -72,7 +73,13 @@ export { noopCacheProvider, IServiceProviderConfig, SamlConfig };
 const withSpidAuthMiddleware = (
   acs: AssertionConsumerServiceT,
   clientLoginRedirectionUrl: string,
-  clientErrorRedirectionUrl: string
+  clientErrorRedirectionUrl: string,
+  logCallback?: (
+    sourceIp: string | null,
+    payload: string,
+    timestamp: string,
+    isRequest: boolean
+  ) => void
 ): ((
   req: express.Request,
   res: express.Response,
@@ -107,6 +114,14 @@ const withSpidAuthMiddleware = (
         );
         return res.redirect(clientLoginRedirectionUrl);
       }
+      if (logCallback && isSome(maybeDoc)) {
+        logCallback(
+          requestIp.getClientIp(req),
+          maybeDoc.toString(),
+          new Date().toISOString(),
+          false
+        );
+      }
       const response = await acs(user);
       response.apply(res);
     })(req, res, next);
@@ -117,6 +132,7 @@ const withSpidAuthMiddleware = (
  * Apply SPID authentication middleware
  * to an express application.
  */
+// tslint:disable-next-line: parameters-max-number
 export function withSpid(
   appConfig: IApplicationConfig,
   samlConfig: SamlConfig,
@@ -124,7 +140,13 @@ export function withSpid(
   redisClient: RedisClient,
   app: express.Express,
   acs: AssertionConsumerServiceT,
-  logout: LogoutT
+  logout: LogoutT,
+  logCallback?: (
+    sourceIp: string | null,
+    payload: string,
+    timestamp: string,
+    isRequest: boolean
+  ) => void
 ): Task<{
   app: express.Express;
   idpMetadataRefresher: () => Task<void>;
@@ -192,9 +214,13 @@ export function withSpid(
       // Initializes SpidStrategy for passport
       passport.use("spid", spidStrategy);
 
-      const spidAuth = passport.authenticate("spid", {
-        session: false
-      });
+      const spidAuth = passport.authenticate(
+        "spid",
+        {
+          session: false
+        },
+        logCallback
+      );
 
       // Setup SPID login handler
       app.get(appConfig.loginPath, spidAuth);
@@ -237,7 +263,8 @@ export function withSpid(
         withSpidAuthMiddleware(
           acs,
           appConfig.clientLoginRedirectionUrl,
-          appConfig.clientErrorRedirectionUrl
+          appConfig.clientErrorRedirectionUrl,
+          logCallback
         )
       );
 
