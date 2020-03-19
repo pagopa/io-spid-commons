@@ -191,7 +191,8 @@ export function withSpid(
         redisClient,
         authorizeRequestTamperer,
         metadataTamperer,
-        getPreValidateResponse(serviceProviderConfig.strictResponseValidation)
+        getPreValidateResponse(serviceProviderConfig.strictResponseValidation),
+        logCallback
       );
     })
     .map(spidStrategy => {
@@ -214,13 +215,9 @@ export function withSpid(
       // Initializes SpidStrategy for passport
       passport.use("spid", spidStrategy);
 
-      const spidAuth = passport.authenticate(
-        "spid",
-        {
-          session: false
-        },
-        logCallback
-      );
+      const spidAuth = passport.authenticate("spid", {
+        session: false
+      });
 
       // Setup SPID login handler
       app.get(appConfig.loginPath, spidAuth);

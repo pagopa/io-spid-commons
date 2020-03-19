@@ -195,7 +195,13 @@ export function makeSpidStrategy(
   redisClient: RedisClient,
   tamperAuthorizeRequest?: XmlTamperer,
   tamperMetadata?: XmlTamperer,
-  preValidateResponse?: PreValidateResponseT
+  preValidateResponse?: PreValidateResponseT,
+  logCallback?: (
+    sourceIp: string | null,
+    payload: string,
+    timestamp: string,
+    isRequest: boolean
+  ) => void
 ): SpidStrategy {
   return new SpidStrategy(
     { ...options, passReqToCallback: true },
@@ -209,6 +215,7 @@ export function makeSpidStrategy(
     redisClient,
     tamperAuthorizeRequest,
     tamperMetadata,
-    preValidateResponse
+    preValidateResponse,
+    logCallback
   );
 }
