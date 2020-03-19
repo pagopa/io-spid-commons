@@ -52,6 +52,14 @@ export type AssertionConsumerServiceT = (
 // logout express handler
 export type LogoutT = () => Promise<IResponsePermanentRedirect>;
 
+export type CallbackPayloadType = "REQUEST" | "RESPONSE";
+
+export type WithSpidCallbackT = (
+  sourceIp: string | null,
+  payload: string,
+  timestamp: string,
+  payloadType: CallbackPayloadType
+) => void;
 // express endpoints configuration
 export interface IApplicationConfig {
   assertionConsumerServicePath: string;
@@ -74,12 +82,7 @@ const withSpidAuthMiddleware = (
   acs: AssertionConsumerServiceT,
   clientLoginRedirectionUrl: string,
   clientErrorRedirectionUrl: string,
-  logCallback?: (
-    sourceIp: string | null,
-    payload: string,
-    timestamp: string,
-    isRequest: boolean
-  ) => void
+  callback?: WithSpidCallbackT
 ): ((
   req: express.Request,
   res: express.Response,
@@ -114,12 +117,12 @@ const withSpidAuthMiddleware = (
         );
         return res.redirect(clientLoginRedirectionUrl);
       }
-      if (logCallback && isSome(maybeDoc)) {
-        logCallback(
+      if (callback && isSome(maybeDoc)) {
+        callback(
           requestIp.getClientIp(req),
-          maybeDoc.toString(),
+          req.body,
           new Date().toISOString(),
-          false
+          "RESPONSE"
         );
       }
       const response = await acs(user);
@@ -141,12 +144,7 @@ export function withSpid(
   app: express.Express,
   acs: AssertionConsumerServiceT,
   logout: LogoutT,
-  logCallback?: (
-    sourceIp: string | null,
-    payload: string,
-    timestamp: string,
-    isRequest: boolean
-  ) => void
+  callback?: WithSpidCallbackT
 ): Task<{
   app: express.Express;
   idpMetadataRefresher: () => Task<void>;
@@ -192,7 +190,7 @@ export function withSpid(
         authorizeRequestTamperer,
         metadataTamperer,
         getPreValidateResponse(serviceProviderConfig.strictResponseValidation),
-        logCallback
+        callback
       );
     })
     .map(spidStrategy => {
@@ -261,7 +259,7 @@ export function withSpid(
           acs,
           appConfig.clientLoginRedirectionUrl,
           appConfig.clientErrorRedirectionUrl,
-          logCallback
+          callback
         )
       );
 
