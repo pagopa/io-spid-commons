@@ -79,9 +79,7 @@ export class CustomSamlClient extends PassportSaml.SAML {
                   this.callback(
                     requestIp.getClientIp(req),
                     tamperedXml,
-                    UTCISODateFromString.decode(new Date()).getOrElse(
-                      new Date()
-                    ),
+                    new Date(),
                     "REQUEST"
                   );
                 }

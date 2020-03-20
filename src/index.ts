@@ -119,12 +119,7 @@ const withSpidAuthMiddleware = (
         return res.redirect(clientLoginRedirectionUrl);
       }
       if (callback && isSome(maybeDoc)) {
-        callback(
-          requestIp.getClientIp(req),
-          req.body,
-          UTCISODateFromString.decode(new Date()).getOrElse(new Date()),
-          "RESPONSE"
-        );
+        callback(requestIp.getClientIp(req), req.body, new Date(), "RESPONSE");
       }
       const response = await acs(user);
       response.apply(res);
