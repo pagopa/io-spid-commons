@@ -1,6 +1,5 @@
 import * as express from "express";
 import { fromNullable } from "fp-ts/lib/Option";
-import { UTCISODateFromString } from "italia-ts-commons/lib/dates";
 import { SamlConfig } from "passport-saml";
 import * as PassportSaml from "passport-saml";
 import * as requestIp from "request-ip";
