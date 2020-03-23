@@ -12,6 +12,7 @@ import { RedisClient } from "redis";
 
 // tslint:disable-next-line: no-submodule-imports
 import { MultiSamlConfig } from "passport-saml/multiSamlStrategy";
+import { DoneCallbackT } from "..";
 import {
   getExtendedRedisCacheProvider,
   IExtendedCacheProvider,
@@ -44,7 +45,8 @@ export class SpidStrategy extends SamlStrategy {
     private redisClient: RedisClient,
     private tamperAuthorizeRequest?: XmlTamperer,
     private tamperMetadata?: XmlTamperer,
-    private preValidateResponse?: PreValidateResponseT
+    private preValidateResponse?: PreValidateResponseT,
+    private doneCb?: DoneCallbackT
   ) {
     super(options, verify);
     if (!options.requestIdExpirationPeriodMs) {
@@ -77,7 +79,8 @@ export class SpidStrategy extends SamlStrategy {
         },
         this.extendedRedisCacheProvider,
         this.tamperAuthorizeRequest,
-        this.preValidateResponse
+        this.preValidateResponse,
+        this.doneCb
       );
       // we clone the original strategy to avoid race conditions
       // see https://github.com/bergie/passport-saml/pull/426/files
