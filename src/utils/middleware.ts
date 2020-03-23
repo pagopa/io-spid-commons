@@ -197,7 +197,7 @@ export function makeSpidStrategy(
   tamperAuthorizeRequest?: XmlTamperer,
   tamperMetadata?: XmlTamperer,
   preValidateResponse?: PreValidateResponseT,
-  callback?: DoneCallbackT
+  doneCb?: DoneCallbackT
 ): SpidStrategy {
   return new SpidStrategy(
     { ...options, passReqToCallback: true },
@@ -212,6 +212,6 @@ export function makeSpidStrategy(
     tamperAuthorizeRequest,
     tamperMetadata,
     preValidateResponse,
-    callback
+    doneCb
   );
 }

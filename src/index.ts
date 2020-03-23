@@ -6,7 +6,7 @@
  * and a scheduled process to refresh IDP metadata from providers.
  */
 import * as express from "express";
-import { fromNullable, isSome } from "fp-ts/lib/Option";
+import { fromNullable } from "fp-ts/lib/Option";
 import { Task, task } from "fp-ts/lib/Task";
 import { UTCISODateFromString } from "italia-ts-commons/lib/dates";
 import { toExpressHandler } from "italia-ts-commons/lib/express";
@@ -60,7 +60,6 @@ export type PayloadType = "REQUEST" | "RESPONSE";
 export type DoneCallbackT = (
   sourceIp: string | null,
   payload: string,
-  createdAt: UTCISODateFromString,
   payloadType: PayloadType
 ) => void;
 
@@ -86,7 +85,7 @@ const withSpidAuthMiddleware = (
   acs: AssertionConsumerServiceT,
   clientLoginRedirectionUrl: string,
   clientErrorRedirectionUrl: string,
-  callback?: DoneCallbackT
+  doneCb?: DoneCallbackT
 ): ((
   req: express.Request,
   res: express.Response,
@@ -121,9 +120,9 @@ const withSpidAuthMiddleware = (
         );
         return res.redirect(clientLoginRedirectionUrl);
       }
-      if (callback && isSome(maybeDoc)) {
-        callback(requestIp.getClientIp(req), req.body, new Date(), "RESPONSE");
-      }
+      fromNullable(doneCb).map(_ =>
+        _(requestIp.getClientIp(req), req.body, "RESPONSE")
+      );
       const response = await acs(user);
       response.apply(res);
     })(req, res, next);
@@ -143,7 +142,7 @@ export function withSpid(
   app: express.Express,
   acs: AssertionConsumerServiceT,
   logout: LogoutT,
-  callback?: DoneCallbackT
+  doneCb?: DoneCallbackT
 ): Task<{
   app: express.Express;
   idpMetadataRefresher: () => Task<void>;
@@ -189,7 +188,7 @@ export function withSpid(
         authorizeRequestTamperer,
         metadataTamperer,
         getPreValidateResponse(serviceProviderConfig.strictResponseValidation),
-        callback
+        doneCb
       );
     })
     .map(spidStrategy => {
@@ -258,7 +257,7 @@ export function withSpid(
           acs,
           appConfig.clientLoginRedirectionUrl,
           appConfig.clientErrorRedirectionUrl,
-          callback
+          doneCb
         )
       );
 

@@ -75,12 +75,7 @@ export class CustomSamlClient extends PassportSaml.SAML {
           ? tamperAuthorizeRequest(xml)
               .chain(tamperedXml => {
                 fromNullable(this.doneCb).map(_ =>
-                  _(
-                    requestIp.getClientIp(req),
-                    tamperedXml,
-                    new Date(),
-                    "REQUEST"
-                  )
+                  _(requestIp.getClientIp(req), tamperedXml, "REQUEST")
                 );
                 return this.extededCacheProvider.save(tamperedXml, this.config);
               })
