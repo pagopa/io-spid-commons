@@ -10,7 +10,6 @@ import { tryCatch2v } from "fp-ts/lib/Either";
 import { identity } from "fp-ts/lib/function";
 import { fromNullable } from "fp-ts/lib/Option";
 import { Task, task } from "fp-ts/lib/Task";
-import { UTCISODateFromString } from "italia-ts-commons/lib/dates";
 import { toExpressHandler } from "italia-ts-commons/lib/express";
 import {
   IResponseErrorInternal,
