@@ -53,14 +53,17 @@ export type AssertionConsumerServiceT = (
 // logout express handler
 export type LogoutT = () => Promise<IResponsePermanentRedirect>;
 
-export type CallbackPayloadType = "REQUEST" | "RESPONSE";
+export type PayloadType = "REQUEST" | "RESPONSE";
 
-export type WithSpidCallbackT = (
+// invoked for each request / response
+// to pass SAML payload to the caller
+export type DoneCallbackT = (
   sourceIp: string | null,
   payload: string,
   createdAt: UTCISODateFromString,
-  payloadType: CallbackPayloadType
+  payloadType: PayloadType
 ) => void;
+
 // express endpoints configuration
 export interface IApplicationConfig {
   assertionConsumerServicePath: string;
@@ -83,7 +86,7 @@ const withSpidAuthMiddleware = (
   acs: AssertionConsumerServiceT,
   clientLoginRedirectionUrl: string,
   clientErrorRedirectionUrl: string,
-  callback?: WithSpidCallbackT
+  callback?: DoneCallbackT
 ): ((
   req: express.Request,
   res: express.Response,
@@ -140,7 +143,7 @@ export function withSpid(
   app: express.Express,
   acs: AssertionConsumerServiceT,
   logout: LogoutT,
-  callback?: WithSpidCallbackT
+  callback?: DoneCallbackT
 ): Task<{
   app: express.Express;
   idpMetadataRefresher: () => Task<void>;
