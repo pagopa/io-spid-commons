@@ -125,7 +125,7 @@ const withSpidAuthMiddleware = (
         tryCatch2v(
           () => _(requestIp.getClientIp(req), req.body, "RESPONSE"),
           identity
-        )
+        ).getOrElse()
       );
       const response = await acs(user);
       response.apply(res);

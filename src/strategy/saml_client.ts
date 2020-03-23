@@ -80,7 +80,7 @@ export class CustomSamlClient extends PassportSaml.SAML {
                   tryCatch2v(
                     () => _(requestIp.getClientIp(req), tamperedXml, "REQUEST"),
                     identity
-                  )
+                  ).getOrElse()
                 );
                 return this.extededCacheProvider.save(tamperedXml, this.config);
               })
