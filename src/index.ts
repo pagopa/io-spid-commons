@@ -6,6 +6,8 @@
  * and a scheduled process to refresh IDP metadata from providers.
  */
 import * as express from "express";
+import { tryCatch2v } from "fp-ts/lib/Either";
+import { identity } from "fp-ts/lib/function";
 import { fromNullable } from "fp-ts/lib/Option";
 import { Task, task } from "fp-ts/lib/Task";
 import { UTCISODateFromString } from "italia-ts-commons/lib/dates";
@@ -121,7 +123,10 @@ const withSpidAuthMiddleware = (
         return res.redirect(clientLoginRedirectionUrl);
       }
       fromNullable(doneCb).map(_ =>
-        _(requestIp.getClientIp(req), req.body, "RESPONSE")
+        tryCatch2v(
+          () => _(requestIp.getClientIp(req), req.body, "RESPONSE"),
+          identity
+        )
       );
       const response = await acs(user);
       response.apply(res);

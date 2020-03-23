@@ -1,4 +1,6 @@
 import * as express from "express";
+import { tryCatch2v } from "fp-ts/lib/Either";
+import { identity } from "fp-ts/lib/function";
 import { fromNullable } from "fp-ts/lib/Option";
 import { SamlConfig } from "passport-saml";
 import * as PassportSaml from "passport-saml";
@@ -75,7 +77,10 @@ export class CustomSamlClient extends PassportSaml.SAML {
           ? tamperAuthorizeRequest(xml)
               .chain(tamperedXml => {
                 fromNullable(this.doneCb).map(_ =>
-                  _(requestIp.getClientIp(req), tamperedXml, "REQUEST")
+                  tryCatch2v(
+                    () => _(requestIp.getClientIp(req), tamperedXml, "REQUEST"),
+                    identity
+                  )
                 );
                 return this.extededCacheProvider.save(tamperedXml, this.config);
               })
