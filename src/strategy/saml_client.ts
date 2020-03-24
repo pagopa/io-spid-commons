@@ -1,9 +1,11 @@
 import * as express from "express";
+import { tryCatch2v } from "fp-ts/lib/Either";
+import { identity } from "fp-ts/lib/function";
 import { fromNullable } from "fp-ts/lib/Option";
 import { SamlConfig } from "passport-saml";
 import * as PassportSaml from "passport-saml";
 import * as requestIp from "request-ip";
-import { WithSpidCallbackT } from "..";
+import { DoneCallbackT } from "..";
 import { IExtendedCacheProvider } from "./redis_cache_provider";
 import { PreValidateResponseT, XmlTamperer } from "./spid";
 
@@ -13,7 +15,7 @@ export class CustomSamlClient extends PassportSaml.SAML {
     private extededCacheProvider: IExtendedCacheProvider,
     private tamperAuthorizeRequest?: XmlTamperer,
     private preValidateResponse?: PreValidateResponseT,
-    private callback?: WithSpidCallbackT
+    private doneCb?: DoneCallbackT
   ) {
     // validateInResponseTo must be set to false to disable
     // internal cacheProvider of passport-saml
@@ -74,14 +76,12 @@ export class CustomSamlClient extends PassportSaml.SAML {
         xml
           ? tamperAuthorizeRequest(xml)
               .chain(tamperedXml => {
-                if (this.callback !== undefined) {
-                  this.callback(
-                    requestIp.getClientIp(req),
-                    tamperedXml,
-                    new Date(),
-                    "REQUEST"
-                  );
-                }
+                fromNullable(this.doneCb).map(_ =>
+                  tryCatch2v(
+                    () => _(requestIp.getClientIp(req), tamperedXml, "REQUEST"),
+                    identity
+                  ).getOrElse()
+                );
                 return this.extededCacheProvider.save(tamperedXml, this.config);
               })
               .mapLeft(error => callback(error))

@@ -6,7 +6,9 @@
  * and a scheduled process to refresh IDP metadata from providers.
  */
 import * as express from "express";
-import { fromNullable, isSome } from "fp-ts/lib/Option";
+import { tryCatch2v } from "fp-ts/lib/Either";
+import { identity } from "fp-ts/lib/function";
+import { fromNullable } from "fp-ts/lib/Option";
 import { Task, task } from "fp-ts/lib/Task";
 import { UTCISODateFromString } from "italia-ts-commons/lib/dates";
 import { toExpressHandler } from "italia-ts-commons/lib/express";
@@ -53,14 +55,16 @@ export type AssertionConsumerServiceT = (
 // logout express handler
 export type LogoutT = () => Promise<IResponsePermanentRedirect>;
 
-export type CallbackPayloadType = "REQUEST" | "RESPONSE";
+export type PayloadType = "REQUEST" | "RESPONSE";
 
-export type WithSpidCallbackT = (
+// invoked for each request / response
+// to pass SAML payload to the caller
+export type DoneCallbackT = (
   sourceIp: string | null,
   payload: string,
-  createdAt: UTCISODateFromString,
-  payloadType: CallbackPayloadType
+  payloadType: PayloadType
 ) => void;
+
 // express endpoints configuration
 export interface IApplicationConfig {
   assertionConsumerServicePath: string;
@@ -83,7 +87,7 @@ const withSpidAuthMiddleware = (
   acs: AssertionConsumerServiceT,
   clientLoginRedirectionUrl: string,
   clientErrorRedirectionUrl: string,
-  callback?: WithSpidCallbackT
+  doneCb?: DoneCallbackT
 ): ((
   req: express.Request,
   res: express.Response,
@@ -118,9 +122,12 @@ const withSpidAuthMiddleware = (
         );
         return res.redirect(clientLoginRedirectionUrl);
       }
-      if (callback && isSome(maybeDoc)) {
-        callback(requestIp.getClientIp(req), req.body, new Date(), "RESPONSE");
-      }
+      fromNullable(doneCb).map(_ =>
+        tryCatch2v(
+          () => _(requestIp.getClientIp(req), req.body, "RESPONSE"),
+          identity
+        ).getOrElse()
+      );
       const response = await acs(user);
       response.apply(res);
     })(req, res, next);
@@ -140,7 +147,7 @@ export function withSpid(
   app: express.Express,
   acs: AssertionConsumerServiceT,
   logout: LogoutT,
-  callback?: WithSpidCallbackT
+  doneCb?: DoneCallbackT
 ): Task<{
   app: express.Express;
   idpMetadataRefresher: () => Task<void>;
@@ -186,7 +193,7 @@ export function withSpid(
         authorizeRequestTamperer,
         metadataTamperer,
         getPreValidateResponse(serviceProviderConfig.strictResponseValidation),
-        callback
+        doneCb
       );
     })
     .map(spidStrategy => {
@@ -255,7 +262,7 @@ export function withSpid(
           acs,
           appConfig.clientLoginRedirectionUrl,
           appConfig.clientErrorRedirectionUrl,
-          callback
+          doneCb
         )
       );
 

@@ -7,7 +7,7 @@ import { Task, task } from "fp-ts/lib/Task";
 import { NonEmptyString } from "italia-ts-commons/lib/strings";
 import { Profile, SamlConfig, VerifiedCallback } from "passport-saml";
 import { RedisClient } from "redis";
-import { WithSpidCallbackT } from "..";
+import { DoneCallbackT } from "..";
 import { CIE_IDP_IDENTIFIERS, SPID_IDP_IDENTIFIERS } from "../config";
 import {
   PreValidateResponseT,
@@ -197,7 +197,7 @@ export function makeSpidStrategy(
   tamperAuthorizeRequest?: XmlTamperer,
   tamperMetadata?: XmlTamperer,
   preValidateResponse?: PreValidateResponseT,
-  callback?: WithSpidCallbackT
+  doneCb?: DoneCallbackT
 ): SpidStrategy {
   return new SpidStrategy(
     { ...options, passReqToCallback: true },
@@ -212,6 +212,6 @@ export function makeSpidStrategy(
     tamperAuthorizeRequest,
     tamperMetadata,
     preValidateResponse,
-    callback
+    doneCb
   );
 }
