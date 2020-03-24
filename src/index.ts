@@ -124,7 +124,12 @@ const withSpidAuthMiddleware = (
       }
       fromNullable(doneCb).map(_ =>
         tryCatch2v(
-          () => _(requestIp.getClientIp(req), req.body, "RESPONSE"),
+          () =>
+            _(
+              requestIp.getClientIp(req),
+              Buffer.from(req.body.SAMLResponse, "base64").toString(),
+              "RESPONSE"
+            ),
           identity
         ).getOrElse()
       );
