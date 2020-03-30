@@ -6,8 +6,6 @@
  * and a scheduled process to refresh IDP metadata from providers.
  */
 import * as express from "express";
-import { tryCatch2v } from "fp-ts/lib/Either";
-import { identity } from "fp-ts/lib/function";
 import { fromNullable } from "fp-ts/lib/Option";
 import { Task, task } from "fp-ts/lib/Task";
 import { toExpressHandler } from "italia-ts-commons/lib/express";
@@ -22,7 +20,6 @@ import {
 import * as passport from "passport";
 import { SamlConfig } from "passport-saml";
 import { RedisClient } from "redis";
-import * as requestIp from "request-ip";
 import { Builder } from "xml2js";
 import { noopCacheProvider } from "./strategy/redis_cache_provider";
 import { logger } from "./utils/logger";

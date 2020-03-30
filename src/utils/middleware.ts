@@ -15,7 +15,6 @@ import {
   XmlTamperer
 } from "../strategy/spid";
 import { IDPEntityDescriptor } from "../types/IDPEntityDescriptor";
-import { logger } from "./logger";
 import { fetchIdpsMetadata } from "./metadata";
 import { logSamlCertExpiration, SamlAttributeT } from "./saml";
 
