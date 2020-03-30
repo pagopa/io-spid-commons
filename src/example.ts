@@ -119,6 +119,15 @@ proxyApp.get("*", (req, res) => {
 });
 proxyApp.listen(8080);
 
+const doneCb = (ip: string | null, request: string, response: string) => {
+  // tslint:disable-next-line: no-console
+  console.log("*************** done", ip);
+  // tslint:disable-next-line: no-console
+  console.log(request);
+  // tslint:disable-next-line: no-console
+  console.log(response);
+};
+
 withSpid(
   appConfig,
   samlConfig,
@@ -126,7 +135,8 @@ withSpid(
   redisClient,
   app,
   acs,
-  logout
+  logout,
+  doneCb
 )
   .map(({ app: withSpidApp, idpMetadataRefresher }) => {
     withSpidApp.get("/success", (_, res) =>

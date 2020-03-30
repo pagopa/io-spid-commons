@@ -54,14 +54,12 @@ export type AssertionConsumerServiceT = (
 // logout express handler
 export type LogoutT = () => Promise<IResponsePermanentRedirect>;
 
-export type PayloadType = "REQUEST" | "RESPONSE";
-
 // invoked for each request / response
 // to pass SAML payload to the caller
 export type DoneCallbackT = (
   sourceIp: string | null,
-  payload: string,
-  payloadType: PayloadType
+  request: string,
+  response: string
 ) => void;
 
 // express endpoints configuration
@@ -85,8 +83,7 @@ export { noopCacheProvider, IServiceProviderConfig, SamlConfig };
 const withSpidAuthMiddleware = (
   acs: AssertionConsumerServiceT,
   clientLoginRedirectionUrl: string,
-  clientErrorRedirectionUrl: string,
-  doneCb?: DoneCallbackT
+  clientErrorRedirectionUrl: string
 ): ((
   req: express.Request,
   res: express.Response,
@@ -121,17 +118,6 @@ const withSpidAuthMiddleware = (
         );
         return res.redirect(clientLoginRedirectionUrl);
       }
-      fromNullable(doneCb).map(_ =>
-        tryCatch2v(
-          () =>
-            _(
-              requestIp.getClientIp(req),
-              Buffer.from(req.body.SAMLResponse, "base64").toString(),
-              "RESPONSE"
-            ),
-          identity
-        ).getOrElse()
-      );
       const response = await acs(user);
       response.apply(res);
     })(req, res, next);
@@ -265,8 +251,7 @@ export function withSpid(
         withSpidAuthMiddleware(
           acs,
           appConfig.clientLoginRedirectionUrl,
-          appConfig.clientErrorRedirectionUrl,
-          doneCb
+          appConfig.clientErrorRedirectionUrl
         )
       );
 

@@ -41,7 +41,7 @@ import { SamlConfig } from "passport-saml";
 import { MultiSamlConfig } from "passport-saml/multiSamlStrategy";
 import * as xmlCrypto from "xml-crypto";
 import { Builder, parseStringPromise } from "xml2js";
-import { DOMParser } from "xmldom";
+import { DOMParser, XMLSerializer } from "xmldom";
 import { SPID_LEVELS, SPID_URLS, SPID_USER_ATTRIBUTES } from "../config";
 import { PreValidateResponseT } from "../strategy/spid";
 import { logger } from "./logger";
@@ -988,10 +988,12 @@ export const getPreValidateResponse = (
   samlConfig,
   body,
   extendedCacheProvider,
+  doneCb,
   callback
   // tslint:disable-next-line: no-big-function
 ) => {
   const maybeDoc = getXmlFromSamlResponse(body);
+
   if (isNone(maybeDoc)) {
     throw new Error("Empty SAML response");
   }
@@ -1107,6 +1109,18 @@ export const getPreValidateResponse = (
       extendedCacheProvider
         .get(_.InResponseTo)
         .map(SAMLRequestCache => ({ ..._, SAMLRequestCache }))
+        .map(
+          __ => (
+            doneCb &&
+              optionTryCatch(() =>
+                doneCb(
+                  __.SAMLRequestCache.RequestXML,
+                  new XMLSerializer().serializeToString(doc)
+                )
+              ),
+            __
+          )
+        )
     )
     .chain(_ =>
       fromEitherToTaskEither(

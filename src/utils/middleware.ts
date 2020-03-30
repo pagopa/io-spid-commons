@@ -203,7 +203,6 @@ export function makeSpidStrategy(
     { ...options, passReqToCallback: true },
     getSamlOptions,
     (_: express.Request, profile: Profile, done: VerifiedCallback) => {
-      logger.debug(profile.getAssertionXml());
       // at this point SAML authentication is successful
       // `done` is a passport callback that signals success
       done(null, profile);
