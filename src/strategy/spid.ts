@@ -12,6 +12,8 @@ import { RedisClient } from "redis";
 
 // tslint:disable-next-line: no-submodule-imports
 import { MultiSamlConfig } from "passport-saml/multiSamlStrategy";
+
+import { Second } from "italia-ts-commons/lib/units";
 import * as requestIp from "request-ip";
 import { DoneCallbackT } from "..";
 import {
@@ -57,14 +59,14 @@ export class SpidStrategy extends SamlStrategy {
   ) {
     super(options, verify);
     if (!options.requestIdExpirationPeriodMs) {
-      // 8 hours
-      options.requestIdExpirationPeriodMs = 28800000;
+      // 1 hour
+      options.requestIdExpirationPeriodMs = 3600 * 1000;
     }
 
     // use our custom cache provider
     this.extendedRedisCacheProvider = getExtendedRedisCacheProvider(
       this.redisClient,
-      options.requestIdExpirationPeriodMs
+      Math.floor(options.requestIdExpirationPeriodMs / 1000) as Second
     );
 
     // bypass passport-saml cache provider

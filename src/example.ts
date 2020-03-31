@@ -128,16 +128,16 @@ const doneCb = (ip: string | null, request: string, response: string) => {
   console.log(response);
 };
 
-withSpid(
-  appConfig,
-  samlConfig,
-  serviceProviderConfig,
-  redisClient,
-  app,
+withSpid({
   acs,
+  app,
+  appConfig,
+  doneCb,
   logout,
-  doneCb
-)
+  redisClient,
+  samlConfig,
+  serviceProviderConfig
+})
   .map(({ app: withSpidApp, idpMetadataRefresher }) => {
     withSpidApp.get("/success", (_, res) =>
       res.json({

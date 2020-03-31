@@ -149,15 +149,16 @@ describe("io-spid-commons withSpid", () => {
         left<Error, Record<string, IDPEntityDescriptor>>(new Error("Error."))
       )
     );
-    const spid = await withSpid(
+    const spid = await withSpid({
       appConfig,
       samlConfig,
       serviceProviderConfig,
-      mockRedisClient,
+      // tslint:disable-next-line: object-literal-sort-keys
+      redisClient: mockRedisClient,
       app,
-      async () => ResponsePermanentRedirect({ href: "/success?acs" }),
-      async () => ResponsePermanentRedirect({ href: "/success?logout" })
-    ).run();
+      acs: async () => ResponsePermanentRedirect({ href: "/success?acs" }),
+      logout: async () => ResponsePermanentRedirect({ href: "/success?logout" })
+    }).run();
     expect(mockFetchIdpsMetadata).toBeCalledTimes(3);
     const emptySpidStrategyOption = getSpidStrategyOption(spid.app);
     expect(emptySpidStrategyOption).toHaveProperty("idp", {});

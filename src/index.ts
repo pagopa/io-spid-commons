@@ -6,6 +6,7 @@
  * and a scheduled process to refresh IDP metadata from providers.
  */
 import * as express from "express";
+import { constVoid } from "fp-ts/lib/function";
 import { fromNullable } from "fp-ts/lib/Option";
 import { Task, task } from "fp-ts/lib/Task";
 import { toExpressHandler } from "italia-ts-commons/lib/express";
@@ -121,21 +122,32 @@ const withSpidAuthMiddleware = (
   };
 };
 
+interface IWithSpidT {
+  appConfig: IApplicationConfig;
+  samlConfig: SamlConfig;
+  serviceProviderConfig: IServiceProviderConfig;
+  redisClient: RedisClient;
+  app: express.Express;
+  acs: AssertionConsumerServiceT;
+  logout: LogoutT;
+  doneCb?: DoneCallbackT;
+}
+
 /**
  * Apply SPID authentication middleware
  * to an express application.
  */
 // tslint:disable-next-line: parameters-max-number
-export function withSpid(
-  appConfig: IApplicationConfig,
-  samlConfig: SamlConfig,
-  serviceProviderConfig: IServiceProviderConfig,
-  redisClient: RedisClient,
-  app: express.Express,
-  acs: AssertionConsumerServiceT,
-  logout: LogoutT,
-  doneCb?: DoneCallbackT
-): Task<{
+export function withSpid({
+  acs,
+  app,
+  appConfig,
+  doneCb = constVoid,
+  logout,
+  redisClient,
+  samlConfig,
+  serviceProviderConfig
+}: IWithSpidT): Task<{
   app: express.Express;
   idpMetadataRefresher: () => Task<void>;
 }> {
