@@ -4,6 +4,7 @@ import { fromEither, TaskEither, taskify } from "fp-ts/lib/TaskEither";
 import * as t from "io-ts";
 import { UTCISODateFromString } from "italia-ts-commons/lib/dates";
 import { readableReport } from "italia-ts-commons/lib/reporters";
+import { Second } from "italia-ts-commons/lib/units";
 import { CacheProvider, SamlConfig } from "passport-saml";
 import * as redis from "redis";
 import { getIDFromRequest } from "../utils/saml";
@@ -53,7 +54,7 @@ export const noopCacheProvider = (): CacheProvider => {
 export const getExtendedRedisCacheProvider = (
   redisClient: redis.RedisClient,
   // 1 hour by default
-  keyExpirationPeriodSeconds: number = 3600,
+  keyExpirationPeriodSeconds: Second = 3600 as Second,
   keyPrefix: string = "SAML-EXT-"
 ): IExtendedCacheProvider => {
   return {

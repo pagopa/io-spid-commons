@@ -86,6 +86,7 @@ describe("preValidateResponse", () => {
       { ...samlConfig, acceptedClockSkewMs: 0 },
       mockBody,
       mockRedisCacheProvider,
+      undefined,
       mockCallback
     );
     expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
@@ -107,6 +108,7 @@ describe("preValidateResponse", () => {
       { ...samlConfig, acceptedClockSkewMs: -1 },
       mockBody,
       mockRedisCacheProvider,
+      undefined,
       mockCallback
     );
     expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
@@ -128,6 +130,7 @@ describe("preValidateResponse", () => {
       { ...samlConfig, acceptedClockSkewMs: 2000 },
       mockBody,
       mockRedisCacheProvider,
+      undefined,
       mockCallback
     );
     expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
@@ -152,6 +155,7 @@ describe("preValidateResponse", () => {
       },
       mockBody,
       mockRedisCacheProvider,
+      undefined,
       mockCallback
     );
     expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
@@ -185,6 +189,7 @@ describe("preValidateResponse", () => {
         samlConfig,
         mockBody,
         mockRedisCacheProvider,
+        undefined,
         mockCallback
       );
       expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);

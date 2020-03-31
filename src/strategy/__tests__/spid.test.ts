@@ -48,7 +48,6 @@ describe("SamlStrategy#constructor", () => {
       {},
       getSamlOptions,
       (_: express.Request, profile: Profile, done: VerifiedCallback) => {
-        logger.debug(profile.getAssertionXml());
         // at this point SAML authentication is successful
         // `done` is a passport callback that signals success
         done(null, profile);
@@ -58,7 +57,7 @@ describe("SamlStrategy#constructor", () => {
     // tslint:disable-next-line: no-string-literal
     expect(spidStrategy["options"]).toHaveProperty(
       "requestIdExpirationPeriodMs",
-      28800000
+      3600000
     );
     // tslint:disable-next-line: no-string-literal
     expect(spidStrategy["options"]).toHaveProperty(

@@ -6,8 +6,7 @@
  * and a scheduled process to refresh IDP metadata from providers.
  */
 import * as express from "express";
-import { tryCatch2v } from "fp-ts/lib/Either";
-import { identity } from "fp-ts/lib/function";
+import { constVoid } from "fp-ts/lib/function";
 import { fromNullable } from "fp-ts/lib/Option";
 import { Task, task } from "fp-ts/lib/Task";
 import { toExpressHandler } from "italia-ts-commons/lib/express";
@@ -22,7 +21,6 @@ import {
 import * as passport from "passport";
 import { SamlConfig } from "passport-saml";
 import { RedisClient } from "redis";
-import * as requestIp from "request-ip";
 import { Builder } from "xml2js";
 import { noopCacheProvider } from "./strategy/redis_cache_provider";
 import { logger } from "./utils/logger";
@@ -54,14 +52,12 @@ export type AssertionConsumerServiceT = (
 // logout express handler
 export type LogoutT = () => Promise<IResponsePermanentRedirect>;
 
-export type PayloadType = "REQUEST" | "RESPONSE";
-
 // invoked for each request / response
 // to pass SAML payload to the caller
 export type DoneCallbackT = (
   sourceIp: string | null,
-  payload: string,
-  payloadType: PayloadType
+  request: string,
+  response: string
 ) => void;
 
 // express endpoints configuration
@@ -85,8 +81,7 @@ export { noopCacheProvider, IServiceProviderConfig, SamlConfig };
 const withSpidAuthMiddleware = (
   acs: AssertionConsumerServiceT,
   clientLoginRedirectionUrl: string,
-  clientErrorRedirectionUrl: string,
-  doneCb?: DoneCallbackT
+  clientErrorRedirectionUrl: string
 ): ((
   req: express.Request,
   res: express.Response,
@@ -121,38 +116,38 @@ const withSpidAuthMiddleware = (
         );
         return res.redirect(clientLoginRedirectionUrl);
       }
-      fromNullable(doneCb).map(_ =>
-        tryCatch2v(
-          () =>
-            _(
-              requestIp.getClientIp(req),
-              Buffer.from(req.body.SAMLResponse, "base64").toString(),
-              "RESPONSE"
-            ),
-          identity
-        ).getOrElse()
-      );
       const response = await acs(user);
       response.apply(res);
     })(req, res, next);
   };
 };
 
+interface IWithSpidT {
+  appConfig: IApplicationConfig;
+  samlConfig: SamlConfig;
+  serviceProviderConfig: IServiceProviderConfig;
+  redisClient: RedisClient;
+  app: express.Express;
+  acs: AssertionConsumerServiceT;
+  logout: LogoutT;
+  doneCb?: DoneCallbackT;
+}
+
 /**
  * Apply SPID authentication middleware
  * to an express application.
  */
 // tslint:disable-next-line: parameters-max-number
-export function withSpid(
-  appConfig: IApplicationConfig,
-  samlConfig: SamlConfig,
-  serviceProviderConfig: IServiceProviderConfig,
-  redisClient: RedisClient,
-  app: express.Express,
-  acs: AssertionConsumerServiceT,
-  logout: LogoutT,
-  doneCb?: DoneCallbackT
-): Task<{
+export function withSpid({
+  acs,
+  app,
+  appConfig,
+  doneCb = constVoid,
+  logout,
+  redisClient,
+  samlConfig,
+  serviceProviderConfig
+}: IWithSpidT): Task<{
   app: express.Express;
   idpMetadataRefresher: () => Task<void>;
 }> {
@@ -265,8 +260,7 @@ export function withSpid(
         withSpidAuthMiddleware(
           acs,
           appConfig.clientLoginRedirectionUrl,
-          appConfig.clientErrorRedirectionUrl,
-          doneCb
+          appConfig.clientErrorRedirectionUrl
         )
       );
 

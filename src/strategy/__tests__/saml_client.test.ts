@@ -10,6 +10,7 @@ import { getAuthorizeRequestTamperer } from "../../utils/saml";
 import { mockWrapCallback } from "../__mocks__/passport-saml";
 import { getExtendedRedisCacheProvider } from "../redis_cache_provider";
 import { CustomSamlClient } from "../saml_client";
+import { PreValidateResponseT } from "../spid";
 
 const mockSet = jest.fn();
 const mockGet = jest.fn();
@@ -132,7 +133,7 @@ describe("CustomSamlClient#validatePostResponse", () => {
   it("should validatePostResponse calls preValidateResponse if provided into CustomSamlClient", () => {
     const mockPreValidate = jest
       .fn()
-      .mockImplementation((_, __, ___, callback) => {
+      .mockImplementation((_, __, ___, ____, callback) => {
         callback();
       });
     const customSamlClient = new CustomSamlClient(
@@ -147,6 +148,7 @@ describe("CustomSamlClient#validatePostResponse", () => {
       { validateInResponseTo: true },
       { SAMLResponse: "" },
       redisCacheProvider,
+      undefined,
       expect.any(Function)
     );
     expect(mockedCallback).toBeCalledTimes(1);
@@ -156,7 +158,7 @@ describe("CustomSamlClient#validatePostResponse", () => {
     const expectedPreValidateError = new Error("PreValidateError");
     const mockPreValidate = jest
       .fn()
-      .mockImplementation((_, __, ___, callback) => {
+      .mockImplementation((_, __, ___, ____, callback) => {
         callback(expectedPreValidateError);
       });
     const customSamlClient = new CustomSamlClient(
@@ -171,6 +173,7 @@ describe("CustomSamlClient#validatePostResponse", () => {
       { validateInResponseTo: true },
       { SAMLResponse: "" },
       redisCacheProvider,
+      undefined,
       expect.any(Function)
     );
     expect(mockedCallback).toBeCalledWith(expectedPreValidateError);
@@ -181,7 +184,7 @@ describe("CustomSamlClient#validatePostResponse", () => {
     const expectedAuthnRequestID = "123456";
     const mockPreValidate = jest
       .fn()
-      .mockImplementation((_, __, ___, callback) => {
+      .mockImplementation((_, __, ___, ____, callback) => {
         callback(null, true, expectedAuthnRequestID);
       });
     mockDel.mockImplementation((_, callback) => callback(null, 1));
@@ -197,6 +200,7 @@ describe("CustomSamlClient#validatePostResponse", () => {
       { validateInResponseTo: true },
       { SAMLResponse: "" },
       redisCacheProvider,
+      undefined,
       expect.any(Function)
     );
     // Before checking the execution of the callback we must await that the TaskEither execution is completed.
@@ -217,7 +221,7 @@ describe("CustomSamlClient#validatePostResponse", () => {
     const expectedDelError = new Error("ErrorDel");
     const mockPreValidate = jest
       .fn()
-      .mockImplementation((_, __, ___, callback) => {
+      .mockImplementation((_, __, ___, ____, callback) => {
         callback(null, true, expectedAuthnRequestID);
       });
     mockDel.mockImplementation((_, callback) => callback(expectedDelError));
@@ -233,6 +237,7 @@ describe("CustomSamlClient#validatePostResponse", () => {
       { validateInResponseTo: true },
       { SAMLResponse: "" },
       redisCacheProvider,
+      undefined,
       expect.any(Function)
     );
     // Before checking the execution of the callback we must await that the TaskEither execution is completed.
