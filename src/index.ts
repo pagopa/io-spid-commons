@@ -32,6 +32,7 @@ import {
   makeSpidStrategyOptions,
   upsertSpidStrategyOption
 } from "./utils/middleware";
+import { middlewareCatchAsInternalError } from "./utils/response";
 import {
   getAuthorizeRequestTamperer,
   getErrorCodeFromResponse,
@@ -220,7 +221,7 @@ export function withSpid({
       });
 
       // Setup SPID login handler
-      app.get(appConfig.loginPath, spidAuth);
+      app.get(appConfig.loginPath, middlewareCatchAsInternalError(spidAuth));
 
       // Setup SPID metadata handler
       app.get(
@@ -257,10 +258,12 @@ export function withSpid({
       // redirects the authenticated user to our app
       app.post(
         appConfig.assertionConsumerServicePath,
-        withSpidAuthMiddleware(
-          acs,
-          appConfig.clientLoginRedirectionUrl,
-          appConfig.clientErrorRedirectionUrl
+        middlewareCatchAsInternalError(
+          withSpidAuthMiddleware(
+            acs,
+            appConfig.clientLoginRedirectionUrl,
+            appConfig.clientErrorRedirectionUrl
+          )
         )
       );
 
