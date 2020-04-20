@@ -1065,13 +1065,18 @@ export const getPreValidateResponse = (
             fromOption(new Error("StatusCode must contain a non empty Value"))(
               fromNullable(StatusCode.getAttribute("Value"))
             )
-              .chain(
-                fromPredicate(
+              .chain(statusCode => {
+                // TODO: Must show an error page to the user (26)
+                return fromPredicate<Error, string>(
                   Value =>
-                    Value === "urn:oasis:names:tc:SAML:2.0:status:Success",
-                  () => new Error("Value attribute of StatusCode is invalid")
-                ) // TODO: Must show an error page to the user (26)
-              )
+                    Value.toLowerCase() ===
+                    "urn:oasis:names:tc:SAML:2.0:status:Success".toLowerCase(),
+                  () =>
+                    new Error(
+                      `Value attribute of StatusCode is invalid: ${statusCode}`
+                    )
+                )(statusCode);
+              })
               .map(() => _)
           )
       )
