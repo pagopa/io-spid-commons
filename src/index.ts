@@ -97,18 +97,19 @@ const withSpidAuthMiddleware = (
       const maybeDoc = getXmlFromSamlResponse(req.body);
       const issuer = maybeDoc.chain(getSamlIssuer).getOrElse("UNKNOWN");
       if (err) {
-        logger.error(
-          "Spid Authentication|Authentication Error|ERROR=%s|ISSUER=%s",
-          err,
-          issuer
-        );
-        return res.redirect(
+        const redirectionUrl =
           clientErrorRedirectionUrl +
-            maybeDoc
-              .chain(getErrorCodeFromResponse)
-              .map(errorCode => `?errorCode=${errorCode}`)
-              .getOrElse(`?errorMessage=${err}`)
+          maybeDoc
+            .chain(getErrorCodeFromResponse)
+            .map(errorCode => `?errorCode=${errorCode}`)
+            .getOrElse(`?errorMessage=${err}`);
+        logger.error(
+          "Spid Authentication|Authentication Error|ERROR=%s|ISSUER=%s|REDIRECT_TO=%s",
+          err,
+          issuer,
+          redirectionUrl
         );
+        return res.redirect(redirectionUrl);
       }
       if (!user) {
         logger.error(
