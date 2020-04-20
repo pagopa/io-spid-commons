@@ -1,6 +1,6 @@
 {
   "name": "@pagopa/io-spid-commons",
-  "version": "4.1.0",
+  "version": "4.2.0",
   "description": "Common code for integrating SPID authentication",
   "repository": {
     "type": "git",
