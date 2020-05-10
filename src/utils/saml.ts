@@ -232,26 +232,6 @@ const getAuthSalmOptions = (
 };
 
 /**
- * Log SPID response body, entityID / authLevel.
- */
-const logSpidResponse = (req: ExpressRequest, decodedResponse?: string) => {
-  if (req.method === "POST") {
-    logger.debug("SPID raw POST request: %s\n", JSON.stringify(req.body));
-  } else if (req.method === "GET") {
-    logger.debug(
-      "SPID GET request entityID: %s - authLevel: %s\n",
-      req.query.entityID,
-      req.query.authLevel
-    );
-  } else {
-    logger.debug("SPID request method: %s\n", req.method);
-  }
-  if (decodedResponse && req.method === "POST") {
-    logger.debug("SPID decoded POST request: %s\n", decodedResponse);
-  }
-};
-
-/**
  * Reads dates information in x509 certificate
  * and logs remaining time to its expiration date.
  *
@@ -296,8 +276,6 @@ export const getSamlOptions: MultiSamlConfig["getSamlOptions"] = (
       req.body && req.body.SAMLResponse
         ? decodeBase64(req.body.SAMLResponse)
         : undefined;
-
-    logSpidResponse(req, decodedResponse);
 
     // Get SPID strategy options with IDPs metadata
     const maybeSpidStrategyOptions = fromNullable(
