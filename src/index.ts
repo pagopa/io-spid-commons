@@ -11,6 +11,7 @@ import { fromNullable } from "fp-ts/lib/Option";
 import { Task, task } from "fp-ts/lib/Task";
 import { toExpressHandler } from "italia-ts-commons/lib/express";
 import {
+  IResponseErrorForbiddenNotAuthorized,
   IResponseErrorInternal,
   IResponseErrorValidation,
   IResponsePermanentRedirect,
@@ -47,7 +48,11 @@ import { getMetadataTamperer } from "./utils/saml";
 export type AssertionConsumerServiceT = (
   userPayload: unknown
 ) => Promise<
-  IResponseErrorInternal | IResponseErrorValidation | IResponsePermanentRedirect
+  // tslint:disable-next-line: max-union-size
+  | IResponseErrorInternal
+  | IResponseErrorValidation
+  | IResponsePermanentRedirect
+  | IResponseErrorForbiddenNotAuthorized
 >;
 
 // logout express handler
