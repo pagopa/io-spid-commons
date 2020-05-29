@@ -35,7 +35,7 @@
     "@types/xml2js": "^0.4.5",
     "@types/xmldom": "^0.1.29",
     "@types/yargs": "^15.0.4",
-    "danger": "^8.0.0",
+    "danger": "^7.0.0",
     "danger-plugin-digitalcitizenship": "*",
     "express": "4.17.0",
     "italia-tslint-rules": "*",
