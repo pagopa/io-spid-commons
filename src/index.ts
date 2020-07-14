@@ -7,7 +7,8 @@
  */
 import * as express from "express";
 import { constVoid } from "fp-ts/lib/function";
-import { fromNullable } from "fp-ts/lib/Option";
+import { fromNullable, fromPredicate } from "fp-ts/lib/Option";
+import { lookup } from "fp-ts/lib/Record";
 import { Task, task } from "fp-ts/lib/Task";
 import { toExpressHandler } from "italia-ts-commons/lib/express";
 import {
@@ -17,12 +18,14 @@ import {
   IResponsePermanentRedirect,
   IResponseSuccessXml,
   ResponseErrorInternal,
+  ResponseErrorValidation,
   ResponseSuccessXml
 } from "italia-ts-commons/lib/responses";
 import * as passport from "passport";
 import { SamlConfig } from "passport-saml";
 import { RedisClient } from "redis";
 import { Builder } from "xml2js";
+import { ENABLED_SPID_LEVELS, SPID_LEVELS } from "./config";
 import { noopCacheProvider } from "./strategy/redis_cache_provider";
 import { logger } from "./utils/logger";
 import { parseStartupIdpsMetadata } from "./utils/metadata";
@@ -227,7 +230,30 @@ export function withSpid({
       });
 
       // Setup SPID login handler
-      app.get(appConfig.loginPath, middlewareCatchAsInternalError(spidAuth));
+      app.get(
+        appConfig.loginPath,
+        middlewareCatchAsInternalError((req, res, next) => {
+          fromNullable(req.query)
+            .mapNullable(q => q.authLevel)
+            .chain(authLevel =>
+              lookup(authLevel, SPID_LEVELS).map(_ => authLevel)
+            )
+            .chain(
+              fromPredicate(authLevel =>
+                ENABLED_SPID_LEVELS.includes(authLevel)
+              )
+            )
+            .foldL(
+              () =>
+                ResponseErrorValidation(
+                  "Bad Request",
+                  "Missing or invalid authLevel"
+                ).apply(res),
+              () => next()
+            );
+        }),
+        middlewareCatchAsInternalError(spidAuth)
+      );
 
       // Setup SPID metadata handler
       app.get(

@@ -40,12 +40,12 @@ services:
     networks:
       - io-spid-commons
 
-  spid-saml-check:
-    image: spid-saml-check
-    ports:
-      - "8080:8080"
-    networks:
-      - io-spid-commons
+  #spid-saml-check:
+  #  image: spid-saml-check
+  #  ports:
+  #    - "8080:8080"
+  #  networks:
+  #    - io-spid-commons
 
 # needed to make TSL work
 networks:
