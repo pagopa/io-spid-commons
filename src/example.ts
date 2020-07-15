@@ -48,7 +48,8 @@ const appConfig: IApplicationConfig = {
   clientLoginRedirectionUrl: "/success",
   loginPath: "/login",
   metadataPath: "/metadata",
-  sloPath: "/logout"
+  sloPath: "/logout",
+  spidLevelsWhitelist: ["SpidL2", "SpidL3"]
 };
 
 const serviceProviderConfig: IServiceProviderConfig = {

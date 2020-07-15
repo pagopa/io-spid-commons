@@ -25,7 +25,7 @@ import * as passport from "passport";
 import { SamlConfig } from "passport-saml";
 import { RedisClient } from "redis";
 import { Builder } from "xml2js";
-import { ENABLED_SPID_LEVELS, SPID_LEVELS } from "./config";
+import { SPID_LEVELS } from "./config";
 import { noopCacheProvider } from "./strategy/redis_cache_provider";
 import { logger } from "./utils/logger";
 import { parseStartupIdpsMetadata } from "./utils/metadata";
@@ -77,6 +77,7 @@ export interface IApplicationConfig {
   loginPath: string;
   metadataPath: string;
   sloPath: string;
+  spidLevelsWhitelist: ReadonlyArray<keyof SPID_LEVELS>;
   startupIdpsMetadata?: Record<string, string>;
 }
 
@@ -240,7 +241,7 @@ export function withSpid({
             )
             .chain(
               fromPredicate(authLevel =>
-                ENABLED_SPID_LEVELS.includes(authLevel)
+                appConfig.spidLevelsWhitelist.includes(authLevel)
               )
             )
             .foldL(

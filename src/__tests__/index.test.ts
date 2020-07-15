@@ -4,6 +4,7 @@ import { fromEither } from "fp-ts/lib/TaskEither";
 import { ResponsePermanentRedirect } from "italia-ts-commons/lib/responses";
 import { createMockRedis } from "mock-redis-client";
 import { RedisClient } from "redis";
+import * as request from "supertest";
 import {
   IApplicationConfig,
   IServiceProviderConfig,
@@ -95,7 +96,8 @@ const appConfig: IApplicationConfig = {
   clientLoginRedirectionUrl: "/success",
   loginPath: expectedLoginPath,
   metadataPath,
-  sloPath: expectedSloPath
+  sloPath: expectedSloPath,
+  spidLevelsWhitelist: ["SpidL2", "SpidL3"]
 };
 
 const samlConfig: SamlConfig = {
@@ -141,6 +143,24 @@ const serviceProviderConfig: IServiceProviderConfig = {
 // tslint:disable-next-line: no-any
 const mockRedisClient: RedisClient = (createMockRedis() as any).createClient();
 
+function initMockFetchIDPMetadata(): void {
+  mockFetchIdpsMetadata.mockImplementationOnce(() => {
+    return fromEither(
+      right<Error, Record<string, IDPEntityDescriptor>>(mockIdpMetadata)
+    );
+  });
+  mockFetchIdpsMetadata.mockImplementationOnce(() => {
+    return fromEither(
+      right<Error, Record<string, IDPEntityDescriptor>>(mockCIEIdpMetadata)
+    );
+  });
+  mockFetchIdpsMetadata.mockImplementationOnce(() => {
+    return fromEither(
+      right<Error, Record<string, IDPEntityDescriptor>>(mockTestenvIdpMetadata)
+    );
+  });
+}
+
 describe("io-spid-commons withSpid", () => {
   it("shoud idpMetadataRefresher refresh idps metadata from remote url", async () => {
     const app = express();
@@ -165,23 +185,7 @@ describe("io-spid-commons withSpid", () => {
 
     jest.resetAllMocks();
 
-    mockFetchIdpsMetadata.mockImplementationOnce(() => {
-      return fromEither(
-        right<Error, Record<string, IDPEntityDescriptor>>(mockIdpMetadata)
-      );
-    });
-    mockFetchIdpsMetadata.mockImplementationOnce(() => {
-      return fromEither(
-        right<Error, Record<string, IDPEntityDescriptor>>(mockCIEIdpMetadata)
-      );
-    });
-    mockFetchIdpsMetadata.mockImplementationOnce(() => {
-      return fromEither(
-        right<Error, Record<string, IDPEntityDescriptor>>(
-          mockTestenvIdpMetadata
-        )
-      );
-    });
+    initMockFetchIDPMetadata();
     await spid.idpMetadataRefresher().run();
     expect(mockFetchIdpsMetadata).toHaveBeenNthCalledWith(
       1,
@@ -204,5 +208,22 @@ describe("io-spid-commons withSpid", () => {
       ...mockCIEIdpMetadata,
       ...mockTestenvIdpMetadata
     });
+  });
+  it("should reject blacklisted spid levels", async () => {
+    const app = express();
+    initMockFetchIDPMetadata();
+    const spid = await withSpid({
+      appConfig,
+      samlConfig,
+      serviceProviderConfig,
+      // tslint:disable-next-line: object-literal-sort-keys
+      redisClient: mockRedisClient,
+      app,
+      acs: async () => ResponsePermanentRedirect({ href: "/success?acs" }),
+      logout: async () => ResponsePermanentRedirect({ href: "/success?logout" })
+    }).run();
+    return request(spid.app)
+      .get("/login?authLevel=SpidL1")
+      .expect(400);
   });
 });

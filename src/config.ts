@@ -43,8 +43,7 @@ export const SPID_LEVELS = {
   SpidL2: "https://www.spid.gov.it/SpidL2",
   SpidL3: "https://www.spid.gov.it/SpidL3"
 };
-
-export const ENABLED_SPID_LEVELS: ReadonlyArray<string> = ["SpidL2", "SpidL3"];
+export type SPID_LEVELS = typeof SPID_LEVELS;
 
 export const SPID_URLS = {
   "https://www.spid.gov.it/SpidL1": "SpidL1",
