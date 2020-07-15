@@ -223,7 +223,7 @@ describe("io-spid-commons withSpid", () => {
       logout: async () => ResponsePermanentRedirect({ href: "/success?logout" })
     }).run();
     return request(spid.app)
-      .get("/login?authLevel=SpidL1")
+      .get(`${appConfig.loginPath}?authLevel=SpidL1`)
       .expect(400);
   });
 });
