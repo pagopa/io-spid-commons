@@ -1087,7 +1087,7 @@ export const getPreValidateResponse = (
                 "Assertion"
               ).item(0)
             )
-          ).map(Assertion => ({ ..._, Assertion }))
+          ).map(assertion => ({ ..._, Assertion: assertion }))
         )
       )
       .chain(_ =>
@@ -1095,7 +1095,7 @@ export const getPreValidateResponse = (
           .mapLeft(
             () => new Error("InResponseTo must contain a non empty string")
           )
-          .map(InResponseTo => ({ ..._, InResponseTo }))
+          .map(inResponseTo => ({ ..._, InResponseTo: inResponseTo }))
       )
       .chain(_ =>
         mainAttributeValidation(
