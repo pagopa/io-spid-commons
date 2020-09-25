@@ -4,6 +4,7 @@
  * SPID protocol has some peculiarities that need to be addressed
  * to make request, metadata and responses compliant.
  */
+import * as appInsights from "applicationinsights";
 import { distanceInWordsToNow, isAfter, subDays } from "date-fns";
 import { Request as ExpressRequest } from "express";
 import { difference, flatten } from "fp-ts/lib/Array";
@@ -42,6 +43,7 @@ import { MultiSamlConfig } from "passport-saml/multiSamlStrategy";
 import * as xmlCrypto from "xml-crypto";
 import { Builder, parseStringPromise } from "xml2js";
 import { DOMParser, XMLSerializer } from "xmldom";
+import * as xpath from "xpath";
 import { SPID_LEVELS, SPID_URLS, SPID_USER_ATTRIBUTES } from "../config";
 import { PreValidateResponseT } from "../strategy/spid";
 import { logger } from "./logger";
@@ -960,7 +962,8 @@ const assertionValidation = (
 };
 
 export const getPreValidateResponse = (
-  strictValidationOptions?: StrictResponseValidationOptions
+  strictValidationOptions?: StrictResponseValidationOptions,
+  telemetryClient?: appInsights.TelemetryClient
   // tslint:disable-next-line: no-big-function
 ): PreValidateResponseT => (
   samlConfig,
@@ -977,16 +980,26 @@ export const getPreValidateResponse = (
   }
   const doc = maybeDoc.value;
 
+  const responsesCollection = doc.getElementsByTagNameNS(
+    SAML_NAMESPACE.PROTOCOL,
+    "Response"
+  );
+
   const hasStrictValidation = fromNullable(strictValidationOptions)
     .chain(_ => getSamlIssuer(doc).mapNullable(issuer => _[issuer]))
     .getOrElse(false);
 
   fromEitherToTaskEither(
-    fromOption(new Error("Missing Reponse element inside SAML Response"))(
-      fromNullable(
-        doc.getElementsByTagNameNS(SAML_NAMESPACE.PROTOCOL, "Response").item(0)
+    fromPredicate<Error, HTMLCollectionOf<Element>>(
+      _ => _.length === 1,
+      _ => new Error("SAML Response must have only one Response element")
+    )(responsesCollection)
+      .map(_ => _.item(0))
+      .chain(Response =>
+        fromOption(new Error("Missing Reponse element inside SAML Response"))(
+          fromNullable(Response)
+        )
       )
-    )
       .chain(Response =>
         mainAttributeValidation(Response, samlConfig.acceptedClockSkewMs).map(
           IssueInstant => ({
@@ -1059,17 +1072,23 @@ export const getPreValidateResponse = (
           )
       )
       .chain(_ =>
-        fromOption(new Error("Assertion element must be present"))(
-          fromNullable(
-            _.Response.getElementsByTagNameNS(
+        fromPredicate<Error, { IssueInstant: Date; Response: Element }>(
+          predicate =>
+            predicate.Response.getElementsByTagNameNS(
               SAML_NAMESPACE.ASSERTION,
               "Assertion"
-            ).item(0)
-          )
-        ).map(Assertion => ({
-          Assertion,
-          ..._
-        }))
+            ).length === 1,
+          _1 => new Error("SAML Response must have only one Assertion element")
+        )(_).chain(_1 =>
+          fromOption(new Error("Assertion element must be present"))(
+            fromNullable(
+              _1.Response.getElementsByTagNameNS(
+                SAML_NAMESPACE.ASSERTION,
+                "Assertion"
+              ).item(0)
+            )
+          ).map(Assertion => ({ ..._, Assertion }))
+        )
       )
       .chain(_ =>
         NonEmptyString.decode(_.Response.getAttribute("InResponseTo"))
@@ -1286,7 +1305,38 @@ export const getPreValidateResponse = (
         )
       ).map(() => _)
     )
-    .bimap(callback, _ => callback(null, true, _.InResponseTo))
+    .bimap(
+      error => {
+        if (telemetryClient) {
+          telemetryClient.trackEvent({
+            name: "backend.login.prevalidate",
+            properties: {
+              message: error.message,
+              type: "ERROR"
+            }
+          });
+        }
+        return callback(error);
+      },
+      _ => {
+        // Check if Response Signature is missing
+        const signatureOfResponseCount = (xpath.select(
+          "count(//*[local-name(.)='Response']/*[local-name(.)='Signature'])",
+          doc
+        ) as unknown) as number;
+        if (telemetryClient && signatureOfResponseCount === 0) {
+          telemetryClient.trackEvent({
+            name: "backend.login.prevalidate",
+            properties: {
+              idpIssuer: _.SAMLRequestCache.idpIssuer,
+              message: "Missing Request signature",
+              type: "INFO"
+            }
+          });
+        }
+        return callback(null, true, _.InResponseTo);
+      }
+    )
     .run()
     .catch(callback);
 };

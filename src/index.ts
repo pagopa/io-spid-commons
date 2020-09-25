@@ -5,6 +5,7 @@
  * Setups the endpoint to generate service provider metadata
  * and a scheduled process to refresh IDP metadata from providers.
  */
+import * as appInsights from "applicationinsights";
 import * as express from "express";
 import { constVoid } from "fp-ts/lib/function";
 import { fromNullable } from "fp-ts/lib/Option";
@@ -75,6 +76,7 @@ export interface IApplicationConfig {
   metadataPath: string;
   sloPath: string;
   startupIdpsMetadata?: Record<string, string>;
+  applicationInsights?: appInsights.TelemetryClient;
 }
 
 // re-export
@@ -198,7 +200,10 @@ export function withSpid({
         redisClient,
         authorizeRequestTamperer,
         metadataTamperer,
-        getPreValidateResponse(serviceProviderConfig.strictResponseValidation),
+        getPreValidateResponse(
+          serviceProviderConfig.strictResponseValidation,
+          appConfig.applicationInsights
+        ),
         doneCb
       );
     })

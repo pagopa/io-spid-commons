@@ -1,9 +1,11 @@
+import * as appInsights from "applicationinsights";
 import { right } from "fp-ts/lib/Either";
 import { isSome, tryCatch } from "fp-ts/lib/Option";
 import { fromEither } from "fp-ts/lib/TaskEither";
 import { SamlConfig } from "passport-saml";
 import { DOMParser } from "xmldom";
 import {
+  getSamlAssertion,
   getSamlResponse,
   samlRequest,
   samlResponseCIE
@@ -34,6 +36,7 @@ describe("getXmlFromSamlResponse", () => {
   });
 });
 
+// tslint:disable-next-line: no-big-function
 describe("preValidateResponse", () => {
   const mockCallback = jest.fn();
   const mockGetXmlFromSamlResponse = jest.spyOn(saml, "getXmlFromSamlResponse");
@@ -46,7 +49,14 @@ describe("preValidateResponse", () => {
   const mockBody = "MOCKED BODY";
   const mockTestIdpIssuer = "http://localhost:8080";
 
+  const mockTrackEvent = jest.fn();
+  const mockTelemetryClient = ({
+    trackEvent: mockTrackEvent
+  } as unknown) as appInsights.TelemetryClient;
+
   const expectedDesynResponseValueMs = 2000;
+
+  const expectedEventName = "backend.login.prevalidate";
 
   const asyncExpectOnCallback = (callback: jest.Mock, error?: Error) =>
     new Promise(resolve => {
@@ -75,6 +85,68 @@ describe("preValidateResponse", () => {
     jest.restoreAllMocks();
   });
 
+  it("should preValidate fail when saml Response has multiple Assertion elements", async () => {
+    mockGetXmlFromSamlResponse.mockImplementation(() =>
+      tryCatch(() =>
+        new DOMParser().parseFromString(
+          getSamlResponse({ customAssertion: getSamlAssertion().repeat(2) })
+        )
+      )
+    );
+    const strictValidationOption: StrictResponseValidationOptions = {
+      mockTestIdpIssuer: true
+    };
+    getPreValidateResponse(strictValidationOption, mockTelemetryClient)(
+      { ...samlConfig, acceptedClockSkewMs: 0 },
+      mockBody,
+      mockRedisCacheProvider,
+      undefined,
+      mockCallback
+    );
+    expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
+    const expectedError = new Error(
+      "SAML Response must have only one Assertion element"
+    );
+    await asyncExpectOnCallback(mockCallback, expectedError);
+    expect(mockTrackEvent).toBeCalledWith({
+      name: expectedEventName,
+      properties: {
+        message: expectedError.message,
+        type: "ERROR"
+      }
+    });
+  });
+
+  it("should preValidate fail when saml Response has multiple Response elements", async () => {
+    mockGetXmlFromSamlResponse.mockImplementation(() =>
+      tryCatch(() =>
+        new DOMParser().parseFromString(getSamlResponse().repeat(2))
+      )
+    );
+    const strictValidationOption: StrictResponseValidationOptions = {
+      mockTestIdpIssuer: true
+    };
+    getPreValidateResponse(strictValidationOption, mockTelemetryClient)(
+      { ...samlConfig, acceptedClockSkewMs: 0 },
+      mockBody,
+      mockRedisCacheProvider,
+      undefined,
+      mockCallback
+    );
+    const expectedError = new Error(
+      "SAML Response must have only one Response element"
+    );
+    expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
+    await asyncExpectOnCallback(mockCallback, expectedError);
+    expect(mockTrackEvent).toBeCalledWith({
+      name: expectedEventName,
+      properties: {
+        message: expectedError.message,
+        type: "ERROR"
+      }
+    });
+  });
+
   it("should preValidate succeded with a valid saml Response", async () => {
     mockGetXmlFromSamlResponse.mockImplementation(() =>
       tryCatch(() => new DOMParser().parseFromString(getSamlResponse()))
@@ -93,11 +165,41 @@ describe("preValidateResponse", () => {
     await asyncExpectOnCallback(mockCallback);
   });
 
+  it("should preValidate succeded and send an Event on valid Response with missing Signature", async () => {
+    mockGetXmlFromSamlResponse.mockImplementation(() =>
+      tryCatch(() =>
+        new DOMParser().parseFromString(
+          getSamlResponse({ hasResponseSignature: false })
+        )
+      )
+    );
+    const strictValidationOption: StrictResponseValidationOptions = {
+      mockTestIdpIssuer: true
+    };
+    getPreValidateResponse(strictValidationOption, mockTelemetryClient)(
+      { ...samlConfig, acceptedClockSkewMs: 0 },
+      mockBody,
+      mockRedisCacheProvider,
+      undefined,
+      mockCallback
+    );
+    expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
+    await asyncExpectOnCallback(mockCallback);
+    expect(mockTrackEvent).toBeCalledWith({
+      name: expectedEventName,
+      properties: {
+        idpIssuer: mockTestIdpIssuer,
+        message: expect.any(String),
+        type: "INFO"
+      }
+    });
+  });
+
   it("should preValidate succeed if timers are desynchronized and acceptedClockSkewMs is disabled", async () => {
     mockGetXmlFromSamlResponse.mockImplementation(() =>
       tryCatch(() =>
         new DOMParser().parseFromString(
-          getSamlResponse(expectedDesynResponseValueMs)
+          getSamlResponse({ clockSkewMs: expectedDesynResponseValueMs })
         )
       )
     );
@@ -119,7 +221,7 @@ describe("preValidateResponse", () => {
     mockGetXmlFromSamlResponse.mockImplementation(() =>
       tryCatch(() =>
         new DOMParser().parseFromString(
-          getSamlResponse(expectedDesynResponseValueMs)
+          getSamlResponse({ clockSkewMs: expectedDesynResponseValueMs })
         )
       )
     );
@@ -141,7 +243,7 @@ describe("preValidateResponse", () => {
     mockGetXmlFromSamlResponse.mockImplementation(() =>
       tryCatch(() =>
         new DOMParser().parseFromString(
-          getSamlResponse(expectedDesynResponseValueMs)
+          getSamlResponse({ clockSkewMs: expectedDesynResponseValueMs })
         )
       )
     );
