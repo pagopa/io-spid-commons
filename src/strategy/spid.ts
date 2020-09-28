@@ -59,8 +59,8 @@ export class SpidStrategy extends SamlStrategy {
   ) {
     super(options, verify);
     if (!options.requestIdExpirationPeriodMs) {
-      // 1 hour
-      options.requestIdExpirationPeriodMs = 3600 * 1000; // TODO: Change the default value or set it into io-backend?
+      // 5 minutes
+      options.requestIdExpirationPeriodMs = 5 * 60 * 1000;
     }
 
     // use our custom cache provider
