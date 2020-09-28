@@ -4,7 +4,6 @@
  * SPID protocol has some peculiarities that need to be addressed
  * to make request, metadata and responses compliant.
  */
-import * as appInsights from "applicationinsights";
 import { distanceInWordsToNow, isAfter, subDays } from "date-fns";
 import { Request as ExpressRequest } from "express";
 import { difference, flatten } from "fp-ts/lib/Array";
@@ -43,8 +42,8 @@ import { MultiSamlConfig } from "passport-saml/multiSamlStrategy";
 import * as xmlCrypto from "xml-crypto";
 import { Builder, parseStringPromise } from "xml2js";
 import { DOMParser, XMLSerializer } from "xmldom";
-import * as xpath from "xpath";
 import { SPID_LEVELS, SPID_URLS, SPID_USER_ATTRIBUTES } from "../config";
+import { EventTracker } from "../index";
 import { PreValidateResponseT } from "../strategy/spid";
 import { logger } from "./logger";
 import {
@@ -963,7 +962,7 @@ const assertionValidation = (
 
 export const getPreValidateResponse = (
   strictValidationOptions?: StrictResponseValidationOptions,
-  telemetryClient?: appInsights.TelemetryClient
+  eventHandler?: EventTracker
   // tslint:disable-next-line: no-big-function
 ): PreValidateResponseT => (
   samlConfig,
@@ -991,7 +990,7 @@ export const getPreValidateResponse = (
 
   fromEitherToTaskEither(
     fromPredicate<Error, HTMLCollectionOf<Element>>(
-      _ => _.length === 1,
+      _ => _.length < 2,
       _ => new Error("SAML Response must have only one Response element")
     )(responsesCollection)
       .map(_ => _.item(0))
@@ -1077,7 +1076,7 @@ export const getPreValidateResponse = (
             predicate.Response.getElementsByTagNameNS(
               SAML_NAMESPACE.ASSERTION,
               "Assertion"
-            ).length === 1,
+            ).length < 2,
           _1 => new Error("SAML Response must have only one Assertion element")
         )(_).chain(_1 =>
           fromOption(new Error("Assertion element must be present"))(
@@ -1307,31 +1306,34 @@ export const getPreValidateResponse = (
     )
     .bimap(
       error => {
-        if (telemetryClient) {
-          telemetryClient.trackEvent({
-            name: "backend.login.prevalidate",
-            properties: {
-              message: error.message,
-              type: "ERROR"
-            }
+        if (eventHandler) {
+          eventHandler({
+            data: {
+              message: error.message
+            },
+            name: "spid.error.generic",
+            type: "ERROR"
           });
         }
         return callback(error);
       },
       _ => {
         // Check if Response Signature is missing
-        const signatureOfResponseCount = (xpath.select(
-          "count(//*[local-name(.)='Response']/*[local-name(.)='Signature'])",
-          doc
-        ) as unknown) as number;
-        if (telemetryClient && signatureOfResponseCount === 0) {
-          telemetryClient.trackEvent({
-            name: "backend.login.prevalidate",
-            properties: {
+        const signatureOfResponseCount =
+          _.Response.getElementsByTagNameNS(SAML_NAMESPACE.XMLDSIG, "Signature")
+            .length -
+          _.Assertion.getElementsByTagNameNS(
+            SAML_NAMESPACE.XMLDSIG,
+            "Signature"
+          ).length;
+        if (eventHandler && signatureOfResponseCount === 0) {
+          eventHandler({
+            data: {
               idpIssuer: _.SAMLRequestCache.idpIssuer,
-              message: "Missing Request signature",
-              type: "INFO"
-            }
+              message: "Missing Request signature"
+            },
+            name: "spid.error.signature",
+            type: "INFO"
           });
         }
         return callback(null, true, _.InResponseTo);

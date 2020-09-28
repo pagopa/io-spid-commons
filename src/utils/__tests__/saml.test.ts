@@ -1,9 +1,9 @@
-import * as appInsights from "applicationinsights";
 import { right } from "fp-ts/lib/Either";
 import { isSome, tryCatch } from "fp-ts/lib/Option";
 import { fromEither } from "fp-ts/lib/TaskEither";
 import { SamlConfig } from "passport-saml";
 import { DOMParser } from "xmldom";
+import { EventTracker } from "../../index";
 import {
   getSamlAssertion,
   getSamlResponse,
@@ -49,14 +49,12 @@ describe("preValidateResponse", () => {
   const mockBody = "MOCKED BODY";
   const mockTestIdpIssuer = "http://localhost:8080";
 
-  const mockTrackEvent = jest.fn();
-  const mockTelemetryClient = ({
-    trackEvent: mockTrackEvent
-  } as unknown) as appInsights.TelemetryClient;
+  const mockEventHandler = jest.fn() as EventTracker;
 
   const expectedDesynResponseValueMs = 2000;
 
-  const expectedEventName = "backend.login.prevalidate";
+  const expectedGenericEventName = "spid.error.generic";
+  const expectedSignatureErrorName = "spid.error.signature";
 
   const asyncExpectOnCallback = (callback: jest.Mock, error?: Error) =>
     new Promise(resolve => {
@@ -96,7 +94,7 @@ describe("preValidateResponse", () => {
     const strictValidationOption: StrictResponseValidationOptions = {
       mockTestIdpIssuer: true
     };
-    getPreValidateResponse(strictValidationOption, mockTelemetryClient)(
+    getPreValidateResponse(strictValidationOption, mockEventHandler)(
       { ...samlConfig, acceptedClockSkewMs: 0 },
       mockBody,
       mockRedisCacheProvider,
@@ -108,12 +106,12 @@ describe("preValidateResponse", () => {
       "SAML Response must have only one Assertion element"
     );
     await asyncExpectOnCallback(mockCallback, expectedError);
-    expect(mockTrackEvent).toBeCalledWith({
-      name: expectedEventName,
-      properties: {
-        message: expectedError.message,
-        type: "ERROR"
-      }
+    expect(mockEventHandler).toBeCalledWith({
+      data: {
+        message: expectedError.message
+      },
+      name: expectedGenericEventName,
+      type: "ERROR"
     });
   });
 
@@ -126,7 +124,7 @@ describe("preValidateResponse", () => {
     const strictValidationOption: StrictResponseValidationOptions = {
       mockTestIdpIssuer: true
     };
-    getPreValidateResponse(strictValidationOption, mockTelemetryClient)(
+    getPreValidateResponse(strictValidationOption, mockEventHandler)(
       { ...samlConfig, acceptedClockSkewMs: 0 },
       mockBody,
       mockRedisCacheProvider,
@@ -138,12 +136,12 @@ describe("preValidateResponse", () => {
     );
     expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
     await asyncExpectOnCallback(mockCallback, expectedError);
-    expect(mockTrackEvent).toBeCalledWith({
-      name: expectedEventName,
-      properties: {
-        message: expectedError.message,
-        type: "ERROR"
-      }
+    expect(mockEventHandler).toBeCalledWith({
+      data: {
+        message: expectedError.message
+      },
+      name: expectedGenericEventName,
+      type: "ERROR"
     });
   });
 
@@ -176,7 +174,7 @@ describe("preValidateResponse", () => {
     const strictValidationOption: StrictResponseValidationOptions = {
       mockTestIdpIssuer: true
     };
-    getPreValidateResponse(strictValidationOption, mockTelemetryClient)(
+    getPreValidateResponse(strictValidationOption, mockEventHandler)(
       { ...samlConfig, acceptedClockSkewMs: 0 },
       mockBody,
       mockRedisCacheProvider,
@@ -185,13 +183,13 @@ describe("preValidateResponse", () => {
     );
     expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
     await asyncExpectOnCallback(mockCallback);
-    expect(mockTrackEvent).toBeCalledWith({
-      name: expectedEventName,
-      properties: {
+    expect(mockEventHandler).toBeCalledWith({
+      data: {
         idpIssuer: mockTestIdpIssuer,
-        message: expect.any(String),
-        type: "INFO"
-      }
+        message: expect.any(String)
+      },
+      name: expectedSignatureErrorName,
+      type: "INFO"
     });
   });
 

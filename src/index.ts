@@ -5,7 +5,6 @@
  * Setups the endpoint to generate service provider metadata
  * and a scheduled process to refresh IDP metadata from providers.
  */
-import * as appInsights from "applicationinsights";
 import * as express from "express";
 import { constVoid } from "fp-ts/lib/function";
 import { fromNullable } from "fp-ts/lib/Option";
@@ -67,6 +66,17 @@ export type DoneCallbackT = (
   response: string
 ) => void;
 
+export interface IEventInfo {
+  name: string;
+  type: "ERROR" | "INFO";
+  data: {
+    message: string;
+    [key: string]: string;
+  };
+}
+
+export type EventTracker = (params: IEventInfo) => void;
+
 // express endpoints configuration
 export interface IApplicationConfig {
   assertionConsumerServicePath: string;
@@ -76,7 +86,7 @@ export interface IApplicationConfig {
   metadataPath: string;
   sloPath: string;
   startupIdpsMetadata?: Record<string, string>;
-  applicationInsights?: appInsights.TelemetryClient;
+  eventTraker?: EventTracker;
 }
 
 // re-export
@@ -202,7 +212,7 @@ export function withSpid({
         metadataTamperer,
         getPreValidateResponse(
           serviceProviderConfig.strictResponseValidation,
-          appConfig.applicationInsights
+          appConfig.eventTraker
         ),
         doneCb
       );
