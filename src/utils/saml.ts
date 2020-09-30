@@ -1318,7 +1318,8 @@ export const getPreValidateResponse = (
         return callback(error);
       },
       _ => {
-        // Check if Response Signature is missing
+        // Number of the Response signature.
+        // Calculated as number of the Signature elements inside the document minus number of the Signature element of the Assertion.
         const signatureOfResponseCount =
           _.Response.getElementsByTagNameNS(SAML_NAMESPACE.XMLDSIG, "Signature")
             .length -
@@ -1326,6 +1327,10 @@ export const getPreValidateResponse = (
             SAML_NAMESPACE.XMLDSIG,
             "Signature"
           ).length;
+        // For security reasons it is preferable that the Response be signed.
+        // According to the technical rules of SPID, the signature of the Response is optional @ref https://docs.italia.it/italia/spid/spid-regole-tecniche/it/stabile/single-sign-on.html#response.
+        // Here we collect data when an IDP sends an unsigned Response.
+        // If all IDPs sign it, we can safely request it as mandatory @ref https://www.pivotaltracker.com/story/show/174710289.
         if (eventHandler && signatureOfResponseCount === 0) {
           eventHandler({
             data: {
