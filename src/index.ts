@@ -66,6 +66,17 @@ export type DoneCallbackT = (
   response: string
 ) => void;
 
+export interface IEventInfo {
+  name: string;
+  type: "ERROR" | "INFO";
+  data: {
+    message: string;
+    [key: string]: string;
+  };
+}
+
+export type EventTracker = (params: IEventInfo) => void;
+
 // express endpoints configuration
 export interface IApplicationConfig {
   assertionConsumerServicePath: string;
@@ -75,6 +86,7 @@ export interface IApplicationConfig {
   metadataPath: string;
   sloPath: string;
   startupIdpsMetadata?: Record<string, string>;
+  eventTraker?: EventTracker;
 }
 
 // re-export
@@ -198,7 +210,10 @@ export function withSpid({
         redisClient,
         authorizeRequestTamperer,
         metadataTamperer,
-        getPreValidateResponse(serviceProviderConfig.strictResponseValidation),
+        getPreValidateResponse(
+          serviceProviderConfig.strictResponseValidation,
+          appConfig.eventTraker
+        ),
         doneCb
       );
     })

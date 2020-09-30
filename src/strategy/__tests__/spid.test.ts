@@ -57,7 +57,7 @@ describe("SamlStrategy#constructor", () => {
     // tslint:disable-next-line: no-string-literal
     expect(spidStrategy["options"]).toHaveProperty(
       "requestIdExpirationPeriodMs",
-      3600000
+      900000
     );
     // tslint:disable-next-line: no-string-literal
     expect(spidStrategy["options"]).toHaveProperty(

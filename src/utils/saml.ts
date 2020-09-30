@@ -43,6 +43,7 @@ import * as xmlCrypto from "xml-crypto";
 import { Builder, parseStringPromise } from "xml2js";
 import { DOMParser, XMLSerializer } from "xmldom";
 import { SPID_LEVELS, SPID_URLS, SPID_USER_ATTRIBUTES } from "../config";
+import { EventTracker } from "../index";
 import { PreValidateResponseT } from "../strategy/spid";
 import { logger } from "./logger";
 import {
@@ -960,7 +961,8 @@ const assertionValidation = (
 };
 
 export const getPreValidateResponse = (
-  strictValidationOptions?: StrictResponseValidationOptions
+  strictValidationOptions?: StrictResponseValidationOptions,
+  eventHandler?: EventTracker
   // tslint:disable-next-line: no-big-function
 ): PreValidateResponseT => (
   samlConfig,
@@ -977,16 +979,26 @@ export const getPreValidateResponse = (
   }
   const doc = maybeDoc.value;
 
+  const responsesCollection = doc.getElementsByTagNameNS(
+    SAML_NAMESPACE.PROTOCOL,
+    "Response"
+  );
+
   const hasStrictValidation = fromNullable(strictValidationOptions)
     .chain(_ => getSamlIssuer(doc).mapNullable(issuer => _[issuer]))
     .getOrElse(false);
 
   fromEitherToTaskEither(
-    fromOption(new Error("Missing Reponse element inside SAML Response"))(
-      fromNullable(
-        doc.getElementsByTagNameNS(SAML_NAMESPACE.PROTOCOL, "Response").item(0)
+    fromPredicate<Error, HTMLCollectionOf<Element>>(
+      _ => _.length < 2,
+      _ => new Error("SAML Response must have only one Response element")
+    )(responsesCollection)
+      .map(_ => _.item(0))
+      .chain(Response =>
+        fromOption(new Error("Missing Reponse element inside SAML Response"))(
+          fromNullable(Response)
+        )
       )
-    )
       .chain(Response =>
         mainAttributeValidation(Response, samlConfig.acceptedClockSkewMs).map(
           IssueInstant => ({
@@ -1059,24 +1071,30 @@ export const getPreValidateResponse = (
           )
       )
       .chain(_ =>
-        fromOption(new Error("Assertion element must be present"))(
-          fromNullable(
-            _.Response.getElementsByTagNameNS(
+        fromPredicate<Error, { IssueInstant: Date; Response: Element }>(
+          predicate =>
+            predicate.Response.getElementsByTagNameNS(
               SAML_NAMESPACE.ASSERTION,
               "Assertion"
-            ).item(0)
-          )
-        ).map(Assertion => ({
-          Assertion,
-          ..._
-        }))
+            ).length < 2,
+          _1 => new Error("SAML Response must have only one Assertion element")
+        )(_).chain(_1 =>
+          fromOption(new Error("Assertion element must be present"))(
+            fromNullable(
+              _1.Response.getElementsByTagNameNS(
+                SAML_NAMESPACE.ASSERTION,
+                "Assertion"
+              ).item(0)
+            )
+          ).map(assertion => ({ ..._, Assertion: assertion }))
+        )
       )
       .chain(_ =>
         NonEmptyString.decode(_.Response.getAttribute("InResponseTo"))
           .mapLeft(
             () => new Error("InResponseTo must contain a non empty string")
           )
-          .map(InResponseTo => ({ ..._, InResponseTo }))
+          .map(inResponseTo => ({ ..._, InResponseTo: inResponseTo }))
       )
       .chain(_ =>
         mainAttributeValidation(
@@ -1286,7 +1304,46 @@ export const getPreValidateResponse = (
         )
       ).map(() => _)
     )
-    .bimap(callback, _ => callback(null, true, _.InResponseTo))
+    .bimap(
+      error => {
+        if (eventHandler) {
+          eventHandler({
+            data: {
+              message: error.message
+            },
+            name: "spid.error.generic",
+            type: "ERROR"
+          });
+        }
+        return callback(error);
+      },
+      _ => {
+        // Number of the Response signature.
+        // Calculated as number of the Signature elements inside the document minus number of the Signature element of the Assertion.
+        const signatureOfResponseCount =
+          _.Response.getElementsByTagNameNS(SAML_NAMESPACE.XMLDSIG, "Signature")
+            .length -
+          _.Assertion.getElementsByTagNameNS(
+            SAML_NAMESPACE.XMLDSIG,
+            "Signature"
+          ).length;
+        // For security reasons it is preferable that the Response be signed.
+        // According to the technical rules of SPID, the signature of the Response is optional @ref https://docs.italia.it/italia/spid/spid-regole-tecniche/it/stabile/single-sign-on.html#response.
+        // Here we collect data when an IDP sends an unsigned Response.
+        // If all IDPs sign it, we can safely request it as mandatory @ref https://www.pivotaltracker.com/story/show/174710289.
+        if (eventHandler && signatureOfResponseCount === 0) {
+          eventHandler({
+            data: {
+              idpIssuer: _.SAMLRequestCache.idpIssuer,
+              message: "Missing Request signature"
+            },
+            name: "spid.error.signature",
+            type: "INFO"
+          });
+        }
+        return callback(null, true, _.InResponseTo);
+      }
+    )
     .run()
     .catch(callback);
 };
