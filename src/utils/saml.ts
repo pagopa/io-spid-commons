@@ -1070,24 +1070,35 @@ export const getPreValidateResponse = (
               .map(() => _)
           )
       )
-      .chain(_ =>
-        fromPredicate<Error, { IssueInstant: Date; Response: Element }>(
+      .chain(
+        fromPredicate(
+          predicate =>
+            predicate.Response.getElementsByTagNameNS(
+              SAML_NAMESPACE.ASSERTION,
+              "EncryptedAssertion"
+            ).length === 0,
+          _ => new Error("EncryptedAssertion element is forbidden")
+        )
+      )
+      .chain(
+        fromPredicate(
           predicate =>
             predicate.Response.getElementsByTagNameNS(
               SAML_NAMESPACE.ASSERTION,
               "Assertion"
             ).length < 2,
-          _1 => new Error("SAML Response must have only one Assertion element")
-        )(_).chain(_1 =>
-          fromOption(new Error("Assertion element must be present"))(
-            fromNullable(
-              _1.Response.getElementsByTagNameNS(
-                SAML_NAMESPACE.ASSERTION,
-                "Assertion"
-              ).item(0)
-            )
-          ).map(assertion => ({ ..._, Assertion: assertion }))
+          _ => new Error("SAML Response must have only one Assertion element")
         )
+      )
+      .chain(_ =>
+        fromOption(new Error("Assertion element must be present"))(
+          fromNullable(
+            _.Response.getElementsByTagNameNS(
+              SAML_NAMESPACE.ASSERTION,
+              "Assertion"
+            ).item(0)
+          )
+        ).map(assertion => ({ ..._, Assertion: assertion }))
       )
       .chain(_ =>
         NonEmptyString.decode(_.Response.getAttribute("InResponseTo"))

@@ -59,7 +59,7 @@ export class SpidStrategy extends SamlStrategy {
   ) {
     super(options, verify);
     if (!options.requestIdExpirationPeriodMs) {
-      // 5 minutes
+      // 15 minutes
       options.requestIdExpirationPeriodMs = 15 * 60 * 1000;
     }
 

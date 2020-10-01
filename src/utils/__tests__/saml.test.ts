@@ -7,6 +7,7 @@ import { EventTracker } from "../../index";
 import {
   getSamlAssertion,
   getSamlResponse,
+  samlEncryptedAssertion,
   samlRequest,
   samlResponseCIE
 } from "../__mocks__/saml";
@@ -105,6 +106,36 @@ describe("preValidateResponse", () => {
     const expectedError = new Error(
       "SAML Response must have only one Assertion element"
     );
+    await asyncExpectOnCallback(mockCallback, expectedError);
+    expect(mockEventTracker).toBeCalledWith({
+      data: {
+        message: expectedError.message
+      },
+      name: expectedGenericEventName,
+      type: "ERROR"
+    });
+  });
+
+  it("should preValidate fail when saml Response has EncryptedAssertion element", async () => {
+    mockGetXmlFromSamlResponse.mockImplementation(() =>
+      tryCatch(() =>
+        new DOMParser().parseFromString(
+          getSamlResponse({ customAssertion: samlEncryptedAssertion })
+        )
+      )
+    );
+    const strictValidationOption: StrictResponseValidationOptions = {
+      mockTestIdpIssuer: true
+    };
+    getPreValidateResponse(strictValidationOption, mockEventTracker)(
+      { ...samlConfig, acceptedClockSkewMs: 0 },
+      mockBody,
+      mockRedisCacheProvider,
+      undefined,
+      mockCallback
+    );
+    expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
+    const expectedError = new Error("EncryptedAssertion element is forbidden");
     await asyncExpectOnCallback(mockCallback, expectedError);
     expect(mockEventTracker).toBeCalledWith({
       data: {
