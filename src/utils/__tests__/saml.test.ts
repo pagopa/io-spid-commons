@@ -378,4 +378,36 @@ describe("preValidateResponse", () => {
       await asyncExpectOnCallback(mockCallback);
     });
   });
+
+  it("should preValidate fail when saml Response uses HMAC as signature algorithm", async () => {
+    mockGetXmlFromSamlResponse.mockImplementation(() =>
+      tryCatch(() =>
+        new DOMParser().parseFromString(
+          getSamlResponse({
+            signatureMethod: "http://www.w3.org/2000/09/xmldsig#hmac-sha1"
+          })
+        )
+      )
+    );
+    const strictValidationOption: StrictResponseValidationOptions = {
+      mockTestIdpIssuer: true
+    };
+    getPreValidateResponse(strictValidationOption, mockEventTracker)(
+      { ...samlConfig, acceptedClockSkewMs: 0 },
+      mockBody,
+      mockRedisCacheProvider,
+      undefined,
+      mockCallback
+    );
+    expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
+    const expectedError = new Error("HMAC Signature is forbidden");
+    await asyncExpectOnCallback(mockCallback, expectedError);
+    expect(mockEventTracker).toBeCalledWith({
+      data: {
+        message: expectedError.message
+      },
+      name: expectedGenericEventName,
+      type: "ERROR"
+    });
+  });
 });

@@ -1114,6 +1114,19 @@ export const getPreValidateResponse = (
         fromPredicate(
           predicate =>
             predicate.Response.getElementsByTagNameNS(
+              SAML_NAMESPACE.XMLDSIG,
+              "SignatureMethod"
+            )
+              .item(0)
+              ?.getAttribute("Algorithm")
+              ?.valueOf() !== "http://www.w3.org/2000/09/xmldsig#hmac-sha1",
+          _ => new Error("HMAC Signature is forbidden")
+        )
+      )
+      .chain(
+        fromPredicate(
+          predicate =>
+            predicate.Response.getElementsByTagNameNS(
               SAML_NAMESPACE.ASSERTION,
               "Assertion"
             ).length < 2,
