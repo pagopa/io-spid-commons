@@ -103,6 +103,11 @@ const isSignedWithHmac = (e: Element): boolean => {
     );
 };
 
+const notSignedWithHmacPredicate = fromPredicate(
+  not(isSignedWithHmac),
+  _ => new Error("HMAC Signature is forbidden")
+);
+
 export const getXmlFromSamlResponse = (body: unknown): Option<Document> =>
   fromEither(SAMLResponse.decode(body))
     .map(_ => decodeBase64(_.SAMLResponse))
@@ -616,12 +621,7 @@ const assertionValidation = (
         ).item(0)
       )
     )
-      .chain(
-        fromPredicate(
-          not(isSignedWithHmac),
-          _ => new Error("HMAC Signature is forbidden")
-        )
-      )
+      .chain(notSignedWithHmacPredicate)
       // tslint:disable-next-line: no-big-function
       .chain(() =>
         fromOption(new Error("Subject element must be present"))(
@@ -1104,12 +1104,7 @@ export const getPreValidateResponse = (
           _ => new Error("EncryptedAssertion element is forbidden")
         )
       )
-      .chain(
-        fromPredicate(
-          predicate => not(isSignedWithHmac)(predicate.Response),
-          _ => new Error("HMAC Signature is forbidden")
-        )
-      )
+      .chain(p => notSignedWithHmacPredicate(p.Response).map(_ => p))
       .chain(
         fromPredicate(
           predicate =>
