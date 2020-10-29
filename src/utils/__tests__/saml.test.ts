@@ -26,6 +26,23 @@ const samlConfig: SamlConfig = ({
   issuer: "https://app-backend.dev.io.italia.it"
 } as unknown) as SamlConfig;
 
+const aResponseSignedWithHMAC = getSamlResponse({
+  signatureMethod: "http://www.w3.org/2000/09/xmldsig#hmac-sha1"
+});
+const aResponseWithOneAssertionSignedWithHMAC = getSamlResponse({
+  customAssertion: getSamlAssertion(
+    0,
+    "http://www.w3.org/2000/09/xmldsig#hmac-sha1"
+  )
+});
+const aResponseSignedWithHMACWithOneAssertionSignedWithHMAC = getSamlResponse({
+  customAssertion: getSamlAssertion(
+    0,
+    "http://www.w3.org/2000/09/xmldsig#hmac-sha1"
+  ),
+  signatureMethod: "http://www.w3.org/2000/09/xmldsig#hmac-sha1"
+});
+
 describe("getXmlFromSamlResponse", () => {
   it("should parse a well formatted response body", () => {
     const expectedSAMLResponse = "<xml>Response</xml>";
@@ -296,6 +313,40 @@ describe("preValidateResponse", () => {
     );
   });
 
+  it.each`
+    title                                                                                            | response
+    ${"uses HMAC as signature algorithm"}                                                            | ${aResponseSignedWithHMAC}
+    ${"has an assertion that uses HMAC as signature algorithm"}                                      | ${aResponseWithOneAssertionSignedWithHMAC}
+    ${"uses HMAC as signature algorithm and has an assertion that uses HMAC as signature algorithm"} | ${aResponseSignedWithHMACWithOneAssertionSignedWithHMAC}
+  `(
+    "should preValidate fail when saml Response $title",
+    async ({ response }) => {
+      mockGetXmlFromSamlResponse.mockImplementation(() =>
+        tryCatch(() => new DOMParser().parseFromString(response))
+      );
+      const strictValidationOption: StrictResponseValidationOptions = {
+        mockTestIdpIssuer: true
+      };
+      getPreValidateResponse(strictValidationOption, mockEventTracker)(
+        { ...samlConfig, acceptedClockSkewMs: 0 },
+        mockBody,
+        mockRedisCacheProvider,
+        undefined,
+        mockCallback
+      );
+      expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
+      const expectedError = new Error("HMAC Signature is forbidden");
+      await asyncExpectOnCallback(mockCallback, expectedError);
+      expect(mockEventTracker).toBeCalledWith({
+        data: {
+          message: expectedError.message
+        },
+        name: expectedGenericEventName,
+        type: "ERROR"
+      });
+    }
+  );
+
   describe("preValidateResponse with CIE saml Response", () => {
     beforeEach(() => {
       jest.resetAllMocks();
@@ -325,38 +376,6 @@ describe("preValidateResponse", () => {
       );
       expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
       await asyncExpectOnCallback(mockCallback);
-    });
-  });
-
-  it("should preValidate fail when saml Response uses HMAC as signature algorithm", async () => {
-    mockGetXmlFromSamlResponse.mockImplementation(() =>
-      tryCatch(() =>
-        new DOMParser().parseFromString(
-          getSamlResponse({
-            signatureMethod: "http://www.w3.org/2000/09/xmldsig#hmac-sha1"
-          })
-        )
-      )
-    );
-    const strictValidationOption: StrictResponseValidationOptions = {
-      mockTestIdpIssuer: true
-    };
-    getPreValidateResponse(strictValidationOption, mockEventTracker)(
-      { ...samlConfig, acceptedClockSkewMs: 0 },
-      mockBody,
-      mockRedisCacheProvider,
-      undefined,
-      mockCallback
-    );
-    expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
-    const expectedError = new Error("HMAC Signature is forbidden");
-    await asyncExpectOnCallback(mockCallback, expectedError);
-    expect(mockEventTracker).toBeCalledWith({
-      data: {
-        message: expectedError.message
-      },
-      name: expectedGenericEventName,
-      type: "ERROR"
     });
   });
 });
