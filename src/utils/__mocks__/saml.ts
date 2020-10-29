@@ -107,6 +107,11 @@ interface IGetSAMLResponseParams {
 
   /** @default true */
   hasResponseSignature?: boolean;
+
+  /** @default "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256" */
+  signatureMethod?:
+    | "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"
+    | "http://www.w3.org/2000/09/xmldsig#hmac-sha1";
 }
 
 export const getSamlResponse: (params?: IGetSAMLResponseParams) => string = (
@@ -125,7 +130,8 @@ ${
       `<ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
     <ds:SignedInfo>
         <ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
-        <ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/>
+        <ds:SignatureMethod Algorithm="${params.signatureMethod ||
+          "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"}"/>
         <ds:Reference URI="#_7080f453-78cb-4f57-9692-62dc8a5c23e8">
             <ds:Transforms>
                 <ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
