@@ -65,7 +65,6 @@ interface IEntrypointCerts {
 export const SAML_NAMESPACE = {
   ASSERTION: "urn:oasis:names:tc:SAML:2.0:assertion",
   PROTOCOL: "urn:oasis:names:tc:SAML:2.0:protocol",
-  SIGNATURE: "http://www.w3.org/2000/09/xmldsig#",
   XMLDSIG: "http://www.w3.org/2000/09/xmldsig#"
 };
 
@@ -1085,7 +1084,7 @@ export const getPreValidateResponse = (
         fromPredicate(
           predicate =>
             predicate.Response.getElementsByTagNameNS(
-              SAML_NAMESPACE.SIGNATURE,
+              SAML_NAMESPACE.XMLDSIG,
               "SignatureMethod"
             )
               .item(0)
