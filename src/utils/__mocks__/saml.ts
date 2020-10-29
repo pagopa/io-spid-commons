@@ -1,5 +1,10 @@
+type SignatureMethod =
+  | "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"
+  | "http://www.w3.org/2000/09/xmldsig#hmac-sha1";
+
 export const getSamlAssertion = (
-  clockSkewMs: number = 0
+  clockSkewMs: number = 0,
+  signatureMethod: SignatureMethod = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"
 ) => `<saml:Assertion ID="_43568006-96d4-4dcc-84da-d98e01ea3a28" IssueInstant="${new Date(
   Date.now() + clockSkewMs
 ).toISOString()}" Version="2.0" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
@@ -9,7 +14,7 @@ export const getSamlAssertion = (
         <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
             <ds:SignedInfo>
                 <ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
-                <ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/>
+                <ds:SignatureMethod Algorithm="${signatureMethod}"/>
                 <ds:Reference URI="#_43568006-96d4-4dcc-84da-d98e01ea3a28">
                     <ds:Transforms>
                         <ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
@@ -109,9 +114,7 @@ interface IGetSAMLResponseParams {
   hasResponseSignature?: boolean;
 
   /** @default "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256" */
-  signatureMethod?:
-    | "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"
-    | "http://www.w3.org/2000/09/xmldsig#hmac-sha1";
+  signatureMethod?: SignatureMethod;
 }
 
 export const getSamlResponse: (params?: IGetSAMLResponseParams) => string = (

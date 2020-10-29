@@ -85,6 +85,29 @@ const SAMLResponse = t.type({
   SAMLResponse: t.string
 });
 
+/**
+ * True if the element contains at least one element signed using hamc
+ * @param e
+ */
+const isSignedWithHmac = (e: Element): boolean => {
+  const signatures = e.getElementsByTagNameNS(
+    SAML_NAMESPACE.XMLDSIG,
+    "SignatureMethod"
+  );
+  return Array.from({ length: signatures.length })
+    .map((_, i) => signatures.item(i))
+    .some(
+      item =>
+        item?.getAttribute("Algorithm")?.valueOf() ===
+        "http://www.w3.org/2000/09/xmldsig#hmac-sha1"
+    );
+};
+
+const notSignedWithHmacPredicate = fromPredicate(
+  not(isSignedWithHmac),
+  _ => new Error("HMAC Signature is forbidden")
+);
+
 export const getXmlFromSamlResponse = (body: unknown): Option<Document> =>
   fromEither(SAMLResponse.decode(body))
     .map(_ => decodeBase64(_.SAMLResponse))
@@ -598,6 +621,7 @@ const assertionValidation = (
         ).item(0)
       )
     )
+      .chain(notSignedWithHmacPredicate)
       // tslint:disable-next-line: no-big-function
       .chain(() =>
         fromOption(new Error("Subject element must be present"))(
@@ -1080,19 +1104,7 @@ export const getPreValidateResponse = (
           _ => new Error("EncryptedAssertion element is forbidden")
         )
       )
-      .chain(
-        fromPredicate(
-          predicate =>
-            predicate.Response.getElementsByTagNameNS(
-              SAML_NAMESPACE.XMLDSIG,
-              "SignatureMethod"
-            )
-              .item(0)
-              ?.getAttribute("Algorithm")
-              ?.valueOf() !== "http://www.w3.org/2000/09/xmldsig#hmac-sha1",
-          _ => new Error("HMAC Signature is forbidden")
-        )
-      )
+      .chain(p => notSignedWithHmacPredicate(p.Response).map(_ => p))
       .chain(
         fromPredicate(
           predicate =>
