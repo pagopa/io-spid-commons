@@ -65,6 +65,7 @@ interface IEntrypointCerts {
 export const SAML_NAMESPACE = {
   ASSERTION: "urn:oasis:names:tc:SAML:2.0:assertion",
   PROTOCOL: "urn:oasis:names:tc:SAML:2.0:protocol",
+  SIGNATURE: "http://www.w3.org/2000/09/xmldsig#",
   XMLDSIG: "http://www.w3.org/2000/09/xmldsig#"
 };
 
@@ -1078,6 +1079,19 @@ export const getPreValidateResponse = (
               "EncryptedAssertion"
             ).length === 0,
           _ => new Error("EncryptedAssertion element is forbidden")
+        )
+      )
+      .chain(
+        fromPredicate(
+          predicate =>
+            predicate.Response.getElementsByTagNameNS(
+              SAML_NAMESPACE.SIGNATURE,
+              "SignatureMethod"
+            )
+              .item(0)
+              ?.getAttribute("Algorithm")
+              ?.valueOf() !== "http://www.w3.org/2000/09/xmldsig#hmac-sha1",
+          _ => new Error("HMAC Signature is forbidden")
         )
       )
       .chain(
