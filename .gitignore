@@ -8,3 +8,4 @@ coverage
 .idea/
 *.pem
 .npmrc
+.DS_Store
