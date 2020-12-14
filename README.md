@@ -211,7 +211,12 @@ pronta e in ascolto su <http://localhost:3000>.
 Iniziare la sessione SPID con una GET su `http://localhost:3000/login?entityID=ID_IDP`,
 dove `ID_IDP` è `xx_testenv2` in sviluppo.
 
-Gli id che si possono usare in produzione sono in [`src/config.ts`](src/config.ts).
+Gli id che si possono usare in produzione sono "`lepidaid`", "`infocertid`",
+"`sielteid`", "`namirialid`", "`timid`", "`arubaid`", "`posteid`", "`intesaid`"
+e "`spiditalia`" (vedere [`src/config.ts`](src/config.ts)).
+
+Per la Carta d'Identità Elettronica l'id è "`xx_servizicie`" in produzione e
+"`xx_servizicie_test`" in sviluppo.
 
 # Licenza
 
