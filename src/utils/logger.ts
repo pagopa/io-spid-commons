@@ -3,7 +3,7 @@ const { combine, timestamp, label, printf } = format;
 
 export const logger = createLogger({
   format: combine(
-    label({ label: "io-spid-commons" }),
+    label({ label: "spid-express" }),
     timestamp(),
     format.splat(),
     printf(info => {

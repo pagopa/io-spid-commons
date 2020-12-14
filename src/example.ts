@@ -45,7 +45,7 @@ export type SpidUser = t.TypeOf<typeof SpidUser>;
 const appConfig: IApplicationConfig = {
   assertionConsumerServicePath: "/acs",
   clientErrorRedirectionUrl: "/error",
-  clientLoginRedirectionUrl: "/success",
+  clientLoginRedirectionUrl: "/error",
   loginPath: "/login",
   metadataPath: "/metadata",
   sloPath: "/logout"
