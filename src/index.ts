@@ -245,11 +245,15 @@ export function withSpid({
               )
             )
             .foldL(
-              () =>
-                ResponseErrorValidation(
+              () => {
+                logger.error(
+                  `Missing or invalid authLevel [${req?.query?.authLevel}]`
+                );
+                return ResponseErrorValidation(
                   "Bad Request",
                   "Missing or invalid authLevel"
-                ).apply(res),
+                ).apply(res);
+              },
               () => next()
             );
         }),
