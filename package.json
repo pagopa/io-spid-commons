@@ -1,10 +1,10 @@
 {
-  "name": "@pagopa/io-spid-commons",
-  "version": "4.9.0",
-  "description": "Common code for integrating SPID authentication",
+  "name": "@italia/spid-express",
+  "version": "1.0.0",
+  "description": "SPID (Italian Public Digital Identity System) middleware for Express",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pagopa/io-spid-commons.git"
+    "url": "git+https://github.com/italia/spid-express.git"
   },
   "bin": {
     "startup-idps-metadata": "dist/bin/startup-idps-metadata.js"
@@ -86,11 +86,13 @@
     "fp-ts": "1.17.0"
   },
   "bugs": {
-    "url": "https://github.com/pagopa/io-spid-commons/issues"
+    "url": "https://github.com/italia/spid-express/issues"
   },
-  "homepage": "https://github.com/pagopa/io-spid-commons#readme",
+  "homepage": "https://github.com/italia/spid-express#readme",
   "keywords": [
-    "spid"
+    "spid",
+    "node",
+    "express"
   ],
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/",
