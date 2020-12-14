@@ -141,7 +141,7 @@ const serviceProviderConfig: IServiceProviderConfig = {
 // tslint:disable-next-line: no-any
 const mockRedisClient: RedisClient = (createMockRedis() as any).createClient();
 
-describe("io-spid-commons withSpid", () => {
+describe("spid-express withSpid", () => {
   it("shoud idpMetadataRefresher refresh idps metadata from remote url", async () => {
     const app = express();
     mockFetchIdpsMetadata.mockImplementation(() =>
