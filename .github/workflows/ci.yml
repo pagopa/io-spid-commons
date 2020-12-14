@@ -1,0 +1,36 @@
+on:
+  pull_request:
+    branches:
+      - master
+
+name: Pull request to master
+jobs:
+  linters:
+    name: Linters
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+
+      - name: Use Node.js 10.14.1
+        uses: actions/setup-node@master
+        with:
+          node-version: 10.14.1
+
+      - run: yarn install --frozen-lockfile
+
+      - run: yarn lint
+
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+
+      - name: Use Node.js 10.14.1
+        uses: actions/setup-node@master
+        with:
+          node-version: 10.14.1
+
+      - run: yarn install --frozen-lockfile
+
+      - run: yarn test
