@@ -202,21 +202,35 @@ L'oggetto `serviceProviderConfig` contiene i parametri del Service Provider. Es:
 
 L'applicazione di esempio (`src/example.ts`) può essere lanciata con:
 
-`docker-compose up`
+### Al primo avvio
 
-L'app scarica all'avvio i metadata di tutti gli IdP e una volta fatto (dopo il
-messaggio `[spid-express] info: samlCert expire in 12 months`), sarà
+Al primo avvio o quando viene rifatto il build è necessario salvare
+il metadata dell'applicazione.
+
+1. `docker-compose up`
+2. Ignorare l'errore su `conf/sp_metadata.xml`. L'app scaricherà i metadata di
+   tutti gli IdP e al termine stamperà il messaggio
+   `[spid-express] info: samlCert expire in 12 months`
+3. Da un altro terminale
+   `cd spid-testenv && curl http://localhost:3000/metadata -o sp_metadata.xml`
+4. Fermare il `docker-compose` iniziale con `CTRL-C`.
+
+### Avvii successivi
+
+1. `docker-compose up`
+
+Dopo il messaggio `[spid-express] info: samlCert expire in 12 months`) l'app sarà
 pronta e in ascolto su <http://localhost:3000>.
 
-Iniziare la sessione SPID con una GET su `http://localhost:3000/login?entityID=ID_IDP`,
-dove `ID_IDP` è `xx_testenv2` in sviluppo.
+Iniziare la sessione SPID con una GET su
+[`http://localhost:3000/login?entityID=xx_testenv2`](http://localhost:3000/login?entityID=xx_testenv2).
 
-Gli id che si possono usare in produzione sono "`lepidaid`", "`infocertid`",
+Gli `entityID` che si possono usare in produzione sono "`lepidaid`", "`infocertid`",
 "`sielteid`", "`namirialid`", "`timid`", "`arubaid`", "`posteid`", "`intesaid`"
 e "`spiditalia`" (vedere [`src/config.ts`](src/config.ts)).
 
-Per la Carta d'Identità Elettronica l'id è "`xx_servizicie`" in produzione e
-"`xx_servizicie_test`" in sviluppo.
+Per la Carta d'Identità Elettronica l'entityID è "`xx_servizicie`" in produzione
+e "`xx_servizicie_test`" in sviluppo.
 
 # Licenza
 
