@@ -17,6 +17,7 @@
     "prebuild": "shx rm -rf dist",
     "build": "tsc",
     "dev": "nodemon --inspect=0.0.0.0 dist/example.js",
+    "hot-reload": "nodemon --legacy-watch --watch ./dist --inspect=0.0.0.0 --nolazy dist/example.js",
     "postversion": "git push && git push --tags",
     "test": "jest -i",
     "lint": "tslint --project ."
