@@ -18,6 +18,8 @@ services:
     command: ["yarn", "dev"]
     networks:
       - spid-express-app
+    depends_on:
+      - spid-testenv2
 
   spid-testenv2:
     image: italia/spid-testenv2:latest
