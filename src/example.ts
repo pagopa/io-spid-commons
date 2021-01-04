@@ -112,6 +112,34 @@ const serviceProviderConfig: IServiceProviderConfig = {
         VATNumber: "12345678902",
         aggregatedType: AggregatedType.Private
       }
+    },
+    {
+      company: "Azienda_Destinataria_Fatturazione",
+      contactType: ContactType.BILLING,
+      email: "email@fatturazione.it" as EmailString,
+      phone: "+391234567",
+
+      billing: {
+        CessionarioCommittente: {
+          CodiceEORI: "1",
+          denominazione: "Denominazione",
+          fiscalCode: "12345678902",
+          idCodice: "1",
+          idPaese: "IT",
+          name: "Nome Billing",
+          surname: "Cognome Billing",
+          title: "Titolo billing",
+
+          Sede: {
+            address: "Piazza Colonna",
+            cap: "00187",
+            city: "Roma",
+            country: "IT",
+            number: "370",
+            state: "RM"
+          }
+        }
+      }
     }
   ]
 };

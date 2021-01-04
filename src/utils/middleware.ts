@@ -69,7 +69,7 @@ const PrivateAggregatorExtension = t.union([
 ]);
 type PrivateAggregatorExtension = t.TypeOf<typeof PrivateAggregatorExtension>;
 
-const LightAggregatorExtension = t.intersection([
+export const LightAggregatorExtension = t.intersection([
   t.interface({
     aggregatorCert: t.string,
     aggregatorType: t.union([
@@ -138,10 +138,7 @@ const ContactPerson = t.union([
   t.interface({
     billing: t.intersection([
       t.interface({
-        CessionarioCommittente: IBillingInfo,
-        company: t.string,
-        email: EmailString,
-        phone: t.string
+        CessionarioCommittente: IBillingInfo
       }),
       t.partial({
         TerzoIntermediarioSoggettoEmittente: IBillingInfo
@@ -150,8 +147,6 @@ const ContactPerson = t.union([
     company: t.string,
     contactType: t.literal(ContactType.BILLING),
     email: EmailString,
-    entityType: t.literal(EntityType.AGGREGATOR),
-    extensions: PrivateAggregatorExtension,
     phone: t.string
   }),
   t.intersection([
