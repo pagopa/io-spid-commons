@@ -13,7 +13,7 @@ export const SPID_IDP_IDENTIFIERS = {
 export const CIE_IDP_IDENTIFIERS = {
   "https://idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SSO":
     "xx_servizicie",
-  "https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/POST/SSO":
+  "https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SSO":
     "xx_servizicie_test"
 };
 

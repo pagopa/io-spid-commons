@@ -363,7 +363,7 @@ describe("preValidateResponse", () => {
             RequestXML: samlRequest,
             createdAt: "2020-02-26T07:27:42Z",
             idpIssuer:
-              "https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/POST/SSO"
+              "https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SSO"
           })
         );
       });

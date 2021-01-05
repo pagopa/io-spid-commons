@@ -82,7 +82,7 @@ const spidTestEnvUrl = "https://localhost:8088";
 const IDPMetadataUrl =
   "https://registry.spid.gov.it/metadata/idp/spid-entities-idps.xml";
 const spidCieUrl =
-  "https://idserver.servizicie.interno.gov.it:8443/idp/shibboleth";
+  "https://preproduzione.idserver.servizicie.interno.gov.it/idp/shibboleth?Metadata";
 
 const expectedLoginPath = "/login";
 const expectedSloPath = "/logout";

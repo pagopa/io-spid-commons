@@ -172,7 +172,7 @@ L'oggetto `serviceProviderConfig` contiene i parametri del Service Provider. Es:
        ],
        name: "Required attrs"
      },
-     spidCieUrl: "https://idserver.servizicie.interno.gov.it:8443/idp/shibboleth",
+     spidCieUrl: "https://preproduzione.idserver.servizicie.interno.gov.it/idp/shibboleth?Metadata",
      spidTestEnvUrl: "https://spid-testenv2:8088",
      spidValidatorUrl: "http://localhost:8080",
      strictResponseValidation: {
@@ -189,7 +189,7 @@ L'oggetto `serviceProviderConfig` contiene i parametri del Service Provider. Es:
   (identificativi in <https://docs.italia.it/italia/spid/spid-regole-tecniche/it/stabile/attributi.html>).
 * **`spidCieUrl`**: URL per l'accesso con Carta d'Identità elettronica
   ("Entra con CIE").
-  Impostare a "`https://idserver.servizicie.interno.gov.it:8443/idp/shibboleth`"
+  Impostare a "`https://preproduzione.idserver.servizicie.interno.gov.it/idp/shibboleth?Metadata`"
   per lo sviluppo.
 * **`spidTestEnvUrl`**: URL dell'istanza di [spid-testenv2](https://github.com/italia/spid-testenv2).
   Lasciare vuoto per disabilitare.

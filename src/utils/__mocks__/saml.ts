@@ -183,7 +183,7 @@ export const samlResponseCIE = `<?xml version="1.0" encoding="UTF-8"?>
 <saml2p:Response Destination="https://app-backend.dev.io.italia.it/assertionConsumerService" ID="_36e7b2c177afab6db4302732a68403cb" InResponseTo="_61395d807fb9fe6a869b" IssueInstant="2020-02-27T13:40:57.746Z" Version="2.0" 
   xmlns:saml2p="urn:oasis:names:tc:SAML:2.0:protocol" 
   xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-  <saml2:Issuer xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion">https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/POST/SSO</saml2:Issuer>
+  <saml2:Issuer xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion">https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SSO</saml2:Issuer>
   <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
     <ds:SignedInfo>
       <ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
@@ -215,7 +215,7 @@ AIa2vTA8uOKizFvCqNchj4Dby8eDOi5UaOEZYJ4NV0RorEj2wkSFbhX65FYLt68VUGY5YR1tqDfl d0A
   <saml2:Assertion ID="_6aa64187239cb0852096c42c33e176ca" IssueInstant="2020-02-27T13:40:57.746Z" Version="2.0" 
     xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" 
     xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-    <saml2:Issuer>https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/POST/SSO</saml2:Issuer>
+    <saml2:Issuer>https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SSO</saml2:Issuer>
     <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
       <ds:SignedInfo>
         <ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
@@ -242,7 +242,7 @@ UJ23xMKOYhCcRVunnDgor2WLqHEgYeyaAhHr16+kkO6poPog2a9PoiqGUU0Dg+YMvHRJVq0h0sKz M1z
       </ds:KeyInfo>
     </ds:Signature>
     <saml2:Subject>
-      <saml2:NameID Format="urn:oasis:names:tc:SAML:2.0:nameid-format:transient" NameQualifier="https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/POST/SSO" SPNameQualifier="https://app-backend.dev.io.italia.it">AAdzZWNyZXQxqDU6XhTO1MGlMAoXjWFIOcPfK4AhIPsnBAoTNelku/jA7/XaogQJhOrgxCiAIqavL2GUQqQ7VMYPRryyteifD34fsyrHmbPNr1Tz2YJe8wgENUlDvaY31unC/P1kwqTZ17jQYw3qoVZs4neWi9ZUo9j8BoiDAHdoyOOoTiVbDA==</saml2:NameID>
+      <saml2:NameID Format="urn:oasis:names:tc:SAML:2.0:nameid-format:transient" NameQualifier="https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SSO" SPNameQualifier="https://app-backend.dev.io.italia.it">AAdzZWNyZXQxqDU6XhTO1MGlMAoXjWFIOcPfK4AhIPsnBAoTNelku/jA7/XaogQJhOrgxCiAIqavL2GUQqQ7VMYPRryyteifD34fsyrHmbPNr1Tz2YJe8wgENUlDvaY31unC/P1kwqTZ17jQYw3qoVZs4neWi9ZUo9j8BoiDAHdoyOOoTiVbDA==</saml2:NameID>
       <saml2:SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer">
         <saml2:SubjectConfirmationData Address="85.44.51.73" InResponseTo="_61395d807fb9fe6a869b" NotOnOrAfter="${new Date().getFullYear() +
           1}-02-26T07:32:05Z" Recipient="https://app-backend.dev.io.italia.it/assertionConsumerService"/>

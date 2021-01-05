@@ -44,7 +44,7 @@ const serviceProviderConfig: IServiceProviderConfig = {
     ],
     name: "Required attrs"
   },
-  spidCieUrl: "https://idserver.servizicie.interno.gov.it:8443/idp/shibboleth",
+  spidCieUrl: "https://preproduzione.idserver.servizicie.interno.gov.it/idp/shibboleth?Metadata",
   spidTestEnvUrl: "https://spid-testenv2:8088",
   spidValidatorUrl: "http://localhost:8080"
 };

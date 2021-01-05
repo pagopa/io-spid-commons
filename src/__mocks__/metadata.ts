@@ -17,9 +17,9 @@ export const mockCIEIdpMetadata: Record<string, IDPEntityDescriptor> = {
   xx_servizicie_test: {
     cert: (["CERT"] as unknown) as NonEmptyArray<NonEmptyString>,
     entityID:
-      "https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/POST/SSO",
+      "https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SSO",
     entryPoint:
-      "https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/Redirect/SSO",
+      "https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SSO",
     logoutUrl: ""
   }
 };

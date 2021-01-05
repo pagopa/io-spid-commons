@@ -20,7 +20,7 @@ const mockFetchIdpsMetadata = jest.spyOn(metadata, "fetchIdpsMetadata");
 
 const idpMetadataUrl = "http://ipd.metadata.example/metadata.xml";
 const cieMetadataUrl =
-  "https://idserver.servizicie.interno.gov.it:8443/idp/shibboleth";
+  "https://preproduzione.idserver.servizicie.interno.gov.it/idp/shibboleth?Metadata";
 const spidTestEnvUrl = "https://spid-testenv2:8088";
 
 const serviceProviderConfig: IServiceProviderConfig = {
