@@ -58,17 +58,6 @@ const CommonExtension = t.partial({
 });
 type CommonExtension = t.TypeOf<typeof CommonExtension>;
 
-const PrivateAggregatorExtension = t.union([
-  t.interface({
-    aggregatorType: t.literal(AggregatorType.PrivateServicesFullAggregator)
-  }),
-  t.interface({
-    aggregatorCert: t.string,
-    aggregatorType: t.literal(AggregatorType.PrivateServicesLightAggregator)
-  })
-]);
-type PrivateAggregatorExtension = t.TypeOf<typeof PrivateAggregatorExtension>;
-
 export const LightAggregatorExtension = t.intersection([
   t.interface({
     aggregatorCert: t.string,
@@ -80,7 +69,9 @@ export const LightAggregatorExtension = t.intersection([
   }),
   CommonExtension
 ]);
-type LightAggregatorExtension = t.TypeOf<typeof LightAggregatorExtension>;
+export type LightAggregatorExtension = t.TypeOf<
+  typeof LightAggregatorExtension
+>;
 
 const AggregatorExtension = t.intersection([
   t.union([
