@@ -229,8 +229,19 @@ Gli `entityID` che si possono usare in produzione sono "`lepidaid`", "`infocerti
 "`sielteid`", "`namirialid`", "`timid`", "`arubaid`", "`posteid`", "`intesaid`"
 e "`spiditalia`" (vedere [`src/config.ts`](src/config.ts)).
 
-Per la Carta d'Identità Elettronica l'entityID è "`xx_servizicie`" in produzione
-e "`xx_servizicie_test`" in sviluppo.
+### Uso di Carta di Identità Elettronica (CIE)
+
+Il middleware permette anche di interagire con gli IDP di collaudo e produzione di 
+"Entra con CIE" dell'Istituto Poligrafico Zecca dello Stato. Non è presente al momento
+un ambiente di sviluppo.
+
+Per poter utilizzare l'ambiente di collaudo è necessario federarsi inviando un
+modulo di richiesta come specificato nel documento delle regole tecniche CIE: 
+[vedi qui](https://www.cartaidentita.interno.gov.it/CIE-ManualeOperativoperifornitoridiservizi.pdf)
+
+Una volta federati, è possibile utilizzare lo stesso endpoint utilizzato per SPID 
+per l'accesso con CIE: l'entityID è "`xx_servizicie`" in produzione e 
+"`xx_servizicie_test`" in collaudo.
 
 # Licenza
 
