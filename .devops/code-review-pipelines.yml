@@ -9,6 +9,7 @@
 variables:
   NODE_VERSION: '10.14.1'
   YARN_CACHE_FOLDER: $(Pipeline.Workspace)/.yarn
+  setupTemplateName: azure-templates/setup-project.yml
 
 # Automatically triggered on PR
 # https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema?view=azure-devops&tabs=schema%2Cparameter-schema#pr-trigger
@@ -23,7 +24,7 @@ stages:
     jobs:
       - job: make_build
         steps:
-          - template: azure-templates/setup-project.yml
+          - template: ${ setupTemplateName }
           - script: |
               yarn build
             displayName: 'Build'
@@ -33,7 +34,7 @@ stages:
     jobs:          
       - job: lint
         steps:
-          - template: azure-templates/setup-project.yml
+          - template: ${ setupTemplateName }
           - script: |
               yarn lint
             displayName: 'Lint'
@@ -48,7 +49,7 @@ stages:
             )
           )
         steps:
-          - template: azure-templates/setup-project.yml
+          - template: ${ setupTemplateName }
           - bash: |
               yarn danger ci
             env:
@@ -60,7 +61,7 @@ stages:
     jobs:
       - job: unit_tests
         steps:
-          - template: azure-templates/setup-project.yml
+          - template: ${ setupTemplateName }
           - script: |
               yarn test
             displayName: 'Unit tests exec'
