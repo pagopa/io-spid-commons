@@ -1,3 +1,4 @@
+[![Build Status](https://dev.azure.com/pagopa-io/io-spid-commons/_apis/build/status/pagopa.io-spid-commons.deploy?branchName=master)](https://dev.azure.com/pagopa-io/io-spid-commons/_build/latest?definitionId=98&branchName=master)
 # io-spid-commons
 
 This repo contains:
