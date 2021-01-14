@@ -1,4 +1,4 @@
-[![Build Status](https://dev.azure.com/pagopa-io/io-spid-commons/_apis/build/status/pagopa.io-spid-commons.deploy?branchName=master)](https://dev.azure.com/pagopa-io/io-spid-commons/_build/latest?definitionId=98&branchName=master)
+[![Build Status](https://dev.azure.com/pagopa-io/io-spid-commons/_apis/build/status/pagopa.io-spid-commons.code-review?branchName=176013578-refactor-pipeline)](https://dev.azure.com/pagopa-io/io-spid-commons/_build/latest?definitionId=99&branchName=176013578-refactor-pipeline)
 # io-spid-commons
 
 This repo contains:
