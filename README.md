@@ -202,22 +202,9 @@ L'oggetto `serviceProviderConfig` contiene i parametri del Service Provider. Es:
 
 L'applicazione di esempio (`src/example.ts`) può essere lanciata con:
 
-### Al primo avvio
-
-Al primo avvio o quando viene rifatto il build è necessario salvare
-il metadata dell'applicazione.
-
-1. `docker-compose up`
-2. Ignorare l'errore su `conf/sp_metadata.xml`. L'app scaricherà i metadata di
-   tutti gli IdP e al termine stamperà il messaggio
-   `[spid-express] info: samlCert expire in 12 months`
-3. Da un altro terminale
-   `cd spid-testenv && curl http://localhost:3000/metadata -o sp_metadata.xml`
-4. Fermare il `docker-compose` iniziale con `CTRL-C`.
-
-### Avvii successivi
-
-1. `docker-compose up`
+```shell
+docker-compose up
+```
 
 Dopo il messaggio `[spid-express] info: samlCert expire in 12 months`) l'app sarà
 pronta e in ascolto su <http://localhost:3000>.
