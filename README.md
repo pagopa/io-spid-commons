@@ -15,7 +15,7 @@ Puoi usare questo pacchetto per integrare SPID o CIE in un'applicazione Express.
 
 ## Requisiti
 
-* Redis (per caching delle sessioni di autenticazione)
+* Redis (per il salvataggio delle sessioni di autenticazione)
 * `passport-saml 1.2.0` (versione esatta)
 
 ## Uso
