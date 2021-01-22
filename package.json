@@ -92,5 +92,9 @@
   "homepage": "https://github.com/pagopa/io-spid-commons#readme",
   "keywords": [
     "spid"
-  ]
+  ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  }
 }
