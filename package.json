@@ -92,9 +92,5 @@
   "homepage": "https://github.com/pagopa/io-spid-commons#readme",
   "keywords": [
     "spid"
-  ],
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com/",
-    "access": "public"
-  }
+  ]
 }
