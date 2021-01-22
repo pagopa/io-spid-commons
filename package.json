@@ -92,5 +92,9 @@
     "spid",
     "node",
     "express"
-  ]
+  ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  }
 }
