@@ -33,4 +33,26 @@ COPY --from=builder /home/circleci/node_modules /usr/src/app/node_modules
 
 EXPOSE 3000
 
+ENV METADATA_PUBLIC_CERT="./certs/cert.pem"
+ENV METADATA_PRIVATE_CERT="./certs/key.pem"
+
+ENV ORG_ISSUER="https://spid.agid.gov.it/cd"
+ENV ORG_URL="http://localhost:3000"
+ENV ORG_DISPLAY_NAME="Organization display name"
+ENV ORG_NAME="Organization name"
+
+ENV AUTH_N_CONTEXT="https://www.spid.gov.it/SpidL1"
+
+ENV SPID_ATTRIBUTES="address,email,name,familyName,fiscalNumber,mobilePhone"
+
+ENV ENDPOINT_ACS="/acs"
+ENV ENDPOINT_ERROR="/error"
+ENV ENDPOINT_SUCCESS="/success"
+ENV ENDPOINT_LOGIN="/login"
+ENV ENDPOINT_METADATA="/metadata"
+ENV ENDPOINT_LOGOUT="/logout"
+
+ENV SPID_VALIDATOR_URL="http://localhost:8080"
+ENV SPID_TESTENV_URL="https://spid-testenv2:8088"
+
 CMD ["yarn", "dev"]

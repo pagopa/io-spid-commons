@@ -17,8 +17,8 @@ import {
   LogoutT,
   withSpid
 } from ".";
-import { logger } from "./utils/logger";
 import { IServiceProviderConfig } from "./utils/middleware";
+import { SamlAttributeT } from "./utils/saml";
 
 export const SpidUser = t.intersection([
   t.interface({
@@ -43,41 +43,36 @@ export const SpidUser = t.intersection([
 export type SpidUser = t.TypeOf<typeof SpidUser>;
 
 const appConfig: IApplicationConfig = {
-  assertionConsumerServicePath: "/acs",
-  clientErrorRedirectionUrl: "/error",
-  clientLoginRedirectionUrl: "/error",
-  loginPath: "/login",
-  metadataPath: "/metadata",
-  sloPath: "/logout"
+  assertionConsumerServicePath: process.env.ENDPOINT_ACS,
+  clientErrorRedirectionUrl: process.env.ENDPOINT_ERROR,
+  clientLoginRedirectionUrl: process.env.ENDPOINT_ERROR,
+  loginPath: process.env.ENDPOINT_LOGIN,
+  metadataPath: process.env.ENDPOINT_METADATA,
+  sloPath: process.env.ENDPOINT_LOGOUT
 };
 
 const serviceProviderConfig: IServiceProviderConfig = {
   IDPMetadataUrl:
     "https://registry.spid.gov.it/metadata/idp/spid-entities-idps.xml",
   organization: {
-    URL: "https://example.com",
-    displayName: "Organization display name",
-    name: "Organization name"
+    URL: process.env.ORG_URL,
+    displayName: process.env.ORG_DISPLAY_NAME,
+    name: process.env.ORG_NAME
   },
-  publicCert: fs.readFileSync("./certs/cert.pem", "utf-8"),
+  publicCert: fs.readFileSync(process.env.METADATA_PUBLIC_CERT, "utf-8"),
   requiredAttributes: {
-    attributes: [
-      "address",
-      "email",
-      "name",
-      "familyName",
-      "fiscalNumber",
-      "mobilePhone"
-    ],
+    attributes: process.env.SPID_ATTRIBUTES?.split(",").map(
+      item => item as SamlAttributeT
+    ),
     name: "Required attrs"
   },
   spidCieUrl:
     "https://preproduzione.idserver.servizicie.interno.gov.it/idp/shibboleth?Metadata",
-  spidTestEnvUrl: "https://spid-testenv2:8088",
-  spidValidatorUrl: "http://localhost:8080",
+  spidTestEnvUrl: process.env.SPID_TESTENV_URL,
+  spidValidatorUrl: process.env.SPID_VALIDATOR_URL,
   strictResponseValidation: {
-    "http://localhost:8080": true,
-    "https://spid-testenv2:8088": true
+    [process.env.SPID_VALIDATOR_URL]: true,
+    [process.env.SPID_TESTENV_URL]: true
   }
 };
 
@@ -89,23 +84,26 @@ const samlConfig: SamlConfig = {
   RACComparison: "minimum",
   acceptedClockSkewMs: 0,
   attributeConsumingServiceIndex: "0",
-  authnContext: "https://www.spid.gov.it/SpidL1",
-  callbackUrl: "http://localhost:3000" + appConfig.assertionConsumerServicePath,
+  authnContext: process.env.AUTH_N_CONTEXT,
+  callbackUrl: `${process.env.ORG_URL}${process.env.ENDPOINT_ACS}`,
   // decryptionPvk: fs.readFileSync("./certs/key.pem", "utf-8"),
   identifierFormat: "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
-  issuer: "https://spid.agid.gov.it/cd",
-  logoutCallbackUrl: "http://localhost:3000/slo",
-  privateCert: fs.readFileSync("./certs/key.pem", "utf-8"),
+  issuer: process.env.ORG_ISSUER,
+  logoutCallbackUrl: `${process.env.ORG_URL}/slo`,
+  privateCert: fs.readFileSync(process.env.METADATA_PRIVATE_CERT, "utf-8"),
   validateInResponseTo: true
 };
 
-const acs: AssertionConsumerServiceT = async payload => {
-  logger.info("acs:%s", JSON.stringify(payload));
-  return ResponsePermanentRedirect({ href: "/success?acs" });
+const acs: AssertionConsumerServiceT = async _ => {
+  return ResponsePermanentRedirect({
+    href: `${process.env.ENDPOINT_SUCCESS}?acs`
+  });
 };
 
 const logout: LogoutT = async () =>
-  ResponsePermanentRedirect({ href: "/success?logout" });
+  ResponsePermanentRedirect({
+    href: `${process.env.ENDPOINT_SUCCESS}?logout`
+  });
 
 const app = express();
 
