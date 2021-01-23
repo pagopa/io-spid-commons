@@ -14,7 +14,6 @@ import { RedisClient } from "redis";
 import { MultiSamlConfig } from "passport-saml/multiSamlStrategy";
 
 import { Second } from "italia-ts-commons/lib/units";
-import * as requestIp from "request-ip";
 import { DoneCallbackT } from "..";
 import {
   getExtendedRedisCacheProvider,
@@ -89,10 +88,7 @@ export class SpidStrategy extends SamlStrategy {
         this.extendedRedisCacheProvider,
         this.tamperAuthorizeRequest,
         this.preValidateResponse,
-        (...args) =>
-          this.doneCb
-            ? this.doneCb(requestIp.getClientIp(req), ...args)
-            : undefined
+        (...args) => (this.doneCb ? this.doneCb(req.ip, ...args) : undefined)
       );
       // we clone the original strategy to avoid race conditions
       // see https://github.com/bergie/passport-saml/pull/426/files
