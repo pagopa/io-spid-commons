@@ -1,4 +1,12 @@
-<img src="https://github.com/italia/spid-graphics/blob/master/spid-logos/spid-logo-b-lb.png" alt="SPID" data-canonical-src="https://github.com/italia/spid-graphics/blob/master/spid-logos/spid-logo-b-lb.png" width="500" height="98" />
+<!-- markdownlint-disable no-inline-html -->
+
+<img
+    src="https://github.com/italia/spid-graphics/blob/master/spid-logos/spid-logo-b-lb.png"
+    alt="SPID"
+    data-canonical-src="https://github.com/italia/spid-graphics/blob/master/spid-logos/spid-logo-b-lb.png"
+    width="500"
+    height="98"
+/>
 
 [![License](https://img.shields.io/github/license/italia/spid-express.svg)](https://github.com/italia/spid-express/blob/master/LICENSE)
 [![GitHub issues](https://img.shields.io/github/issues/italia/spid-express.svg)](https://github.com/italia/spid-express/issues)
