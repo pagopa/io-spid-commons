@@ -219,6 +219,7 @@ pronta e in ascolto su <http://localhost:3000>.
 
 Iniziare la sessione SPID con una GET su
 [`http://localhost:3000/login?entityID=xx_testenv2`](http://localhost:3000/login?entityID=xx_testenv2).
+`xx_testenv2` è l'`entityID` di sviluppo che redirigerà il login a spid-testenv2.
 
 Gli `entityID` che si possono usare in produzione sono "`lepidaid`", "`infocertid`",
 "`sielteid`", "`namirialid`", "`timid`", "`arubaid`", "`posteid`", "`intesaid`"
