@@ -4,6 +4,7 @@
 import * as express from "express";
 import { array } from "fp-ts/lib/Array";
 import { Task, task } from "fp-ts/lib/Task";
+import * as t from "io-ts";
 import { NonEmptyString } from "italia-ts-commons/lib/strings";
 import { Profile, SamlConfig, VerifiedCallback } from "passport-saml";
 import { RedisClient } from "redis";
@@ -18,6 +19,25 @@ import { IDPEntityDescriptor } from "../types/IDPEntityDescriptor";
 import { fetchIdpsMetadata } from "./metadata";
 import { logSamlCertExpiration, SamlAttributeT } from "./saml";
 
+export const ProfessionalPurpose = t.keyof({
+  LP: null,
+  P: null,
+  PF: null,
+  PG: null,
+  PX: null
+});
+
+const ProfessionalSpidExtension = t.union([
+  t.interface({
+    professionalSpidEnabled: t.literal(false)
+  }),
+  t.interface({
+    professionalSpidEnabled: t.literal(true),
+    purpose: ProfessionalPurpose
+  })
+]);
+
+type ProfessionalSpidExtension = t.TypeOf<typeof ProfessionalSpidExtension>;
 interface IServiceProviderOrganization {
   URL: string;
   displayName: string;
@@ -34,6 +54,7 @@ export interface IServiceProviderConfig {
   IDPMetadataUrl: string;
   organization: IServiceProviderOrganization;
   publicCert: string;
+  professionalSpidExtension?: ProfessionalSpidExtension;
   strictResponseValidation?: StrictResponseValidationOptions;
 }
 

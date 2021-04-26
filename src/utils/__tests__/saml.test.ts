@@ -2,6 +2,7 @@ import { right } from "fp-ts/lib/Either";
 import { isSome, tryCatch } from "fp-ts/lib/Option";
 import { fromEither } from "fp-ts/lib/TaskEither";
 import { SamlConfig } from "passport-saml";
+import { Builder } from "xml2js";
 import { DOMParser } from "xmldom";
 import { EventTracker } from "../../index";
 import {
@@ -12,7 +13,11 @@ import {
   samlResponseCIE
 } from "../__mocks__/saml";
 import { StrictResponseValidationOptions } from "../middleware";
-import { getPreValidateResponse, getXmlFromSamlResponse } from "../saml";
+import {
+  getAuthorizeRequestTamperer,
+  getPreValidateResponse,
+  getXmlFromSamlResponse
+} from "../saml";
 import * as saml from "../saml";
 
 const samlConfig: SamlConfig = ({
@@ -54,6 +59,43 @@ describe("getXmlFromSamlResponse", () => {
   });
 });
 
+describe("getAuthorizeRequestTamperer", () => {
+  it("should add professional spid extension", async () => {
+    await getAuthorizeRequestTamperer(
+      // spid-testenv does not accept an xml header with utf8 encoding
+      new Builder({ xmldec: { encoding: undefined, version: "1.0" } }),
+      {
+        professionalSpidExtension: {
+          professionalSpidEnabled: true,
+          purpose: "P"
+        }
+        // tslint:disable-next-line: no-any
+      } as any,
+      samlConfig
+    )(samlRequest)
+      .fold(
+        err => fail(err),
+        _ => expect(_).toContain("<spid:Purpose>P</spid:Purpose>")
+      )
+      .run();
+  });
+
+  it("should not add professional spid extension", async () => {
+    await getAuthorizeRequestTamperer(
+      // spid-testenv does not accept an xml header with utf8 encoding
+      new Builder({ xmldec: { encoding: undefined, version: "1.0" } }),
+      // tslint:disable-next-line: no-any
+      {} as any,
+      samlConfig
+    )(samlRequest)
+      .fold(
+        err => fail(err),
+        _ => expect(_).not.toContain("<spid:Purpose")
+      )
+      .run();
+  });
+});
+
 // tslint:disable-next-line: no-big-function
 describe("preValidateResponse", () => {
   const mockCallback = jest.fn();
@@ -80,7 +122,7 @@ describe("preValidateResponse", () => {
         error
           ? expect(callback).toBeCalledWith(error)
           : expect(callback).toBeCalledWith(null, true, expect.any(String));
-        resolve();
+        resolve(void 0);
       }, 100);
     });
 
