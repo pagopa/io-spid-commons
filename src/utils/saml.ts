@@ -68,7 +68,7 @@ export const SAML_NAMESPACE = {
   XMLDSIG: "http://www.w3.org/2000/09/xmldsig#"
 };
 
-const SAML_EXTENSION = "https://spid.gov.it/saml‐extensions";
+const SPID_SAML_EXTENSION = "https://spid.gov.it/saml‐extensions";
 
 const ISSUER_FORMAT = "urn:oasis:names:tc:SAML:2.0:nameid-format:entity";
 
@@ -502,7 +502,7 @@ export const getAuthorizeRequestTamperer = (
           // tslint:disable-next-line: no-object-mutation
           authnRequest["samlp:Extensions"] = {
             $: {
-              "xmlns:spid": SAML_EXTENSION
+              "xmlns:spid": SPID_SAML_EXTENSION
             },
             "spid:Purpose": {
               _: _.professionalSpidExtension.purpose
