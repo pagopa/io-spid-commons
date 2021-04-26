@@ -22,3 +22,4 @@ Beware that any changes to the method signatures of
 
 That's why the version of passport-saml in package.json is currently fixed at
 `1.2.0`.
+test pr
