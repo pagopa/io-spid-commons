@@ -19,13 +19,13 @@ import { IDPEntityDescriptor } from "../types/IDPEntityDescriptor";
 import { fetchIdpsMetadata } from "./metadata";
 import { logSamlCertExpiration, SamlAttributeT } from "./saml";
 
-export enum ProfessionalPurpose {
-  P = "P",
-  PX = "PX",
-  LP = "LP",
-  PG = "PG",
-  PF = "PF"
-}
+export const ProfessionalPurpose = t.keyof({
+  LP: null,
+  P: null,
+  PF: null,
+  PG: null,
+  PX: null
+});
 
 const ProfessionalSpidExtension = t.union([
   t.interface({
@@ -33,13 +33,7 @@ const ProfessionalSpidExtension = t.union([
   }),
   t.interface({
     professionalSpidEnabled: t.literal(true),
-    purpose: t.union([
-      t.literal(ProfessionalPurpose.P),
-      t.literal(ProfessionalPurpose.PX),
-      t.literal(ProfessionalPurpose.LP),
-      t.literal(ProfessionalPurpose.PG),
-      t.literal(ProfessionalPurpose.PF)
-    ])
+    purpose: ProfessionalPurpose
   })
 ]);
 

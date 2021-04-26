@@ -90,7 +90,7 @@ describe("getAuthorizeRequestTamperer", () => {
     )(samlRequest)
       .fold(
         err => fail(err),
-        _ => expect(_).not.toContain("<spid:Purpose>P</spid:Purpose>")
+        _ => expect(_).not.toContain("<spid:Purpose")
       )
       .run();
   });
