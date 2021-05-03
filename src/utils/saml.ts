@@ -588,7 +588,7 @@ const isOverflowNumberOfChildren = (
   maxNumberOfChildren: number
 ): boolean => {
   // tslint:disable-next-line: readonly-array
-  const elemArray = Array.from(element.childNodes).map(_ => _);
+  const elemArray = Array.from(element.childNodes);
   return (
     elemArray.filter(e => e.nodeType === e.ELEMENT_NODE).length >
     maxNumberOfChildren
