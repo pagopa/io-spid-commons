@@ -583,6 +583,33 @@ const isEmptyNode = (element: Element): boolean => {
   return true;
 };
 
+const isOverflowNumberOfChildren = (
+  element: Element,
+  maxNumberOfChildren: number
+): boolean => {
+  // tslint:disable-next-line: readonly-array
+  const elemArray = Array.from(element.childNodes).map(_ => _);
+  return (
+    elemArray.filter(e => e.nodeType === e.ELEMENT_NODE).length >
+    maxNumberOfChildren
+  );
+};
+
+const transformsValidation = (targetElement: Element): Either<Error, Element> =>
+  fromNullable(
+    targetElement
+      .getElementsByTagNameNS(SAML_NAMESPACE.XMLDSIG, "Transforms")
+      .item(0)
+  ).foldL(
+    () => right(targetElement),
+    elem =>
+      fromPredicate(
+        (element: Element) => !isOverflowNumberOfChildren(element, 2),
+        () =>
+          new Error("Transforms cannot contain more than 2 children elements")
+      )(elem).map(() => targetElement)
+  );
+
 const notOnOrAfterValidation = (
   element: Element,
   acceptedClockSkewMs: number = 0
@@ -1141,6 +1168,10 @@ export const getPreValidateResponse = (
           ..._
         }))
       )
+      // check for Transform over SAML Response
+      .chain(_ => transformsValidation(_.Response).map(() => _))
+      // check for Transform over Assertion
+      .chain(_ => transformsValidation(_.Assertion).map(() => _))
   )
     .chain(_ =>
       extendedCacheProvider
