@@ -197,7 +197,7 @@ describe("preValidateResponse", () => {
     });
   });
 
-  it("should preValidate fail when saml Assertion has more than 2 Transforms elements in SignedInfo", async () => {
+  it("should preValidate fail when saml Assertion has more than 4 Transform elements in SignedInfo", async () => {
     mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
       tryCatch(() =>
         new DOMParser().parseFromString(
@@ -222,7 +222,7 @@ describe("preValidateResponse", () => {
       mockCallback
     );
     const expectedError = new Error(
-      "Transforms cannot contain more than 2 children elements"
+      "Transform cannot occurs more than 4 occurrences"
     );
     expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
     await asyncExpectOnCallback(mockCallback, expectedError);
@@ -234,7 +234,7 @@ describe("preValidateResponse", () => {
       type: "ERROR"
     });
   });
-  it("should preValidate fail when saml Response has more than 2 Transforms elements in SignedInfo", async () => {
+  it("should preValidate fail when saml Response has more than 4 Transforms elements in SignedInfo", async () => {
     mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
       tryCatch(() =>
         new DOMParser().parseFromString(
@@ -253,7 +253,7 @@ describe("preValidateResponse", () => {
       mockCallback
     );
     const expectedError = new Error(
-      "Transforms cannot contain more than 2 children elements"
+      "Transform cannot occurs more than 4 occurrences"
     );
     expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
     await asyncExpectOnCallback(mockCallback, expectedError);

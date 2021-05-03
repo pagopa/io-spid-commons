@@ -19,6 +19,7 @@ import { not } from "fp-ts/lib/function";
 import {
   fromEither,
   fromNullable,
+  fromPredicate as fromPredicateOption,
   isNone,
   none,
   Option,
@@ -583,32 +584,31 @@ const isEmptyNode = (element: Element): boolean => {
   return true;
 };
 
-const isOverflowNumberOfChildren = (
-  element: Element,
+const isOverflowNumberOf = (
+  elemArray: readonly Element[],
   maxNumberOfChildren: number
-): boolean => {
-  // tslint:disable-next-line: readonly-array
-  const elemArray = Array.from(element.childNodes);
-  return (
-    elemArray.filter(e => e.nodeType === e.ELEMENT_NODE).length >
-    maxNumberOfChildren
-  );
-};
+): boolean =>
+  elemArray.filter(e => e.nodeType === e.ELEMENT_NODE).length >
+  maxNumberOfChildren;
 
-const transformsValidation = (targetElement: Element): Either<Error, Element> =>
-  fromNullable(
-    targetElement
-      .getElementsByTagNameNS(SAML_NAMESPACE.XMLDSIG, "Transforms")
-      .item(0)
+const transformsValidation = (
+  targetElement: Element
+): Either<Error, Element> => {
+  return fromPredicateOption(
+    (elements: readonly Element[]) => elements.length > 0
+  )(
+    Array.from(
+      targetElement.getElementsByTagNameNS(SAML_NAMESPACE.XMLDSIG, "Transform")
+    )
   ).foldL(
     () => right(targetElement),
-    elem =>
+    transformElements =>
       fromPredicate(
-        (element: Element) => !isOverflowNumberOfChildren(element, 2),
-        () =>
-          new Error("Transforms cannot contain more than 2 children elements")
-      )(elem).map(() => targetElement)
+        (_: readonly Element[]) => !isOverflowNumberOf(_, 4),
+        () => new Error("Transform cannot occurs more than 4 occurrences")
+      )(transformElements).map(() => targetElement)
   );
+};
 
 const notOnOrAfterValidation = (
   element: Element,
@@ -1170,8 +1170,6 @@ export const getPreValidateResponse = (
       )
       // check for Transform over SAML Response
       .chain(_ => transformsValidation(_.Response).map(() => _))
-      // check for Transform over Assertion
-      .chain(_ => transformsValidation(_.Assertion).map(() => _))
   )
     .chain(_ =>
       extendedCacheProvider
