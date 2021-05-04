@@ -1390,21 +1390,21 @@ export const getPreValidateResponse = (
     .bimap(
       error => {
         if (eventHandler) {
-          error instanceof Error
+          TransformError.is(error)
             ? eventHandler({
-                data: {
-                  message: error.message
-                },
-                name: "spid.error.generic",
-                type: "ERROR"
-              })
-            : eventHandler({
                 data: {
                   idpIssuer: error.idpIssuer,
                   message: error.errorMessage,
                   numberOfTransforms: String(error.numberOfTransforms)
                 },
                 name: "spid.error.transformOccurenceOverflow",
+                type: "ERROR"
+              })
+            : eventHandler({
+                data: {
+                  message: error.message
+                },
+                name: "spid.error.generic",
                 type: "ERROR"
               });
         }
