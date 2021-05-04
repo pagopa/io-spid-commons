@@ -222,7 +222,7 @@ describe("preValidateResponse", () => {
       mockCallback
     );
     const expectedError = new Error(
-      "Transform cannot occurs more than 4 occurrences"
+      "Transform element cannot occurs more than 4 times"
     );
     expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
     await asyncExpectOnCallback(mockCallback, expectedError);
@@ -253,7 +253,7 @@ describe("preValidateResponse", () => {
       mockCallback
     );
     const expectedError = new Error(
-      "Transform cannot occurs more than 4 occurrences"
+      "Transform element cannot occurs more than 4 times"
     );
     expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
     await asyncExpectOnCallback(mockCallback, expectedError);
