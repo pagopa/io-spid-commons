@@ -605,7 +605,7 @@ const transformsValidation = (
     transformElements =>
       fromPredicate(
         (_: readonly Element[]) => !isOverflowNumberOf(_, 4),
-        () => new Error("Transform cannot occurs more than 4 occurrences")
+        () => new Error("Transform element cannot occurs more than 4 times")
       )(transformElements).map(() => targetElement)
   );
 };
