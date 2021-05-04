@@ -15,10 +15,11 @@ import {
   right,
   toError
 } from "fp-ts/lib/Either";
-import { not } from "fp-ts/lib/function";
+import { identity, not } from "fp-ts/lib/function";
 import {
   fromEither,
   fromNullable,
+  fromPredicate as fromPredicateOption,
   isNone,
   none,
   Option,
@@ -581,6 +582,45 @@ const isEmptyNode = (element: Element): boolean => {
     return false;
   }
   return true;
+};
+
+const isOverflowNumberOf = (
+  elemArray: readonly Element[],
+  maxNumberOfChildren: number
+): boolean =>
+  elemArray.filter(e => e.nodeType === e.ELEMENT_NODE).length >
+  maxNumberOfChildren;
+
+export const TransformError = t.interface({
+  errorMessage: t.string,
+  idpIssuer: t.string,
+  numberOfTransforms: t.number
+});
+export type TransformError = t.TypeOf<typeof TransformError>;
+
+const transformsValidation = (
+  targetElement: Element,
+  idpIssuer: string
+): Either<TransformError, Element> => {
+  return fromPredicateOption(
+    (elements: readonly Element[]) => elements.length > 0
+  )(
+    Array.from(
+      targetElement.getElementsByTagNameNS(SAML_NAMESPACE.XMLDSIG, "Transform")
+    )
+  ).foldL(
+    () => right(targetElement),
+    transformElements =>
+      fromPredicate(
+        (_: readonly Element[]) => !isOverflowNumberOf(_, 4),
+        _ =>
+          TransformError.encode({
+            errorMessage: "Transform element cannot occurs more than 4 times",
+            idpIssuer,
+            numberOfTransforms: _.length
+          })
+      )(transformElements).map(() => targetElement)
+  );
 };
 
 const notOnOrAfterValidation = (
@@ -1340,18 +1380,35 @@ export const getPreValidateResponse = (
         )
       ).map(() => _)
     )
+    .mapLeft<Error | TransformError>(identity)
+    // check for Transform over SAML Response
+    .chain(_ =>
+      fromEitherToTaskEither(
+        transformsValidation(_.Response, _.SAMLRequestCache.idpIssuer)
+      ).map(() => _)
+    )
     .bimap(
       error => {
         if (eventHandler) {
-          eventHandler({
-            data: {
-              message: error.message
-            },
-            name: "spid.error.generic",
-            type: "ERROR"
-          });
+          TransformError.is(error)
+            ? eventHandler({
+                data: {
+                  idpIssuer: error.idpIssuer,
+                  message: error.errorMessage,
+                  numberOfTransforms: String(error.numberOfTransforms)
+                },
+                name: "spid.error.transformOccurenceOverflow",
+                type: "ERROR"
+              })
+            : eventHandler({
+                data: {
+                  message: error.message
+                },
+                name: "spid.error.generic",
+                type: "ERROR"
+              });
         }
-        return callback(error);
+        return callback(toError(error));
       },
       _ => {
         // Number of the Response signature.

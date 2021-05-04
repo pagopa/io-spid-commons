@@ -1,4 +1,4 @@
-import { right } from "fp-ts/lib/Either";
+import { right, toError } from "fp-ts/lib/Either";
 import { isSome, tryCatch } from "fp-ts/lib/Option";
 import { fromEither } from "fp-ts/lib/TaskEither";
 import { SamlConfig } from "passport-saml";
@@ -12,7 +12,11 @@ import {
   samlResponseCIE
 } from "../__mocks__/saml";
 import { StrictResponseValidationOptions } from "../middleware";
-import { getPreValidateResponse, getXmlFromSamlResponse } from "../saml";
+import {
+  getPreValidateResponse,
+  getXmlFromSamlResponse,
+  TransformError
+} from "../saml";
 import * as saml from "../saml";
 
 const samlConfig: SamlConfig = ({
@@ -57,7 +61,11 @@ describe("getXmlFromSamlResponse", () => {
 // tslint:disable-next-line: no-big-function
 describe("preValidateResponse", () => {
   const mockCallback = jest.fn();
-  const mockGetXmlFromSamlResponse = jest.spyOn(saml, "getXmlFromSamlResponse");
+  const mockGetXmlFromSamlResponse = jest
+    .spyOn(saml, "getXmlFromSamlResponse")
+    .mockImplementation(() =>
+      tryCatch(() => new DOMParser().parseFromString(getSamlResponse()))
+    );
   const mockGet = jest.fn();
   const mockRedisCacheProvider = {
     get: mockGet,
@@ -72,15 +80,19 @@ describe("preValidateResponse", () => {
   const expectedDesynResponseValueMs = 2000;
 
   const expectedGenericEventName = "spid.error.generic";
+  const expectedTransformEventName = "spid.error.transformOccurenceOverflow";
   const expectedSignatureErrorName = "spid.error.signature";
 
-  const asyncExpectOnCallback = (callback: jest.Mock, error?: Error) =>
+  const asyncExpectOnCallback = (
+    callback: jest.Mock,
+    error?: Error | TransformError
+  ) =>
     new Promise(resolve => {
       setTimeout(() => {
         error
-          ? expect(callback).toBeCalledWith(error)
+          ? expect(callback).toBeCalledWith(toError(error))
           : expect(callback).toBeCalledWith(null, true, expect.any(String));
-        resolve();
+        resolve(void 0);
       }, 100);
     });
 
@@ -102,7 +114,7 @@ describe("preValidateResponse", () => {
   });
 
   it("should preValidate fail when saml Response has multiple Assertion elements", async () => {
-    mockGetXmlFromSamlResponse.mockImplementation(() =>
+    mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
       tryCatch(() =>
         new DOMParser().parseFromString(
           getSamlResponse({ customAssertion: getSamlAssertion().repeat(2) })
@@ -134,7 +146,7 @@ describe("preValidateResponse", () => {
   });
 
   it("should preValidate fail when saml Response has EncryptedAssertion element", async () => {
-    mockGetXmlFromSamlResponse.mockImplementation(() =>
+    mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
       tryCatch(() =>
         new DOMParser().parseFromString(
           getSamlResponse({ customAssertion: samlEncryptedAssertion })
@@ -164,7 +176,7 @@ describe("preValidateResponse", () => {
   });
 
   it("should preValidate fail when saml Response has multiple Response elements", async () => {
-    mockGetXmlFromSamlResponse.mockImplementation(() =>
+    mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
       tryCatch(() =>
         new DOMParser().parseFromString(getSamlResponse().repeat(2))
       )
@@ -193,8 +205,85 @@ describe("preValidateResponse", () => {
     });
   });
 
+  it("should preValidate fail when saml response has more than 4 Transform (4 Assertion + 2 Response) elements in SignedInfo", async () => {
+    mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
+      tryCatch(() =>
+        new DOMParser().parseFromString(
+          getSamlResponse({
+            customAssertion: getSamlAssertion(
+              0,
+              "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256",
+              2
+            )
+          })
+        )
+      )
+    );
+    const strictValidationOption: StrictResponseValidationOptions = {
+      mockTestIdpIssuer: true
+    };
+    getPreValidateResponse(strictValidationOption, mockEventTracker)(
+      { ...samlConfig, acceptedClockSkewMs: 0 },
+      mockBody,
+      mockRedisCacheProvider,
+      undefined,
+      mockCallback
+    );
+    const expectedError = TransformError.encode({
+      errorMessage: "Transform element cannot occurs more than 4 times",
+      idpIssuer: mockTestIdpIssuer,
+      numberOfTransforms: 6
+    });
+    expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
+    await asyncExpectOnCallback(mockCallback, expectedError);
+    expect(mockEventTracker).toBeCalledWith({
+      data: {
+        idpIssuer: expectedError.idpIssuer,
+        message: expectedError.errorMessage,
+        numberOfTransforms: String(expectedError.numberOfTransforms)
+      },
+      name: expectedTransformEventName,
+      type: "ERROR"
+    });
+  });
+  it("should preValidate fail when saml response has more than 4 Transform elements (4 Response + 2 Assertion) in SignedInfo", async () => {
+    mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
+      tryCatch(() =>
+        new DOMParser().parseFromString(
+          getSamlResponse({ repeatTransforms: 2 })
+        )
+      )
+    );
+    const strictValidationOption: StrictResponseValidationOptions = {
+      mockTestIdpIssuer: true
+    };
+    getPreValidateResponse(strictValidationOption, mockEventTracker)(
+      { ...samlConfig, acceptedClockSkewMs: 0 },
+      mockBody,
+      mockRedisCacheProvider,
+      undefined,
+      mockCallback
+    );
+    const expectedError = TransformError.encode({
+      errorMessage: "Transform element cannot occurs more than 4 times",
+      idpIssuer: mockTestIdpIssuer,
+      numberOfTransforms: 6
+    });
+    expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
+    await asyncExpectOnCallback(mockCallback, expectedError);
+    expect(mockEventTracker).toBeCalledWith({
+      data: {
+        idpIssuer: expectedError.idpIssuer,
+        message: expectedError.errorMessage,
+        numberOfTransforms: String(expectedError.numberOfTransforms)
+      },
+      name: expectedTransformEventName,
+      type: "ERROR"
+    });
+  });
+
   it("should preValidate succeded with a valid saml Response", async () => {
-    mockGetXmlFromSamlResponse.mockImplementation(() =>
+    mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
       tryCatch(() => new DOMParser().parseFromString(getSamlResponse()))
     );
     const strictValidationOption: StrictResponseValidationOptions = {
@@ -212,7 +301,7 @@ describe("preValidateResponse", () => {
   });
 
   it("should preValidate succeded and send an Event on valid Response with missing Signature", async () => {
-    mockGetXmlFromSamlResponse.mockImplementation(() =>
+    mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
       tryCatch(() =>
         new DOMParser().parseFromString(
           getSamlResponse({ hasResponseSignature: false })
@@ -242,7 +331,7 @@ describe("preValidateResponse", () => {
   });
 
   it("should preValidate succeed if timers are desynchronized and acceptedClockSkewMs is disabled", async () => {
-    mockGetXmlFromSamlResponse.mockImplementation(() =>
+    mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
       tryCatch(() =>
         new DOMParser().parseFromString(
           getSamlResponse({ clockSkewMs: expectedDesynResponseValueMs })
@@ -264,7 +353,7 @@ describe("preValidateResponse", () => {
   });
 
   it("should preValidate succeed if timers desync is less than acceptedClockSkewMs", async () => {
-    mockGetXmlFromSamlResponse.mockImplementation(() =>
+    mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
       tryCatch(() =>
         new DOMParser().parseFromString(
           getSamlResponse({ clockSkewMs: expectedDesynResponseValueMs })
@@ -286,7 +375,7 @@ describe("preValidateResponse", () => {
   });
 
   it("should preValidate fail if timer desync exceeds acceptedClockSkewMs", async () => {
-    mockGetXmlFromSamlResponse.mockImplementation(() =>
+    mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
       tryCatch(() =>
         new DOMParser().parseFromString(
           getSamlResponse({ clockSkewMs: expectedDesynResponseValueMs })
@@ -321,7 +410,7 @@ describe("preValidateResponse", () => {
   `(
     "should preValidate fail when saml Response $title",
     async ({ response }) => {
-      mockGetXmlFromSamlResponse.mockImplementation(() =>
+      mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
         tryCatch(() => new DOMParser().parseFromString(response))
       );
       const strictValidationOption: StrictResponseValidationOptions = {
@@ -353,7 +442,7 @@ describe("preValidateResponse", () => {
     });
 
     it("should preValidate succeded with a valid CIE saml Response", async () => {
-      mockGetXmlFromSamlResponse.mockImplementation(() =>
+      mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
         tryCatch(() => new DOMParser().parseFromString(samlResponseCIE))
       );
       // tslint:disable-next-line: no-identical-functions
@@ -380,7 +469,7 @@ describe("preValidateResponse", () => {
   });
 
   it("should preValidate fail when saml Response uses HMAC as signature algorithm", async () => {
-    mockGetXmlFromSamlResponse.mockImplementation(() =>
+    mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
       tryCatch(() =>
         new DOMParser().parseFromString(
           getSamlResponse({
