@@ -15,7 +15,7 @@ import {
   right,
   toError
 } from "fp-ts/lib/Either";
-import { not } from "fp-ts/lib/function";
+import { identity, not } from "fp-ts/lib/function";
 import {
   fromEither,
   fromNullable,
@@ -30,11 +30,16 @@ import { collect, lookup } from "fp-ts/lib/Record";
 import { setoidString } from "fp-ts/lib/Setoid";
 import {
   fromEither as fromEitherToTaskEither,
+  fromLeft,
   TaskEither,
   tryCatch
 } from "fp-ts/lib/TaskEither";
 import * as t from "io-ts";
 import { UTCISODateFromString } from "italia-ts-commons/lib/dates";
+import {
+  NonNegativeInteger,
+  NonNegativeNumber
+} from "italia-ts-commons/lib/numbers";
 import { NonEmptyString } from "italia-ts-commons/lib/strings";
 import { pki } from "node-forge";
 import { SamlConfig } from "passport-saml";
@@ -591,9 +596,17 @@ const isOverflowNumberOf = (
   elemArray.filter(e => e.nodeType === e.ELEMENT_NODE).length >
   maxNumberOfChildren;
 
+export const TransformError = t.interface({
+  errorMessage: t.string,
+  idpIssuer: t.string,
+  numberOfTransforms: t.number
+});
+export type TransformError = t.TypeOf<typeof TransformError>;
+
 const transformsValidation = (
-  targetElement: Element
-): Either<Error, Element> => {
+  targetElement: Element,
+  idpIssuer: NonEmptyString
+): Either<TransformError, Element> => {
   return fromPredicateOption(
     (elements: readonly Element[]) => elements.length > 0
   )(
@@ -605,7 +618,12 @@ const transformsValidation = (
     transformElements =>
       fromPredicate(
         (_: readonly Element[]) => !isOverflowNumberOf(_, 4),
-        () => new Error("Transform element cannot occurs more than 4 times")
+        _ =>
+          TransformError.encode({
+            errorMessage: "Transform element cannot occurs more than 4 times",
+            idpIssuer,
+            numberOfTransforms: _.length
+          })
       )(transformElements).map(() => targetElement)
   );
 };
@@ -1168,8 +1186,6 @@ export const getPreValidateResponse = (
           ..._
         }))
       )
-      // check for Transform over SAML Response
-      .chain(_ => transformsValidation(_.Response).map(() => _))
   )
     .chain(_ =>
       extendedCacheProvider
@@ -1369,18 +1385,38 @@ export const getPreValidateResponse = (
         )
       ).map(() => _)
     )
+    .mapLeft<Error | TransformError>(identity)
+    // check for Transform over SAML Response
+    .chain(_ =>
+      fromEitherToTaskEither(
+        transformsValidation(
+          _.Response,
+          _.SAMLRequestCache.idpIssuer as NonEmptyString
+        )
+      ).map(() => _)
+    )
     .bimap(
       error => {
         if (eventHandler) {
-          eventHandler({
-            data: {
-              message: error.message
-            },
-            name: "spid.error.generic",
-            type: "ERROR"
-          });
+          error instanceof Error
+            ? eventHandler({
+                data: {
+                  message: error.message
+                },
+                name: "spid.error.generic",
+                type: "ERROR"
+              })
+            : eventHandler({
+                data: {
+                  idpIssuer: error.idpIssuer,
+                  message: error.errorMessage,
+                  numberOfTransforms: String(error.numberOfTransforms)
+                },
+                name: "spid.error.transformOccurenceOverflow",
+                type: "ERROR"
+              });
         }
-        return callback(error);
+        return callback(toError(error));
       },
       _ => {
         // Number of the Response signature.

@@ -1,4 +1,4 @@
-import { right } from "fp-ts/lib/Either";
+import { right, toError } from "fp-ts/lib/Either";
 import { isSome, tryCatch } from "fp-ts/lib/Option";
 import { fromEither } from "fp-ts/lib/TaskEither";
 import { SamlConfig } from "passport-saml";
@@ -12,7 +12,11 @@ import {
   samlResponseCIE
 } from "../__mocks__/saml";
 import { StrictResponseValidationOptions } from "../middleware";
-import { getPreValidateResponse, getXmlFromSamlResponse } from "../saml";
+import {
+  getPreValidateResponse,
+  getXmlFromSamlResponse,
+  TransformError
+} from "../saml";
 import * as saml from "../saml";
 
 const samlConfig: SamlConfig = ({
@@ -76,13 +80,17 @@ describe("preValidateResponse", () => {
   const expectedDesynResponseValueMs = 2000;
 
   const expectedGenericEventName = "spid.error.generic";
+  const expectedTransformEventName = "spid.error.transformOccurenceOverflow";
   const expectedSignatureErrorName = "spid.error.signature";
 
-  const asyncExpectOnCallback = (callback: jest.Mock, error?: Error) =>
+  const asyncExpectOnCallback = (
+    callback: jest.Mock,
+    error?: Error | TransformError
+  ) =>
     new Promise(resolve => {
       setTimeout(() => {
         error
-          ? expect(callback).toBeCalledWith(error)
+          ? expect(callback).toBeCalledWith(toError(error))
           : expect(callback).toBeCalledWith(null, true, expect.any(String));
         resolve(void 0);
       }, 100);
@@ -221,16 +229,20 @@ describe("preValidateResponse", () => {
       undefined,
       mockCallback
     );
-    const expectedError = new Error(
-      "Transform element cannot occurs more than 4 times"
-    );
+    const expectedError = TransformError.encode({
+      errorMessage: "Transform element cannot occurs more than 4 times",
+      idpIssuer: "http://localhost:8080",
+      numberOfTransforms: 6
+    });
     expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
     await asyncExpectOnCallback(mockCallback, expectedError);
     expect(mockEventTracker).toBeCalledWith({
       data: {
-        message: expectedError.message
+        idpIssuer: expectedError.idpIssuer,
+        message: expectedError.errorMessage,
+        numberOfTransforms: String(expectedError.numberOfTransforms)
       },
-      name: expectedGenericEventName,
+      name: expectedTransformEventName,
       type: "ERROR"
     });
   });
@@ -252,16 +264,20 @@ describe("preValidateResponse", () => {
       undefined,
       mockCallback
     );
-    const expectedError = new Error(
-      "Transform element cannot occurs more than 4 times"
-    );
+    const expectedError = TransformError.encode({
+      errorMessage: "Transform element cannot occurs more than 4 times",
+      idpIssuer: "http://localhost:8080",
+      numberOfTransforms: 6
+    });
     expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
     await asyncExpectOnCallback(mockCallback, expectedError);
     expect(mockEventTracker).toBeCalledWith({
       data: {
-        message: expectedError.message
+        idpIssuer: expectedError.idpIssuer,
+        message: expectedError.errorMessage,
+        numberOfTransforms: String(expectedError.numberOfTransforms)
       },
-      name: expectedGenericEventName,
+      name: expectedTransformEventName,
       type: "ERROR"
     });
   });
