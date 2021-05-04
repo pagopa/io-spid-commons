@@ -30,16 +30,11 @@ import { collect, lookup } from "fp-ts/lib/Record";
 import { setoidString } from "fp-ts/lib/Setoid";
 import {
   fromEither as fromEitherToTaskEither,
-  fromLeft,
   TaskEither,
   tryCatch
 } from "fp-ts/lib/TaskEither";
 import * as t from "io-ts";
 import { UTCISODateFromString } from "italia-ts-commons/lib/dates";
-import {
-  NonNegativeInteger,
-  NonNegativeNumber
-} from "italia-ts-commons/lib/numbers";
 import { NonEmptyString } from "italia-ts-commons/lib/strings";
 import { pki } from "node-forge";
 import { SamlConfig } from "passport-saml";
@@ -605,7 +600,7 @@ export type TransformError = t.TypeOf<typeof TransformError>;
 
 const transformsValidation = (
   targetElement: Element,
-  idpIssuer: NonEmptyString
+  idpIssuer: string
 ): Either<TransformError, Element> => {
   return fromPredicateOption(
     (elements: readonly Element[]) => elements.length > 0
@@ -1389,10 +1384,7 @@ export const getPreValidateResponse = (
     // check for Transform over SAML Response
     .chain(_ =>
       fromEitherToTaskEither(
-        transformsValidation(
-          _.Response,
-          _.SAMLRequestCache.idpIssuer as NonEmptyString
-        )
+        transformsValidation(_.Response, _.SAMLRequestCache.idpIssuer)
       ).map(() => _)
     )
     .bimap(

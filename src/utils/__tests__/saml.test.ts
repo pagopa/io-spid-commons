@@ -231,7 +231,7 @@ describe("preValidateResponse", () => {
     );
     const expectedError = TransformError.encode({
       errorMessage: "Transform element cannot occurs more than 4 times",
-      idpIssuer: "http://localhost:8080",
+      idpIssuer: mockTestIdpIssuer,
       numberOfTransforms: 6
     });
     expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
@@ -266,7 +266,7 @@ describe("preValidateResponse", () => {
     );
     const expectedError = TransformError.encode({
       errorMessage: "Transform element cannot occurs more than 4 times",
-      idpIssuer: "http://localhost:8080",
+      idpIssuer: mockTestIdpIssuer,
       numberOfTransforms: 6
     });
     expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
