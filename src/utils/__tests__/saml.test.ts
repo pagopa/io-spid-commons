@@ -197,7 +197,7 @@ describe("preValidateResponse", () => {
     });
   });
 
-  it("should preValidate fail when saml Assertion has more than 4 Transform elements in SignedInfo", async () => {
+  it("should preValidate fail when saml response has more than 4 Transform (4 Assertion + 2 Response) elements in SignedInfo", async () => {
     mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
       tryCatch(() =>
         new DOMParser().parseFromString(
