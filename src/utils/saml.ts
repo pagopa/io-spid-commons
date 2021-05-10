@@ -592,8 +592,8 @@ const isOverflowNumberOf = (
   maxNumberOfChildren;
 
 export const TransformError = t.interface({
-  errorMessage: t.string,
   idpIssuer: t.string,
+  message: t.string,
   numberOfTransforms: t.number
 });
 export type TransformError = t.TypeOf<typeof TransformError>;
@@ -615,8 +615,8 @@ const transformsValidation = (
         (_: readonly Element[]) => !isOverflowNumberOf(_, 4),
         _ =>
           TransformError.encode({
-            errorMessage: "Transform element cannot occurs more than 4 times",
             idpIssuer,
+            message: "Transform element cannot occurs more than 4 times",
             numberOfTransforms: _.length
           })
       )(transformElements).map(() => targetElement)
@@ -1394,7 +1394,7 @@ export const getPreValidateResponse = (
             ? eventHandler({
                 data: {
                   idpIssuer: error.idpIssuer,
-                  message: error.errorMessage,
+                  message: error.message,
                   numberOfTransforms: String(error.numberOfTransforms)
                 },
                 name: "spid.error.transformOccurenceOverflow",
@@ -1408,7 +1408,7 @@ export const getPreValidateResponse = (
                 type: "ERROR"
               });
         }
-        return callback(toError(error));
+        return callback(toError(error.message));
       },
       _ => {
         // Number of the Response signature.

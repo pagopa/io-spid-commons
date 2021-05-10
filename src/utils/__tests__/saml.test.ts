@@ -30,21 +30,16 @@ const samlConfig: SamlConfig = ({
   issuer: "https://app-backend.dev.io.italia.it"
 } as unknown) as SamlConfig;
 
+const hMacSignatureMethod = "http://www.w3.org/2000/09/xmldsig#hmac-sha1";
 const aResponseSignedWithHMAC = getSamlResponse({
-  signatureMethod: "http://www.w3.org/2000/09/xmldsig#hmac-sha1"
+  signatureMethod: hMacSignatureMethod
 });
 const aResponseWithOneAssertionSignedWithHMAC = getSamlResponse({
-  customAssertion: getSamlAssertion(
-    0,
-    "http://www.w3.org/2000/09/xmldsig#hmac-sha1"
-  )
+  customAssertion: getSamlAssertion(0, hMacSignatureMethod)
 });
 const aResponseSignedWithHMACWithOneAssertionSignedWithHMAC = getSamlResponse({
-  customAssertion: getSamlAssertion(
-    0,
-    "http://www.w3.org/2000/09/xmldsig#hmac-sha1"
-  ),
-  signatureMethod: "http://www.w3.org/2000/09/xmldsig#hmac-sha1"
+  customAssertion: getSamlAssertion(0, hMacSignatureMethod),
+  signatureMethod: hMacSignatureMethod
 });
 
 describe("getXmlFromSamlResponse", () => {
@@ -90,7 +85,7 @@ describe("preValidateResponse", () => {
     new Promise(resolve => {
       setTimeout(() => {
         error
-          ? expect(callback).toBeCalledWith(toError(error))
+          ? expect(callback).toBeCalledWith(toError(error.message))
           : expect(callback).toBeCalledWith(null, true, expect.any(String));
         resolve(void 0);
       }, 100);
@@ -230,8 +225,8 @@ describe("preValidateResponse", () => {
       mockCallback
     );
     const expectedError = TransformError.encode({
-      errorMessage: "Transform element cannot occurs more than 4 times",
       idpIssuer: mockTestIdpIssuer,
+      message: "Transform element cannot occurs more than 4 times",
       numberOfTransforms: 6
     });
     expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
@@ -239,7 +234,7 @@ describe("preValidateResponse", () => {
     expect(mockEventTracker).toBeCalledWith({
       data: {
         idpIssuer: expectedError.idpIssuer,
-        message: expectedError.errorMessage,
+        message: expectedError.message,
         numberOfTransforms: String(expectedError.numberOfTransforms)
       },
       name: expectedTransformEventName,
@@ -265,8 +260,8 @@ describe("preValidateResponse", () => {
       mockCallback
     );
     const expectedError = TransformError.encode({
-      errorMessage: "Transform element cannot occurs more than 4 times",
       idpIssuer: mockTestIdpIssuer,
+      message: "Transform element cannot occurs more than 4 times",
       numberOfTransforms: 6
     });
     expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
@@ -274,7 +269,7 @@ describe("preValidateResponse", () => {
     expect(mockEventTracker).toBeCalledWith({
       data: {
         idpIssuer: expectedError.idpIssuer,
-        message: expectedError.errorMessage,
+        message: expectedError.message,
         numberOfTransforms: String(expectedError.numberOfTransforms)
       },
       name: expectedTransformEventName,
@@ -473,7 +468,7 @@ describe("preValidateResponse", () => {
       tryCatch(() =>
         new DOMParser().parseFromString(
           getSamlResponse({
-            signatureMethod: "http://www.w3.org/2000/09/xmldsig#hmac-sha1"
+            signatureMethod: hMacSignatureMethod
           })
         )
       )
