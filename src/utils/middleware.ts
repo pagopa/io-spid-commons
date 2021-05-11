@@ -4,7 +4,9 @@
 import * as express from "express";
 import { array } from "fp-ts/lib/Array";
 import { Task, task } from "fp-ts/lib/Task";
-import { NonEmptyString } from "italia-ts-commons/lib/strings";
+import * as t from "io-ts";
+import { EmailString, NonEmptyString } from "italia-ts-commons/lib/strings";
+import { enumType } from "italia-ts-commons/lib/types";
 import { Profile, SamlConfig, VerifiedCallback } from "passport-saml";
 import { RedisClient } from "redis";
 import { DoneCallbackT } from "..";
@@ -23,6 +25,147 @@ interface IServiceProviderOrganization {
   displayName: string;
   name: string;
 }
+
+export enum ContactType {
+  OTHER = "other",
+  BILLING = "billing"
+}
+
+export enum EntityType {
+  AGGREGATOR = "spid:aggregator",
+  AGGREGATED = "spid:aggregated"
+}
+
+export enum AggregatorType {
+  PublicServicesFullAggregator = "PublicServicesFullAggregator",
+  PublicServicesLightAggregator = "PublicServicesLightAggregator",
+  PrivateServicesFullAggregator = "PrivateServicesFullAggregator",
+  PrivateServicesLightAggregator = "PrivateServicesLightAggregator",
+  PublicServicesFullOperator = "PublicServicesFullOperator",
+  PublicServicesLightOperator = "PublicServicesLightOperator"
+}
+
+export enum AggregatedType {
+  Public = "Public",
+  PublicOperator = "PublicOperator",
+  Private = "Private"
+}
+
+const CommonExtension = t.partial({
+  FiscalCode: t.string,
+  IPACode: t.string,
+  VATNumber: t.string
+});
+type CommonExtension = t.TypeOf<typeof CommonExtension>;
+
+export const LightAggregatorExtension = t.intersection([
+  t.interface({
+    aggregatorCert: t.string,
+    aggregatorType: t.union([
+      t.literal(AggregatorType.PrivateServicesLightAggregator),
+      t.literal(AggregatorType.PublicServicesLightAggregator),
+      t.literal(AggregatorType.PublicServicesLightOperator)
+    ])
+  }),
+  CommonExtension
+]);
+export type LightAggregatorExtension = t.TypeOf<
+  typeof LightAggregatorExtension
+>;
+
+const AggregatorExtension = t.intersection([
+  t.union([
+    t.interface({
+      aggregatorType: t.union([
+        t.literal(AggregatorType.PrivateServicesFullAggregator),
+        t.literal(AggregatorType.PublicServicesFullAggregator),
+        t.literal(AggregatorType.PublicServicesFullOperator)
+      ])
+    }),
+    LightAggregatorExtension
+  ]),
+  CommonExtension
+]);
+type AggregatorExtension = t.TypeOf<typeof AggregatorExtension>;
+
+const AggregatedExtension = t.intersection([
+  t.interface({
+    aggregatedType: enumType<AggregatedType>(AggregatedType, "aggregatedType")
+  }),
+  CommonExtension
+]);
+type AggregatedExtension = t.TypeOf<typeof AggregatedExtension>;
+
+const IBillingInfo = t.intersection(
+  [
+    t.interface({
+      Sede: t.interface({
+        address: t.string,
+        cap: t.string,
+        city: t.string,
+        country: t.string
+      })
+    }),
+    t.partial({
+      CodiceEORI: t.string,
+      Sede: t.partial({
+        number: t.string,
+        state: t.string
+      }),
+      denominazione: t.string,
+      fiscalCode: t.string,
+      idCodice: t.string,
+      idPaese: t.string,
+      name: t.string,
+      surname: t.string,
+      title: t.string
+    })
+  ],
+  "BillingInfo"
+);
+type IBillingInfo = t.TypeOf<typeof IBillingInfo>;
+
+const ContactPerson = t.union([
+  t.interface({
+    billing: t.intersection([
+      t.interface({
+        CessionarioCommittente: IBillingInfo
+      }),
+      t.partial({
+        TerzoIntermediarioSoggettoEmittente: IBillingInfo
+      })
+    ]),
+    company: t.string,
+    contactType: t.literal(ContactType.BILLING),
+    email: EmailString,
+    phone: t.string
+  }),
+  t.intersection([
+    t.interface({
+      company: t.string,
+      contactType: t.literal(ContactType.OTHER),
+      email: EmailString,
+      entityType: t.literal(EntityType.AGGREGATOR),
+      extensions: AggregatorExtension
+    }),
+    t.partial({
+      phone: t.string
+    })
+  ]),
+  t.intersection([
+    t.interface({
+      company: t.string,
+      contactType: t.literal(ContactType.OTHER),
+      email: EmailString,
+      entityType: t.literal(EntityType.AGGREGATED),
+      extensions: AggregatedExtension
+    }),
+    t.partial({
+      phone: t.string
+    })
+  ])
+]);
+type ContactPerson = t.TypeOf<typeof ContactPerson>;
 export interface IServiceProviderConfig {
   requiredAttributes: {
     attributes: ReadonlyArray<SamlAttributeT>;
@@ -33,6 +176,7 @@ export interface IServiceProviderConfig {
   spidValidatorUrl?: string;
   IDPMetadataUrl: string;
   organization: IServiceProviderOrganization;
+  contacts?: ReadonlyArray<ContactPerson>;
   publicCert: string;
   strictResponseValidation?: StrictResponseValidationOptions;
 }

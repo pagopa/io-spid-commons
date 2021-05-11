@@ -48,9 +48,12 @@ import { EventTracker } from "../index";
 import { PreValidateResponseT } from "../strategy/spid";
 import { logger } from "./logger";
 import {
+  ContactType,
+  EntityType,
   getSpidStrategyOption,
   IServiceProviderConfig,
   ISpidStrategyOptions,
+  LightAggregatorExtension,
   StrictResponseValidationOptions
 } from "./middleware";
 
@@ -66,6 +69,7 @@ interface IEntrypointCerts {
 export const SAML_NAMESPACE = {
   ASSERTION: "urn:oasis:names:tc:SAML:2.0:assertion",
   PROTOCOL: "urn:oasis:names:tc:SAML:2.0:protocol",
+  SPID: "https://spid.gov.it/saml-extensions",
   XMLDSIG: "http://www.w3.org/2000/09/xmldsig#"
 };
 
@@ -388,6 +392,151 @@ const getSpidOrganizationMetadata = (
     : {};
 };
 
+const getSpidContactPersonMetadata = (
+  serviceProviderConfig: IServiceProviderConfig
+) => {
+  return serviceProviderConfig.contacts
+    ? serviceProviderConfig.contacts
+        .map(item => {
+          const contact = {
+            $: {
+              contactType: item.contactType
+            },
+            Company: item.company,
+            EmailAddress: item.email,
+            ...(item.phone ? { TelephoneNumber: item.phone } : {})
+          };
+          if (item.contactType === ContactType.OTHER) {
+            return {
+              ...contact,
+              $: {
+                ...contact.$,
+                "spid:entityType": item.entityType
+              },
+              Extensions: {
+                ...(item.extensions.IPACode
+                  ? { "spid:IPACode": item.extensions.IPACode }
+                  : {}),
+                ...(item.extensions.VATNumber
+                  ? { "spid:VATNumber": item.extensions.VATNumber }
+                  : {}),
+                ...(item.extensions?.FiscalCode
+                  ? { "spid:FiscalCode": item.extensions.FiscalCode }
+                  : {}),
+                ...(item.entityType === EntityType.AGGREGATOR
+                  ? { [`spid:${item.extensions.aggregatorType}`]: {} }
+                  : {}),
+                ...(item.entityType === EntityType.AGGREGATOR &&
+                LightAggregatorExtension.is(item.extensions)
+                  ? {
+                      "spid:KeyDescriptor": {
+                        $: {
+                          use: "spid:validation"
+                        },
+                        "ds:KeyInfo": {
+                          "ds:X509Data": {
+                            "ds:X509Certificate": cleanCert(
+                              item.extensions.aggregatorCert
+                            )
+                          }
+                        }
+                      }
+                    }
+                  : {}),
+                ...(item.entityType === EntityType.AGGREGATED
+                  ? { [`spid:${item.extensions.aggregatedType}`]: {} }
+                  : {})
+              }
+            };
+          }
+          if (item.contactType === ContactType.BILLING) {
+            return {
+              ...contact,
+              Extensions: {
+                $: {
+                  "xmlns:fpa": "https://spid.gov.it/invoicing-extensions"
+                },
+                "fpa:CessionarioCommittente": {
+                  "fpa:DatiAnagrafici": {
+                    ...(item.billing.CessionarioCommittente.idPaese
+                      ? {
+                          "fpa:IdFiscaleIVA": {
+                            "fpa:IdCodice":
+                              item.billing.CessionarioCommittente.idCodice,
+                            "fpa:IdPaese":
+                              item.billing.CessionarioCommittente.idPaese
+                          }
+                        }
+                      : {}),
+                    ...(item.billing.CessionarioCommittente.fiscalCode
+                      ? {
+                          "fpa:CodiceFiscale":
+                            item.billing.CessionarioCommittente.fiscalCode
+                        }
+                      : {}),
+                    "fpa:Anagrafica": {
+                      ...(item.billing.CessionarioCommittente.denominazione
+                        ? {
+                            "fpa:Denominazione":
+                              item.billing.CessionarioCommittente.denominazione
+                          }
+                        : {}),
+                      ...(item.billing.CessionarioCommittente.name
+                        ? {
+                            "fpa:Nome": item.billing.CessionarioCommittente.name
+                          }
+                        : {}),
+                      ...(item.billing.CessionarioCommittente.surname
+                        ? {
+                            "fpa:Cognome":
+                              item.billing.CessionarioCommittente.surname
+                          }
+                        : {}),
+                      ...(item.billing.CessionarioCommittente.title
+                        ? {
+                            "fpa:Titolo":
+                              item.billing.CessionarioCommittente.title
+                          }
+                        : {}),
+                      ...(item.billing.CessionarioCommittente.CodiceEORI
+                        ? {
+                            "fpa:CodiceEORI":
+                              item.billing.CessionarioCommittente.CodiceEORI
+                          }
+                        : {})
+                    }
+                  },
+                  "fpa:Sede": {
+                    "fpa:CAP": item.billing.CessionarioCommittente.Sede.cap,
+                    "fpa:Comune": item.billing.CessionarioCommittente.Sede.city,
+                    "fpa:Indirizzo":
+                      item.billing.CessionarioCommittente.Sede.address,
+                    "fpa:Nazione":
+                      item.billing.CessionarioCommittente.Sede.country,
+                    ...(item.billing.CessionarioCommittente.Sede.number
+                      ? {
+                          "fpa:NumeroCivico":
+                            item.billing.CessionarioCommittente.Sede.number
+                        }
+                      : {}),
+                    ...(item.billing.CessionarioCommittente.Sede.state
+                      ? {
+                          "fpa:Provincia":
+                            item.billing.CessionarioCommittente.Sede.state
+                        }
+                      : {})
+                  }
+                }
+              }
+            };
+          }
+          return contact;
+        })
+        // Contacts array is limited to 3 elements
+        .slice(0, 3)
+    : {};
+};
+
 const getKeyInfoForMetadata = (publicCert: string, privateKey: string) => ({
   file: privateKey,
   getKey: () => Buffer.from(privateKey),
@@ -434,6 +583,18 @@ export const getMetadataTamperer = (
           ...o.EntityDescriptor,
           ...getSpidOrganizationMetadata(serviceProviderConfig)
         };
+        if (serviceProviderConfig.contacts) {
+          // tslint:disable-next-line: no-object-mutation
+          o.EntityDescriptor = {
+            ...o.EntityDescriptor,
+            $: {
+              ...o.EntityDescriptor.$,
+              "xmlns:spid": SAML_NAMESPACE.SPID
+            },
+            // tslint:disable-next-line: no-inferred-empty-object-type
+            ContactPerson: getSpidContactPersonMetadata(serviceProviderConfig)
+          };
+        }
         return o;
       }, toError)
     )

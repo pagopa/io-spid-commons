@@ -18,7 +18,7 @@ services:
     volumes:
       - "./certs:/usr/src/app/certs:delegated"
       - "./dist:/usr/src/app/dist:delegated"
-    command: ["yarn", "dev"]
+    command: ["yarn", "hot-reload"]
     networks:
       - io-spid-commons
     depends_on:
