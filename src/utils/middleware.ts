@@ -78,7 +78,6 @@ const AggregatorExtension = t.intersection([
     t.interface({
       aggregatorType: t.union([
         t.literal(AggregatorType.PrivateServicesFullAggregator),
-        t.literal(AggregatorType.PublicServicesFullAggregator),
         t.literal(AggregatorType.PublicServicesFullOperator)
       ])
     }),

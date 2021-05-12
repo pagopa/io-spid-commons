@@ -96,50 +96,9 @@ const serviceProviderConfig: IServiceProviderConfig = {
         FiscalCode: "12345678901",
         IPACode: "1",
         VATNumber: "12345678902",
-        aggregatorCert: fs.readFileSync("./certs/cert.pem", "utf-8"),
-        aggregatorType: AggregatorType.PrivateServicesLightAggregator
+        aggregatorType: AggregatorType.PublicServicesFullOperator
       },
       phone: "+393331234567"
-    },
-    {
-      company: "Società Aggregata S.p.a.",
-      contactType: ContactType.OTHER,
-      email: "email@example.com" as EmailString,
-      entityType: EntityType.AGGREGATED,
-      extensions: {
-        FiscalCode: "12345678902",
-        IPACode: "2",
-        VATNumber: "12345678902",
-        aggregatedType: AggregatedType.Private
-      }
-    },
-    {
-      company: "Azienda_Destinataria_Fatturazione",
-      contactType: ContactType.BILLING,
-      email: "email@fatturazione.it" as EmailString,
-      phone: "+391234567",
-
-      billing: {
-        CessionarioCommittente: {
-          CodiceEORI: "1",
-          denominazione: "Denominazione",
-          fiscalCode: "12345678902",
-          idCodice: "1",
-          idPaese: "IT",
-          name: "Nome Billing",
-          surname: "Cognome Billing",
-          title: "Titolo billing",
-
-          Sede: {
-            address: "Piazza Colonna",
-            cap: "00187",
-            city: "Roma",
-            country: "IT",
-            number: "370",
-            state: "RM"
-          }
-        }
-      }
     }
   ]
 };
@@ -179,7 +138,7 @@ app.use(passport.initialize());
 // Create a Proxy to forward local calls to spid validator container
 const proxyApp = express();
 proxyApp.get("*", (req, res) => {
-  res.redirect("http://spid-saml-check:8080" + req.path);
+  res.redirect("localhost:8080" + req.path);
 });
 proxyApp.listen(8080);
 
