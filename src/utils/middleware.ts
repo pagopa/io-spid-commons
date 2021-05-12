@@ -37,7 +37,7 @@ export enum AggregatorType {
   PublicServicesFullOperator = "PublicServicesFullOperator"
 }
 
-const CommonExtension = t.partial({
+const CommonExtension = t.interface({
   FiscalCode: t.string,
   IPACode: t.string,
   VATNumber: t.string
