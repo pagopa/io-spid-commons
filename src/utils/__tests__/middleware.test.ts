@@ -56,7 +56,7 @@ describe("getSpidStrategyOptionsUpdater", () => {
     ...expectedSamlConfig,
     attributes: {
       attributes: serviceProviderConfig.requiredAttributes,
-      name: "Required attributes"
+      name: serviceProviderConfig.requiredAttributes.name
     },
     identifierFormat: "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
     organization: serviceProviderConfig.organization,

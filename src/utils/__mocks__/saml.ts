@@ -2,9 +2,12 @@ type SignatureMethod =
   | "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"
   | "http://www.w3.org/2000/09/xmldsig#hmac-sha1";
 
+export const transforms = `<ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/><ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>`;
+
 export const getSamlAssertion = (
   clockSkewMs: number = 0,
-  signatureMethod: SignatureMethod = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"
+  signatureMethod: SignatureMethod = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256",
+  repeatTransforms?: number
 ) => `<saml:Assertion ID="_43568006-96d4-4dcc-84da-d98e01ea3a28" IssueInstant="${new Date(
   Date.now() + clockSkewMs
 ).toISOString()}" Version="2.0" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
@@ -17,8 +20,11 @@ export const getSamlAssertion = (
                 <ds:SignatureMethod Algorithm="${signatureMethod}"/>
                 <ds:Reference URI="#_43568006-96d4-4dcc-84da-d98e01ea3a28">
                     <ds:Transforms>
-                        <ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
-                        <ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+                    ${
+                      repeatTransforms
+                        ? transforms.repeat(repeatTransforms)
+                        : transforms
+                    }
                     </ds:Transforms>
                     <ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>
                     <ds:DigestValue>
@@ -115,6 +121,8 @@ interface IGetSAMLResponseParams {
 
   /** @default "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256" */
   signatureMethod?: SignatureMethod;
+
+  repeatTransforms?: number;
 }
 
 export const getSamlResponse: (params?: IGetSAMLResponseParams) => string = (
@@ -137,8 +145,11 @@ ${
           "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"}"/>
         <ds:Reference URI="#_7080f453-78cb-4f57-9692-62dc8a5c23e8">
             <ds:Transforms>
-                <ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
-                <ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+                ${
+                  params.repeatTransforms
+                    ? transforms.repeat(params.repeatTransforms)
+                    : transforms
+                }
             </ds:Transforms>
             <ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>
             <ds:DigestValue>
