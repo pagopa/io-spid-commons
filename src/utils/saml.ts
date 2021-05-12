@@ -53,7 +53,6 @@ import {
   getSpidStrategyOption,
   IServiceProviderConfig,
   ISpidStrategyOptions,
-  LightAggregatorExtension,
   StrictResponseValidationOptions
 } from "./middleware";
 
@@ -425,108 +424,7 @@ const getSpidContactPersonMetadata = (
                   : {}),
                 ...(item.entityType === EntityType.AGGREGATOR
                   ? { [`spid:${item.extensions.aggregatorType}`]: {} }
-                  : {}),
-                ...(item.entityType === EntityType.AGGREGATOR &&
-                LightAggregatorExtension.is(item.extensions)
-                  ? {
-                      "spid:KeyDescriptor": {
-                        $: {
-                          use: "spid:validation"
-                        },
-                        "ds:KeyInfo": {
-                          "ds:X509Data": {
-                            "ds:X509Certificate": cleanCert(
-                              item.extensions.aggregatorCert
-                            )
-                          }
-                        }
-                      }
-                    }
-                  : {}),
-                ...(item.entityType === EntityType.AGGREGATED
-                  ? { [`spid:${item.extensions.aggregatedType}`]: {} }
                   : {})
-              }
-            };
-          }
-          if (item.contactType === ContactType.BILLING) {
-            return {
-              ...contact,
-              Extensions: {
-                $: {
-                  "xmlns:fpa": "https://spid.gov.it/invoicing-extensions"
-                },
-                "fpa:CessionarioCommittente": {
-                  "fpa:DatiAnagrafici": {
-                    ...(item.billing.CessionarioCommittente.idPaese
-                      ? {
-                          "fpa:IdFiscaleIVA": {
-                            "fpa:IdCodice":
-                              item.billing.CessionarioCommittente.idCodice,
-                            "fpa:IdPaese":
-                              item.billing.CessionarioCommittente.idPaese
-                          }
-                        }
-                      : {}),
-                    ...(item.billing.CessionarioCommittente.fiscalCode
-                      ? {
-                          "fpa:CodiceFiscale":
-                            item.billing.CessionarioCommittente.fiscalCode
-                        }
-                      : {}),
-                    "fpa:Anagrafica": {
-                      ...(item.billing.CessionarioCommittente.denominazione
-                        ? {
-                            "fpa:Denominazione":
-                              item.billing.CessionarioCommittente.denominazione
-                          }
-                        : {}),
-                      ...(item.billing.CessionarioCommittente.name
-                        ? {
-                            "fpa:Nome": item.billing.CessionarioCommittente.name
-                          }
-                        : {}),
-                      ...(item.billing.CessionarioCommittente.surname
-                        ? {
-                            "fpa:Cognome":
-                              item.billing.CessionarioCommittente.surname
-                          }
-                        : {}),
-                      ...(item.billing.CessionarioCommittente.title
-                        ? {
-                            "fpa:Titolo":
-                              item.billing.CessionarioCommittente.title
-                          }
-                        : {}),
-                      ...(item.billing.CessionarioCommittente.CodiceEORI
-                        ? {
-                            "fpa:CodiceEORI":
-                              item.billing.CessionarioCommittente.CodiceEORI
-                          }
-                        : {})
-                    }
-                  },
-                  "fpa:Sede": {
-                    "fpa:CAP": item.billing.CessionarioCommittente.Sede.cap,
-                    "fpa:Comune": item.billing.CessionarioCommittente.Sede.city,
-                    "fpa:Indirizzo":
-                      item.billing.CessionarioCommittente.Sede.address,
-                    "fpa:Nazione":
-                      item.billing.CessionarioCommittente.Sede.country,
-                    ...(item.billing.CessionarioCommittente.Sede.number
-                      ? {
-                          "fpa:NumeroCivico":
-                            item.billing.CessionarioCommittente.Sede.number
-                        }
-                      : {}),
-                    ...(item.billing.CessionarioCommittente.Sede.state
-                      ? {
-                          "fpa:Provincia":
-                            item.billing.CessionarioCommittente.Sede.state
-                        }
-                      : {})
-                  }
-                }
               }
             };
           }
