@@ -80,7 +80,7 @@ const serviceProviderConfig: IServiceProviderConfig = {
   spidCieUrl:
     "https://preproduzione.idserver.servizicie.interno.gov.it/idp/shibboleth?Metadata",
   spidTestEnvUrl: "https://spid-testenv2:8088",
-  // this line is commented due to a future refactor that enables sipd-saml-check locally
+  // this line is commented due to a future refactor that enables spid-saml-check locally
   // spidValidatorUrl: "http://localhost:8080",
   strictResponseValidation: {
     "http://localhost:8080": true,
