@@ -19,7 +19,6 @@ import {
 } from ".";
 import { logger } from "./utils/logger";
 import {
-  AggregatedType,
   AggregatorType,
   ContactType,
   EntityType,
