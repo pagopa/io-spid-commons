@@ -18,7 +18,12 @@ import {
   withSpid
 } from ".";
 import { logger } from "./utils/logger";
-import { IServiceProviderConfig } from "./utils/middleware";
+import {
+  AggregatorType,
+  ContactType,
+  EntityType,
+  IServiceProviderConfig
+} from "./utils/middleware";
 
 export const SpidUser = t.intersection([
   t.interface({
@@ -72,13 +77,31 @@ const serviceProviderConfig: IServiceProviderConfig = {
     ],
     name: "Required attrs"
   },
-  spidCieUrl: "https://idserver.servizicie.interno.gov.it:8443/idp/shibboleth",
+  spidCieUrl:
+    "https://preproduzione.idserver.servizicie.interno.gov.it/idp/shibboleth?Metadata",
   spidTestEnvUrl: "https://spid-testenv2:8088",
-  spidValidatorUrl: "http://localhost:8080",
+  // this line is commented due to a future refactor that enables spid-saml-check locally
+  // spidValidatorUrl: "http://localhost:8080",
   strictResponseValidation: {
     "http://localhost:8080": true,
     "https://spid-testenv2:8088": true
-  }
+  },
+
+  contacts: [
+    {
+      company: "Sogetto Aggregatore s.r.l",
+      contactType: ContactType.OTHER,
+      email: "email@example.com" as EmailString,
+      entityType: EntityType.AGGREGATOR,
+      extensions: {
+        FiscalCode: "12345678901",
+        IPACode: "1",
+        VATNumber: "12345678902",
+        aggregatorType: AggregatorType.PublicServicesFullOperator
+      },
+      phone: "+393331234567"
+    }
+  ]
 };
 
 const redisClient = redis.createClient({
