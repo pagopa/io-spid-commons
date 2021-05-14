@@ -407,11 +407,6 @@ const getSpidContactPersonMetadata = (
           };
           if (item.contactType === ContactType.OTHER) {
             return {
-              ...contact,
-              $: {
-                ...contact.$,
-                "spid:entityType": item.entityType
-              },
               Extensions: {
                 ...(item.extensions.IPACode
                   ? { "spid:IPACode": item.extensions.IPACode }
@@ -425,6 +420,11 @@ const getSpidContactPersonMetadata = (
                 ...(item.entityType === EntityType.AGGREGATOR
                   ? { [`spid:${item.extensions.aggregatorType}`]: {} }
                   : {})
+              },
+              ...contact,
+              $: {
+                ...contact.$,
+                "spid:entityType": item.entityType
               }
             };
           }
