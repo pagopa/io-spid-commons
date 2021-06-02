@@ -23,6 +23,29 @@ interface IServiceProviderOrganization {
   displayName: string;
   name: string;
 }
+
+interface IServiceProviderContactPersonOther{
+  vatNumber : string;
+  fiscalCode : string;
+  emailAddress : string;
+  telephoneNumber : string;
+}
+
+interface IServiceProviderContactPersonBilling{
+  IVAIdPaese: string;
+  IVAIdCodice: string;
+  IVADenominazione: string;
+  sedeIndirizzo: string;
+  sedeNumeroCivico: string;
+  sedeCap: string;
+  sedeComune: string;
+  sedeProvincia: string;
+  sedeNazione: string;
+  company: string;
+  emailAddress: string;
+  telephoneNumber: string;
+}
+
 export interface IServiceProviderConfig {
   requiredAttributes: {
     attributes: ReadonlyArray<SamlAttributeT>;
@@ -33,6 +56,8 @@ export interface IServiceProviderConfig {
   spidValidatorUrl?: string;
   IDPMetadataUrl: string;
   organization: IServiceProviderOrganization;
+  contactPersonOther: IServiceProviderContactPersonOther;
+  contactPersonBilling: IServiceProviderContactPersonBilling;
   publicCert: string;
   strictResponseValidation?: StrictResponseValidationOptions;
 }
