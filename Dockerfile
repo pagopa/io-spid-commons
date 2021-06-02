@@ -57,7 +57,7 @@ ENV SPID_TESTENV_URL="https://spid-testenv2:8088"
 
 
 ENV USE_HTTPS="false"
-#ENV USE_HTTPS="false"
+#ENV USE_HTTPS="true"
 #ENV HTTPS_KEY="/usr/src/app/src/cert/https/cert.key"
 #ENV HTTPS_CRT="/usr/src/app/src/cert/https/cert.crt"
 
