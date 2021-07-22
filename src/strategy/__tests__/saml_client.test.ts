@@ -32,6 +32,26 @@ const serviceProviderConfig: IServiceProviderConfig = {
     displayName: "Organization display name",
     name: "Organization name"
   },
+  contactPersonOther:{
+    vatNumber: process.env.CONTACT_PERSON_OTHER_VAT_NUMBER,
+    fiscalCode: process.env.CONTACT_PERSON_OTHER_FISCAL_CODE,
+    emailAddress: process.env.CONTACT_PERSON_OTHER_EMAIL_ADDRESS,
+    telephoneNumber: process.env.CONTACT_PERSON_OTHER_TELEPHONE_NUMBER,
+  },
+  contactPersonBilling:{
+    IVAIdPaese: process.env.CONTACT_PERSON_BILLING_IVA_IDPAESE,
+    IVAIdCodice: process.env.CONTACT_PERSON_BILLING_IVA_IDCODICE,
+    IVADenominazione: process.env.CONTACT_PERSON_BILLING_IVA_DENOMINAZIONE,
+    sedeIndirizzo: process.env.CONTACT_PERSON_BILLING_SEDE_INDIRIZZO,
+    sedeNumeroCivico: process.env.CONTACT_PERSON_BILLING_SEDE_NUMEROCIVICO,
+    sedeCap: process.env.CONTACT_PERSON_BILLING_SEDE_CAP,
+    sedeComune: process.env.CONTACT_PERSON_BILLING_SEDE_COMUNE,
+    sedeProvincia: process.env.CONTACT_PERSON_BILLING_SEDE_PROVINCIA,
+    sedeNazione: process.env.CONTACT_PERSON_BILLING_SEDE_NAZIONE,
+    company: process.env.CONTACT_PERSON_BILLING_COMPANY,
+    emailAddress: process.env.CONTACT_PERSON_BILLING_EMAIL_ADDRESS,
+    telephoneNumber: process.env.CONTACT_PERSON_BILLING_TELEPHONE_NUMBER,
+  },
   publicCert: "",
   requiredAttributes: {
     attributes: [
