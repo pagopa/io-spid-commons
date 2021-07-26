@@ -232,8 +232,8 @@ Il middleware permette anche di interagire con gli IDP di collaudo e produzione 
 un ambiente di sviluppo.
 
 Per poter utilizzare l'ambiente di collaudo è necessario federarsi inviando un
-modulo di richiesta come specificato nel documento delle regole tecniche CIE:
-[vedi qui](https://www.cartaidentita.interno.gov.it/CIE-ManualeOperativoperifornitoridiservizi.pdf)
+modulo di richiesta come specificato nel
+[manuale operativo CIE](https://www.cartaidentita.interno.gov.it/CIE-ManualeOperativoperifornitoridiservizi.pdf).
 
 Una volta federati, è possibile utilizzare lo stesso endpoint utilizzato per SPID
 per l'accesso con CIE: l'entityID è "`xx_servizicie`" in produzione e
