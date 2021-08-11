@@ -1,7 +1,8 @@
+// tslint:disable-next-line: no-submodule-imports
+import { NonEmptyString } from "@pagopa/ts-commons/lib/strings";
 import * as t from "io-ts";
 // tslint:disable-next-line: no-submodule-imports
-import { createNonEmptyArrayFromArray } from "io-ts-types/lib/fp-ts/createNonEmptyArrayFromArray";
-import { NonEmptyString } from "italia-ts-commons/lib/strings";
+import { nonEmptyArray as createNonEmptyArrayFromArray } from "io-ts-types/nonEmptyArray";
 
 export const IDPEntityDescriptor = t.interface({
   cert: createNonEmptyArrayFromArray(NonEmptyString),
