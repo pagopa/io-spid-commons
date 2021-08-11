@@ -91,7 +91,7 @@ describe("getSpidStrategyOptionsUpdater", () => {
     const updatedSpidStrategyOption = await getSpidStrategyOptionsUpdater(
       expectedSamlConfig,
       serviceProviderConfig
-    )().run();
+    )()();
     expect(mockFetchIdpsMetadata).toBeCalledTimes(3);
     expect(mockFetchIdpsMetadata).toHaveBeenNthCalledWith(
       1,
@@ -142,7 +142,7 @@ describe("getSpidStrategyOptionsUpdater", () => {
     const updatedSpidStrategyOption = await getSpidStrategyOptionsUpdater(
       expectedSamlConfig,
       serviceProviderConfig
-    )().run();
+    )()();
     expect(mockFetchIdpsMetadata).toBeCalledTimes(3);
     expect(mockFetchIdpsMetadata).toHaveBeenNthCalledWith(
       1,
@@ -198,7 +198,7 @@ describe("getSpidStrategyOptionsUpdater", () => {
     await getSpidStrategyOptionsUpdater(
       expectedSamlConfig,
       serviceProviderConfigWithoutOptional
-    )().run();
+    )()();
     expect(mockFetchIdpsMetadata).toBeCalledTimes(1);
     expect(mockFetchIdpsMetadata).toBeCalledWith(
       idpMetadataUrl,
