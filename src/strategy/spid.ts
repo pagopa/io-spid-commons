@@ -1,5 +1,6 @@
 import * as express from "express";
 import { TaskEither } from "fp-ts/lib/TaskEither";
+import * as TE from "fp-ts/lib/TaskEither";
 import {
   AuthenticateOptions,
   AuthorizeOptions,
@@ -13,7 +14,9 @@ import { RedisClient } from "redis";
 // tslint:disable-next-line: no-submodule-imports
 import { MultiSamlConfig } from "passport-saml/multiSamlStrategy";
 
-import { Second } from "italia-ts-commons/lib/units";
+// tslint:disable-next-line: no-submodule-imports
+import { Second } from "@pagopa/ts-commons/lib/units";
+import { pipe } from "fp-ts/lib/function";
 import { DoneCallbackT } from "..";
 import {
   getExtendedRedisCacheProvider,
@@ -167,12 +170,12 @@ export class SpidStrategy extends SamlStrategy {
 
       return this.tamperMetadata
         ? // Tamper the generated XML for service provider metadata
-          this.tamperMetadata(originalXml)
-            .fold(
-              e => callback(e),
-              tamperedXml => callback(null, tamperedXml)
-            )
-            .run()
+          pipe(
+            this.tamperMetadata(originalXml),
+            TE.map(tamperedXml => callback(null, tamperedXml)),
+            TE.mapLeft(callback),
+            TE.toUnion
+          )()
         : callback(null, originalXml);
     });
   }
