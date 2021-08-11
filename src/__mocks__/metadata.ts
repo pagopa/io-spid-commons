@@ -2,7 +2,8 @@ import { IDPEntityDescriptor } from "../types/IDPEntityDescriptor";
 
 import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
 
-import { NonEmptyString } from "italia-ts-commons/lib/strings";
+// tslint:disable-next-line: no-submodule-imports
+import { NonEmptyString } from "@pagopa/ts-commons/lib/strings";
 
 export const mockIdpMetadata: Record<string, IDPEntityDescriptor> = {
   intesaid: {
