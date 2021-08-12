@@ -1,5 +1,5 @@
 // tslint:disable: no-object-mutation
-import { isRight } from "fp-ts/lib/Either";
+import { isLeft, isRight } from "fp-ts/lib/Either";
 import { createMockRedis } from "mock-redis-client";
 import { SamlConfig } from "passport-saml";
 import { RedisClient } from "redis";
@@ -187,8 +187,8 @@ describe("getExtendedRedisCacheProvider#save", () => {
     const cacheSAMLResponse = await redisCacheProvider.get(expectedRequestID)();
     expect(mockGet.mock.calls[0][0]).toBe(`SAML-EXT-${expectedRequestID}`);
     expect(isRight(cacheSAMLResponse)).toBeFalsy();
-    if (isRight(cacheSAMLResponse)) {
-      expect(cacheSAMLResponse.right).toEqual(expect.any(Error));
+    if (isLeft(cacheSAMLResponse)) {
+      expect(cacheSAMLResponse.left).toEqual(expect.any(Error));
     }
   });
   it("should return an error is the cached Request is missing", async () => {
@@ -197,8 +197,8 @@ describe("getExtendedRedisCacheProvider#save", () => {
     const cacheSAMLResponse = await redisCacheProvider.get(expectedRequestID)();
     expect(mockGet.mock.calls[0][0]).toBe(`SAML-EXT-${expectedRequestID}`);
     expect(isRight(cacheSAMLResponse)).toBeFalsy();
-    if (isRight(cacheSAMLResponse)) {
-      expect(cacheSAMLResponse.right).toEqual(expect.any(Error));
+    if (isLeft(cacheSAMLResponse)) {
+      expect(cacheSAMLResponse.left).toEqual(expect.any(Error));
     }
   });
 });
@@ -224,8 +224,8 @@ describe("getExtendedRedisCacheProvider#remove", () => {
     const maybeRequestId = await redisCacheProvider.remove(expectedRequestID)();
     expect(mockDel.mock.calls[0][0]).toBe(`SAML-EXT-${expectedRequestID}`);
     expect(isRight(maybeRequestId)).toBeFalsy();
-    if (isRight(maybeRequestId)) {
-      expect(maybeRequestId.right).toEqual(
+    if (isLeft(maybeRequestId)) {
+      expect(maybeRequestId.left).toEqual(
         new Error(
           `SAML#ExtendedRedisCacheProvider: remove() error ${expectedDelRedisError}`
         )
