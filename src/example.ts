@@ -139,7 +139,7 @@ app.use(passport.initialize());
 // Create a Proxy to forward local calls to spid validator container
 const proxyApp = express();
 proxyApp.get("*", (req, res) => {
-  res.redirect("http://spid-saml-check:8080" + req.path);
+  res.redirect(`http://spid-saml-check:8080${req.path}`);
 });
 proxyApp.listen(8080);
 

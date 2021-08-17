@@ -104,7 +104,11 @@ export const getExtendedRedisCacheProvider = (
     get(AuthnRequestID: string): TaskEither<Error, SAMLRequestCacheItem> {
       return taskify(
         (key: string, callback: (e: Error | null, value?: string) => void) => {
-          redisClient.get(key, callback);
+          redisClient.get(key, (e, v) =>
+            // redis callbacks consider empty value as null instead of undefined,
+            //  hence the need for the following wrapper to convert nulls to undefined
+            callback(e, v === null ? undefined : v)
+          );
         }
       )(`${keyPrefix}${AuthnRequestID}`)
         .mapLeft(
