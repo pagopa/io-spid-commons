@@ -168,13 +168,18 @@ const getEntrypointCerts = (
     .mapNullable(r => r.query)
     .mapNullable(q => q.entityID)
     .chain(entityID =>
-      fromNullable(idps[entityID]).map(
-        (idp): IEntrypointCerts => ({
-          cert: idp.cert.toArray(),
-          entryPoint: idp.entryPoint,
-          idpIssuer: idp.entityID
-        })
-      )
+      // As only strings can be key of an object (other than number and Symbol),
+      //  we have to narrow type to have the compiler accept it
+      // In the unlikely case entityID is not a string, an empty value is returned
+      typeof entityID === "string"
+        ? fromNullable(idps[entityID]).map(
+            (idp): IEntrypointCerts => ({
+              cert: idp.cert.toArray(),
+              entryPoint: idp.entryPoint,
+              idpIssuer: idp.entityID
+            })
+          )
+        : none
     )
     .alt(
       // collect all IDP certificates in case no entityID is provided
@@ -219,44 +224,50 @@ const getAuthSalmOptions = (
   req: ExpressRequest,
   decodedResponse?: string
 ): Option<Partial<SamlConfig>> => {
-  return fromNullable(req)
-    .mapNullable(r => r.query)
-    .mapNullable(q => q.authLevel)
-    .chain((authLevel: string) =>
-      lookup(authLevel, SPID_LEVELS)
-        .map(authnContext => ({
-          authnContext,
-          forceAuthn: authLevel !== "SpidL1"
-        }))
-        .orElse(() => {
-          logger.error(
-            "SPID cannot find a valid authnContext for given authLevel: %s",
-            authLevel
-          );
-          return none;
-        })
-    )
-    .alt(
-      fromNullable(decodedResponse)
-        .chain(response => getAuthnContextValueFromResponse(response))
-        .chain(authnContext =>
-          lookup(authnContext, SPID_URLS)
-            // check if the parsed value is a valid SPID AuthLevel
-            .map(authLevel => {
-              return {
-                authnContext,
-                forceAuthn: authLevel !== "SpidL1"
-              };
-            })
-            .orElse(() => {
-              logger.error(
-                "SPID cannot find a valid authLevel for given authnContext: %s",
-                authnContext
-              );
-              return none;
-            })
-        )
-    );
+  return (
+    fromNullable(req)
+      .mapNullable(r => r.query)
+      .mapNullable(q => q.authLevel)
+      // As only strings can be key of SPID_LEVELS record,
+      //  we have to narrow type to have the compiler accept it
+      // In the unlikely case authLevel is not a string, an empty value is returned
+      .filter((e): e is string => typeof e === "string")
+      .chain(authLevel =>
+        lookup(authLevel, SPID_LEVELS)
+          .map(authnContext => ({
+            authnContext,
+            forceAuthn: authLevel !== "SpidL1"
+          }))
+          .orElse(() => {
+            logger.error(
+              "SPID cannot find a valid authnContext for given authLevel: %s",
+              authLevel
+            );
+            return none;
+          })
+      )
+      .alt(
+        fromNullable(decodedResponse)
+          .chain(response => getAuthnContextValueFromResponse(response))
+          .chain(authnContext =>
+            lookup(authnContext, SPID_URLS)
+              // check if the parsed value is a valid SPID AuthLevel
+              .map(authLevel => {
+                return {
+                  authnContext,
+                  forceAuthn: authLevel !== "SpidL1"
+                };
+              })
+              .orElse(() => {
+                logger.error(
+                  "SPID cannot find a valid authLevel for given authnContext: %s",
+                  authnContext
+                );
+                return none;
+              })
+          )
+      )
+  );
 };
 
 /**
