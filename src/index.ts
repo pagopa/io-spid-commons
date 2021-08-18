@@ -8,7 +8,6 @@
 import * as express from "express";
 import { constVoid } from "fp-ts/lib/function";
 import { fromNullable, fromPredicate } from "fp-ts/lib/Option";
-import { lookup } from "fp-ts/lib/Record";
 import { Task, task } from "fp-ts/lib/Task";
 import * as t from "io-ts";
 import { toExpressHandler } from "italia-ts-commons/lib/express";
@@ -252,18 +251,10 @@ export function withSpid({
         middlewareCatchAsInternalError((req, res, next) => {
           fromNullable(req.query)
             .mapNullable(q => q.authLevel)
-            // As only strings can be key of SPID_LEVELS record,
-            //  we have to narrow type to have the compiler accept it
-            // In the unlikely case authLevel is not a string, an empty value is returned
-            .filter((e): e is string => typeof e === "string")
-            .chain(authLevel =>
-              lookup(authLevel, SPID_LEVELS).map(_ => authLevel)
-            )
+            .filter(t.keyof(SPID_LEVELS).is)
             .chain(
-              fromPredicate(
-                authLevel =>
-                  t.keyof(SPID_LEVELS).is(authLevel) &&
-                  appConfig.spidLevelsWhitelist.includes(authLevel)
+              fromPredicate(authLevel =>
+                appConfig.spidLevelsWhitelist.includes(authLevel)
               )
             )
             .foldL(
