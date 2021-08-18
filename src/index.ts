@@ -8,8 +8,8 @@
 import * as express from "express";
 import { constVoid } from "fp-ts/lib/function";
 import { fromNullable, fromPredicate } from "fp-ts/lib/Option";
-import { lookup } from "fp-ts/lib/Record";
 import { Task, task } from "fp-ts/lib/Task";
+import * as t from "io-ts";
 import { toExpressHandler } from "italia-ts-commons/lib/express";
 import {
   IResponseErrorForbiddenNotAuthorized,
@@ -251,9 +251,7 @@ export function withSpid({
         middlewareCatchAsInternalError((req, res, next) => {
           fromNullable(req.query)
             .mapNullable(q => q.authLevel)
-            .chain(authLevel =>
-              lookup(authLevel, SPID_LEVELS).map(_ => authLevel)
-            )
+            .filter(t.keyof(SPID_LEVELS).is)
             .chain(
               fromPredicate(authLevel =>
                 appConfig.spidLevelsWhitelist.includes(authLevel)

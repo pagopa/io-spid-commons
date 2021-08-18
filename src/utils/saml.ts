@@ -15,10 +15,11 @@ import {
   right,
   toError
 } from "fp-ts/lib/Either";
-import { not } from "fp-ts/lib/function";
+import { identity, not } from "fp-ts/lib/function";
 import {
   fromEither,
   fromNullable,
+  fromPredicate as fromPredicateOption,
   isNone,
   none,
   Option,
@@ -47,6 +48,8 @@ import { EventTracker } from "../index";
 import { PreValidateResponseT } from "../strategy/spid";
 import { logger } from "./logger";
 import {
+  ContactType,
+  EntityType,
   getSpidStrategyOption,
   IServiceProviderConfig,
   ISpidStrategyOptions,
@@ -65,6 +68,7 @@ interface IEntrypointCerts {
 export const SAML_NAMESPACE = {
   ASSERTION: "urn:oasis:names:tc:SAML:2.0:assertion",
   PROTOCOL: "urn:oasis:names:tc:SAML:2.0:protocol",
+  SPID: "https://spid.gov.it/saml-extensions",
   XMLDSIG: "http://www.w3.org/2000/09/xmldsig#"
 };
 
@@ -164,13 +168,18 @@ const getEntrypointCerts = (
     .mapNullable(r => r.query)
     .mapNullable(q => q.entityID)
     .chain(entityID =>
-      fromNullable(idps[entityID]).map(
-        (idp): IEntrypointCerts => ({
-          cert: idp.cert.toArray(),
-          entryPoint: idp.entryPoint,
-          idpIssuer: idp.entityID
-        })
-      )
+      // As only strings can be key of an object (other than number and Symbol),
+      //  we have to narrow type to have the compiler accept it
+      // In the unlikely case entityID is not a string, an empty value is returned
+      typeof entityID === "string"
+        ? fromNullable(idps[entityID]).map(
+            (idp): IEntrypointCerts => ({
+              cert: idp.cert.toArray(),
+              entryPoint: idp.entryPoint,
+              idpIssuer: idp.entityID
+            })
+          )
+        : none
     )
     .alt(
       // collect all IDP certificates in case no entityID is provided
@@ -215,44 +224,50 @@ const getAuthSalmOptions = (
   req: ExpressRequest,
   decodedResponse?: string
 ): Option<Partial<SamlConfig>> => {
-  return fromNullable(req)
-    .mapNullable(r => r.query)
-    .mapNullable(q => q.authLevel)
-    .chain((authLevel: string) =>
-      lookup(authLevel, SPID_LEVELS)
-        .map(authnContext => ({
-          authnContext,
-          forceAuthn: authLevel !== "SpidL1"
-        }))
-        .orElse(() => {
-          logger.error(
-            "SPID cannot find a valid authnContext for given authLevel: %s",
-            authLevel
-          );
-          return none;
-        })
-    )
-    .alt(
-      fromNullable(decodedResponse)
-        .chain(response => getAuthnContextValueFromResponse(response))
-        .chain(authnContext =>
-          lookup(authnContext, SPID_URLS)
-            // check if the parsed value is a valid SPID AuthLevel
-            .map(authLevel => {
-              return {
-                authnContext,
-                forceAuthn: authLevel !== "SpidL1"
-              };
-            })
-            .orElse(() => {
-              logger.error(
-                "SPID cannot find a valid authLevel for given authnContext: %s",
-                authnContext
-              );
-              return none;
-            })
-        )
-    );
+  return (
+    fromNullable(req)
+      .mapNullable(r => r.query)
+      .mapNullable(q => q.authLevel)
+      // As only strings can be key of SPID_LEVELS record,
+      //  we have to narrow type to have the compiler accept it
+      // In the unlikely case authLevel is not a string, an empty value is returned
+      .filter((e): e is string => typeof e === "string")
+      .chain(authLevel =>
+        lookup(authLevel, SPID_LEVELS)
+          .map(authnContext => ({
+            authnContext,
+            forceAuthn: authLevel !== "SpidL1"
+          }))
+          .orElse(() => {
+            logger.error(
+              "SPID cannot find a valid authnContext for given authLevel: %s",
+              authLevel
+            );
+            return none;
+          })
+      )
+      .alt(
+        fromNullable(decodedResponse)
+          .chain(response => getAuthnContextValueFromResponse(response))
+          .chain(authnContext =>
+            lookup(authnContext, SPID_URLS)
+              // check if the parsed value is a valid SPID AuthLevel
+              .map(authLevel => {
+                return {
+                  authnContext,
+                  forceAuthn: authLevel !== "SpidL1"
+                };
+              })
+              .orElse(() => {
+                logger.error(
+                  "SPID cannot find a valid authLevel for given authnContext: %s",
+                  authnContext
+                );
+                return none;
+              })
+          )
+      )
+  );
 };
 
 /**
@@ -387,6 +402,50 @@ const getSpidOrganizationMetadata = (
     : {};
 };
 
+const getSpidContactPersonMetadata = (
+  serviceProviderConfig: IServiceProviderConfig
+) => {
+  return serviceProviderConfig.contacts
+    ? serviceProviderConfig.contacts
+        .map(item => {
+          const contact = {
+            $: {
+              contactType: item.contactType
+            },
+            Company: item.company,
+            EmailAddress: item.email,
+            ...(item.phone ? { TelephoneNumber: item.phone } : {})
+          };
+          if (item.contactType === ContactType.OTHER) {
+            return {
+              Extensions: {
+                ...(item.extensions.IPACode
+                  ? { "spid:IPACode": item.extensions.IPACode }
+                  : {}),
+                ...(item.extensions.VATNumber
+                  ? { "spid:VATNumber": item.extensions.VATNumber }
+                  : {}),
+                ...(item.extensions?.FiscalCode
+                  ? { "spid:FiscalCode": item.extensions.FiscalCode }
+                  : {}),
+                ...(item.entityType === EntityType.AGGREGATOR
+                  ? { [`spid:${item.extensions.aggregatorType}`]: {} }
+                  : {})
+              },
+              ...contact,
+              $: {
+                ...contact.$,
+                "spid:entityType": item.entityType
+              }
+            };
+          }
+          return contact;
+        })
+        // Contacts array is limited to 3 elements
+        .slice(0, 3)
+    : {};
+};
+
 const getKeyInfoForMetadata = (publicCert: string, privateKey: string) => ({
   file: privateKey,
   getKey: () => Buffer.from(privateKey),
@@ -433,6 +492,18 @@ export const getMetadataTamperer = (
           ...o.EntityDescriptor,
           ...getSpidOrganizationMetadata(serviceProviderConfig)
         };
+        if (serviceProviderConfig.contacts) {
+          // tslint:disable-next-line: no-object-mutation
+          o.EntityDescriptor = {
+            ...o.EntityDescriptor,
+            $: {
+              ...o.EntityDescriptor.$,
+              "xmlns:spid": SAML_NAMESPACE.SPID
+            },
+            // tslint:disable-next-line: no-inferred-empty-object-type
+            ContactPerson: getSpidContactPersonMetadata(serviceProviderConfig)
+          };
+        }
         return o;
       }, toError)
     )
@@ -581,6 +652,45 @@ const isEmptyNode = (element: Element): boolean => {
     return false;
   }
   return true;
+};
+
+const isOverflowNumberOf = (
+  elemArray: readonly Element[],
+  maxNumberOfChildren: number
+): boolean =>
+  elemArray.filter(e => e.nodeType === e.ELEMENT_NODE).length >
+  maxNumberOfChildren;
+
+export const TransformError = t.interface({
+  idpIssuer: t.string,
+  message: t.string,
+  numberOfTransforms: t.number
+});
+export type TransformError = t.TypeOf<typeof TransformError>;
+
+const transformsValidation = (
+  targetElement: Element,
+  idpIssuer: string
+): Either<TransformError, Element> => {
+  return fromPredicateOption(
+    (elements: readonly Element[]) => elements.length > 0
+  )(
+    Array.from(
+      targetElement.getElementsByTagNameNS(SAML_NAMESPACE.XMLDSIG, "Transform")
+    )
+  ).foldL(
+    () => right(targetElement),
+    transformElements =>
+      fromPredicate(
+        (_: readonly Element[]) => !isOverflowNumberOf(_, 4),
+        _ =>
+          TransformError.encode({
+            idpIssuer,
+            message: "Transform element cannot occurs more than 4 times",
+            numberOfTransforms: _.length
+          })
+      )(transformElements).map(() => targetElement)
+  );
 };
 
 const notOnOrAfterValidation = (
@@ -1340,18 +1450,35 @@ export const getPreValidateResponse = (
         )
       ).map(() => _)
     )
+    .mapLeft<Error | TransformError>(identity)
+    // check for Transform over SAML Response
+    .chain(_ =>
+      fromEitherToTaskEither(
+        transformsValidation(_.Response, _.SAMLRequestCache.idpIssuer)
+      ).map(() => _)
+    )
     .bimap(
       error => {
         if (eventHandler) {
-          eventHandler({
-            data: {
-              message: error.message
-            },
-            name: "spid.error.generic",
-            type: "ERROR"
-          });
+          TransformError.is(error)
+            ? eventHandler({
+                data: {
+                  idpIssuer: error.idpIssuer,
+                  message: error.message,
+                  numberOfTransforms: String(error.numberOfTransforms)
+                },
+                name: "spid.error.transformOccurenceOverflow",
+                type: "ERROR"
+              })
+            : eventHandler({
+                data: {
+                  message: error.message
+                },
+                name: "spid.error.generic",
+                type: "ERROR"
+              });
         }
-        return callback(error);
+        return callback(toError(error.message));
       },
       _ => {
         // Number of the Response signature.

@@ -4,7 +4,8 @@
 import * as express from "express";
 import { array } from "fp-ts/lib/Array";
 import { Task, task } from "fp-ts/lib/Task";
-import { NonEmptyString } from "italia-ts-commons/lib/strings";
+import * as t from "io-ts";
+import { EmailString, NonEmptyString } from "italia-ts-commons/lib/strings";
 import { Profile, SamlConfig, VerifiedCallback } from "passport-saml";
 import { RedisClient } from "redis";
 import { DoneCallbackT } from "..";
@@ -23,6 +24,47 @@ interface IServiceProviderOrganization {
   displayName: string;
   name: string;
 }
+
+export enum ContactType {
+  OTHER = "other"
+}
+
+export enum EntityType {
+  AGGREGATOR = "spid:aggregator"
+}
+
+export enum AggregatorType {
+  PublicServicesFullOperator = "PublicServicesFullOperator"
+}
+
+const CommonExtension = t.interface({
+  FiscalCode: t.string,
+  IPACode: t.string,
+  VATNumber: t.string
+});
+type CommonExtension = t.TypeOf<typeof CommonExtension>;
+
+const AggregatorExtension = t.intersection([
+  t.interface({
+    aggregatorType: t.literal(AggregatorType.PublicServicesFullOperator)
+  }),
+  CommonExtension
+]);
+type AggregatorExtension = t.TypeOf<typeof AggregatorExtension>;
+
+const ContactPerson = t.intersection([
+  t.interface({
+    company: t.string,
+    contactType: t.literal(ContactType.OTHER),
+    email: EmailString,
+    entityType: t.literal(EntityType.AGGREGATOR),
+    extensions: AggregatorExtension
+  }),
+  t.partial({
+    phone: t.string
+  })
+]);
+type ContactPerson = t.TypeOf<typeof ContactPerson>;
 export interface IServiceProviderConfig {
   requiredAttributes: {
     attributes: ReadonlyArray<SamlAttributeT>;
@@ -33,6 +75,7 @@ export interface IServiceProviderConfig {
   spidValidatorUrl?: string;
   IDPMetadataUrl: string;
   organization: IServiceProviderOrganization;
+  contacts?: ReadonlyArray<ContactPerson>;
   publicCert: string;
   strictResponseValidation?: StrictResponseValidationOptions;
 }
@@ -74,7 +117,7 @@ export function makeSpidStrategyOptions(
       ...samlConfig,
       attributes: {
         attributes: serviceProviderConfig.requiredAttributes,
-        name: "Required attributes"
+        name: serviceProviderConfig.requiredAttributes.name
       },
       identifierFormat: "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
       organization: serviceProviderConfig.organization,
