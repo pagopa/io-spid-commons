@@ -61,7 +61,7 @@ in `userPayload` se il login è avvenuto con successo. È definita come:
 ```
 
 `userPayload` è un oggetto le cui chiavi sono gli attributi SPID richiesti in
-`requiredAttributes.attributes`(#serviceProviderConfig). Es:
+`requiredAttributes.attributes` (nell'oggetto [`serviceProviderConfig`](#serviceProviderConfig)). Es:
 
 ```yaml
   {
