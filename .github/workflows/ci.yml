@@ -34,3 +34,14 @@ jobs:
       - run: yarn install --frozen-lockfile
 
       - run: yarn test
+
+  spid_sp_test:
+    name: SPID compliance test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+
+      - run: docker-compose up -d
+      - run: sudo apt-get update && sudo apt-get install libxml2-dev libxmlsec1-dev libxmlsec1-openssl
+      - run: pip3 install spid-sp-test
+      - run: spid_sp_test --metadata-url http://localhost:3000/metadata --extra --debug ERROR --exit-zero
