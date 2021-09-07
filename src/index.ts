@@ -5,7 +5,6 @@
  * Setups the endpoint to generate service provider metadata
  * and a scheduled process to refresh IDP metadata from providers.
  */
-
 // tslint:disable-next-line: no-submodule-imports
 import { toExpressHandler } from "@pagopa/ts-commons/lib/express";
 import {
