@@ -6,7 +6,6 @@
  * and a scheduled process to refresh IDP metadata from providers.
  */
 
-import * as t from "io-ts";
 // tslint:disable-next-line: no-submodule-imports
 import { toExpressHandler } from "@pagopa/ts-commons/lib/express";
 import {
@@ -23,9 +22,9 @@ import {
 import * as express from "express";
 import { constVoid, pipe } from "fp-ts/lib/function";
 import * as O from "fp-ts/lib/Option";
-import * as R from "fp-ts/lib/Record";
 import * as T from "fp-ts/lib/Task";
 import { Task } from "fp-ts/lib/Task";
+import * as t from "io-ts";
 import * as passport from "passport";
 import { SamlConfig } from "passport-saml";
 import { RedisClient } from "redis";
