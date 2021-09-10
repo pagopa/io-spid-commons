@@ -137,7 +137,10 @@ export const getPreValidateResponse = (
 
   type IStepEleven = IStepTen;
 
-  const stepOne: TaskEither<Error, IBaseOutput> = TE.fromEither(
+  const responseElementValidationStep: TaskEither<
+    Error,
+    IBaseOutput
+  > = TE.fromEither(
     pipe(
       responsesCollection,
       E.fromPredicate(
@@ -291,7 +294,9 @@ export const getPreValidateResponse = (
     )
   );
 
-  const stepTwo = (_: IBaseOutput): TaskEither<Error, IStepTwo> =>
+  const returnRequestAndResponseStep = (
+    _: IBaseOutput
+  ): TaskEither<Error, IStepTwo> =>
     pipe(
       extendedCacheProvider.get(_.InResponseTo),
       TE.map(SAMLRequestCache => ({ ..._, SAMLRequestCache })),
@@ -309,7 +314,7 @@ export const getPreValidateResponse = (
       )
     );
 
-  const stepThree = (_: IStepTwo): TaskEither<Error, IStepThree> =>
+  const parseSAMLRequestStep = (_: IStepTwo): TaskEither<Error, IStepThree> =>
     pipe(
       TE.fromEither(
         E.fromOption(
@@ -323,7 +328,9 @@ export const getPreValidateResponse = (
       TE.map(Request => ({ ..._, Request }))
     );
 
-  const stepFour = (_: IStepThree): TaskEither<Error, IStepFour> =>
+  const getIssueInstantFromRequestStep = (
+    _: IStepThree
+  ): TaskEither<Error, IStepFour> =>
     pipe(
       TE.fromEither(
         E.fromOption(
@@ -358,7 +365,9 @@ export const getPreValidateResponse = (
       )
     );
 
-  const stepFive = (_: IStepFour): TaskEither<Error, IStepFive> =>
+  const issueInstantValidationStep = (
+    _: IStepFour
+  ): TaskEither<Error, IStepFive> =>
     pipe(
       TE.fromEither(
         pipe(
@@ -373,7 +382,9 @@ export const getPreValidateResponse = (
       TE.map(() => _)
     );
 
-  const stepSix = (_: IStepFive): TaskEither<Error, IStepSix> =>
+  const assertionIssueInstantValidationStep = (
+    _: IStepFive
+  ): TaskEither<Error, IStepSix> =>
     pipe(
       TE.fromEither(
         pipe(
@@ -390,7 +401,9 @@ export const getPreValidateResponse = (
       TE.map(() => _)
     );
 
-  const stepSeven = (_: IStepSix): TaskEither<Error, IStepSeven> =>
+  const authnContextClassRefValidationStep = (
+    _: IStepSix
+  ): TaskEither<Error, IStepSeven> =>
     TE.fromEither(
       pipe(
         E.fromOption(
@@ -441,7 +454,9 @@ export const getPreValidateResponse = (
       )
     );
 
-  const stepEight = (_: IStepSeven): TaskEither<Error, IStepEight> =>
+  const attributesValidationStep = (
+    _: IStepSeven
+  ): TaskEither<Error, IStepEight> =>
     pipe(
       TE.fromEither(
         assertionValidation(
@@ -482,7 +497,9 @@ export const getPreValidateResponse = (
       TE.map(() => _)
     );
 
-  const stepNine = (_: IStepEight): TaskEither<Error, IStepNine> =>
+  const responseIssuerValidationStep = (
+    _: IStepEight
+  ): TaskEither<Error, IStepNine> =>
     pipe(
       TE.fromEither(
         pipe(
@@ -509,7 +526,9 @@ export const getPreValidateResponse = (
       TE.map(() => _)
     );
 
-  const stepTen = (_: IStepNine): TaskEither<Error, IStepTen> =>
+  const assertionIssuerValidationStep = (
+    _: IStepNine
+  ): TaskEither<Error, IStepTen> =>
     pipe(
       TE.fromEither(
         pipe(
@@ -543,7 +562,7 @@ export const getPreValidateResponse = (
       TE.map(() => _)
     );
 
-  const stepEleven = (
+  const transformValidationStep = (
     _: IStepTen
   ): TaskEither<ITransformValidation, IStepEleven> =>
     pipe(
@@ -553,7 +572,7 @@ export const getPreValidateResponse = (
       TE.map(() => _)
     );
 
-  const stepTwelveLeft = (error: Error | ITransformValidation): void => {
+  const validationFailure = (error: Error | ITransformValidation): void => {
     if (eventHandler) {
       TransformError.is(error)
         ? eventHandler({
@@ -576,7 +595,7 @@ export const getPreValidateResponse = (
     return callback(E.toError(error.message));
   };
 
-  const stepTwelveRight = (_: IStepEleven): void => {
+  const validationSuccess = (_: IStepEleven): void => {
     // Number of the Response signature.
     // Calculated as number of the Signature elements inside the document minus number of the Signature element of the Assertion.
     const signatureOfResponseCount =
@@ -602,21 +621,17 @@ export const getPreValidateResponse = (
   };
 
   return pipe(
-    stepOne,
-    TE.chain(stepTwo),
-    TE.chain(stepThree),
-    TE.chain(stepFour),
-    TE.chain(stepFive),
-    TE.chain(stepSix),
-    TE.chain(stepSeven),
-    TE.chain(stepEight),
-    TE.chain(stepNine),
-    TE.chain(stepTen),
-    // check for Transform over SAML Response
-    TE.chainW(stepEleven),
-    TE.bimap(
-      error => stepTwelveLeft(error),
-      _ => stepTwelveRight(_)
-    )
+    responseElementValidationStep,
+    TE.chain(returnRequestAndResponseStep),
+    TE.chain(parseSAMLRequestStep),
+    TE.chain(getIssueInstantFromRequestStep),
+    TE.chain(issueInstantValidationStep),
+    TE.chain(assertionIssueInstantValidationStep),
+    TE.chain(authnContextClassRefValidationStep),
+    TE.chain(attributesValidationStep),
+    TE.chain(responseIssuerValidationStep),
+    TE.chain(assertionIssuerValidationStep),
+    TE.chainW(transformValidationStep),
+    TE.bimap(validationFailure, validationSuccess)
   )().catch(callback);
 };
