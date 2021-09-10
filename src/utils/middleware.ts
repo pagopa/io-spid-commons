@@ -196,6 +196,7 @@ export const getSpidStrategyOptionsUpdater = (
     );
   return pipe(
     A.sequence(T.ApplicativePar)(idpOptionsTasks),
+    // tslint:disable-next-line: no-inferred-empty-object-type
     T.map(A.reduce({}, (prev, current) => ({ ...prev, ...current }))),
     T.map(idpOptionsRecord => {
       logSamlCertExpiration(serviceProviderConfig.publicCert);

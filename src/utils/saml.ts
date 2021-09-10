@@ -8,7 +8,7 @@
 import { UTCISODateFromString } from "@pagopa/ts-commons/lib/dates";
 // tslint:disable-next-line: no-submodule-imports
 import { NonEmptyString } from "@pagopa/ts-commons/lib/strings";
-import { predicate } from "fp-ts";
+import { predicate as PR } from "fp-ts";
 import { difference } from "fp-ts/lib/Array";
 import * as E from "fp-ts/lib/Either";
 import { not, pipe } from "fp-ts/lib/function";
@@ -422,7 +422,7 @@ export const getPreValidateResponse = (
         ),
         E.chain(
           E.fromPredicate(
-            predicate.not(isEmptyNode),
+            PR.not(isEmptyNode),
             () => new Error("Subject element must be not empty")
           )
         ),
