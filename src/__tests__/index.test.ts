@@ -1,7 +1,8 @@
+// tslint:disable-next-line: no-submodule-imports
+import { ResponsePermanentRedirect } from "@pagopa/ts-commons/lib/responses";
 import * as express from "express";
 import { left, right } from "fp-ts/lib/Either";
 import { fromEither } from "fp-ts/lib/TaskEither";
-import { ResponsePermanentRedirect } from "italia-ts-commons/lib/responses";
 import { createMockRedis } from "mock-redis-client";
 import { RedisClient } from "redis";
 import * as request from "supertest";
@@ -178,7 +179,7 @@ describe("io-spid-commons withSpid", () => {
       app,
       acs: async () => ResponsePermanentRedirect({ href: "/success?acs" }),
       logout: async () => ResponsePermanentRedirect({ href: "/success?logout" })
-    }).run();
+    })();
     expect(mockFetchIdpsMetadata).toBeCalledTimes(3);
     const emptySpidStrategyOption = getSpidStrategyOption(spid.app);
     expect(emptySpidStrategyOption).toHaveProperty("idp", {});
@@ -186,7 +187,7 @@ describe("io-spid-commons withSpid", () => {
     jest.resetAllMocks();
 
     initMockFetchIDPMetadata();
-    await spid.idpMetadataRefresher().run();
+    await spid.idpMetadataRefresher()();
     expect(mockFetchIdpsMetadata).toHaveBeenNthCalledWith(
       1,
       IDPMetadataUrl,
@@ -221,7 +222,7 @@ describe("io-spid-commons withSpid", () => {
       app,
       acs: async () => ResponsePermanentRedirect({ href: "/success?acs" }),
       logout: async () => ResponsePermanentRedirect({ href: "/success?logout" })
-    }).run();
+    })();
     return request(spid.app)
       .get(`${appConfig.loginPath}?authLevel=SpidL1`)
       .expect(400);
