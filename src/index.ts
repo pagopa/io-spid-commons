@@ -22,7 +22,6 @@ import * as express from "express";
 import { constVoid, pipe } from "fp-ts/lib/function";
 import * as O from "fp-ts/lib/Option";
 import * as T from "fp-ts/lib/Task";
-import { Task } from "fp-ts/lib/Task";
 import * as t from "io-ts";
 import * as passport from "passport";
 import { SamlConfig } from "passport-saml";
@@ -179,9 +178,9 @@ export function withSpid({
   redisClient,
   samlConfig,
   serviceProviderConfig
-}: IWithSpidT): Task<{
+}: IWithSpidT): T.Task<{
   app: express.Express;
-  idpMetadataRefresher: () => Task<void>;
+  idpMetadataRefresher: () => T.Task<void>;
 }> {
   const loadSpidStrategyOptions = getSpidStrategyOptionsUpdater(
     samlConfig,
