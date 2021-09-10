@@ -195,10 +195,8 @@ export const getSpidStrategyOptionsUpdater = (
         : []
     );
   return pipe(
-    A.sequence(T.task)(idpOptionsTasks),
-    T.map(idpOptionsRecords =>
-      idpOptionsRecords.reduce((prev, current) => ({ ...prev, ...current }), {})
-    ),
+    A.sequence(T.ApplicativePar)(idpOptionsTasks),
+    T.map(A.reduce({}, (prev, current) => ({ ...prev, ...current }))),
     T.map(idpOptionsRecord => {
       logSamlCertExpiration(serviceProviderConfig.publicCert);
       return makeSpidStrategyOptions(
