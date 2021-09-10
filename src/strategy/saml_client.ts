@@ -1,5 +1,7 @@
 import * as express from "express";
-import { fromNullable } from "fp-ts/lib/Option";
+import { pipe } from "fp-ts/lib/function";
+import * as O from "fp-ts/lib/Option";
+import * as TE from "fp-ts/lib/TaskEither";
 import { SamlConfig } from "passport-saml";
 import * as PassportSaml from "passport-saml";
 import { IExtendedCacheProvider } from "./redis_cache_provider";
@@ -48,11 +50,11 @@ export class CustomSamlClient extends PassportSaml.SAML {
           return super.validatePostResponse(body, (error, __, ___) => {
             if (!error && isValid && AuthnRequestID) {
               // tslint:disable-next-line: no-floating-promises
-              this.extededCacheProvider
-                .remove(AuthnRequestID)
-                .map(_ => callback(error, __, ___))
-                .mapLeft(callback)
-                .run();
+              pipe(
+                this.extededCacheProvider.remove(AuthnRequestID),
+                TE.map(_ => callback(error, __, ___)),
+                TE.mapLeft(callback)
+              )();
             } else {
               callback(error, __, ___);
             }
@@ -73,21 +75,24 @@ export class CustomSamlClient extends PassportSaml.SAML {
     isHttpPostBinding: boolean,
     callback: (err: Error, xml?: string) => void
   ): void {
-    const newCallback = fromNullable(this.tamperAuthorizeRequest)
-      .map(tamperAuthorizeRequest => (e: Error, xml?: string) => {
+    const newCallback = pipe(
+      O.fromNullable(this.tamperAuthorizeRequest),
+      O.map(tamperAuthorizeRequest => (e: Error, xml?: string) => {
         xml
-          ? tamperAuthorizeRequest(xml)
-              .chain(tamperedXml =>
+          ? pipe(
+              tamperAuthorizeRequest(xml),
+              TE.chain(tamperedXml =>
                 this.extededCacheProvider.save(tamperedXml, this.config)
-              )
-              .mapLeft(error => callback(error))
-              .map(cache =>
+              ),
+              TE.mapLeft(error => callback(error)),
+              TE.map(cache =>
                 callback((null as unknown) as Error, cache.RequestXML)
               )
-              .run()
+            )()
           : callback(e);
-      })
-      .getOrElse(callback);
+      }),
+      O.getOrElse(() => callback)
+    );
     super.generateAuthorizeRequest(
       req,
       isPassive,
