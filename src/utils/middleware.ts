@@ -7,7 +7,6 @@ import * as express from "express";
 import * as A from "fp-ts/lib/Array";
 import { pipe } from "fp-ts/lib/function";
 import * as T from "fp-ts/lib/Task";
-import { Task } from "fp-ts/lib/Task";
 import * as TE from "fp-ts/lib/TaskEither";
 import * as t from "io-ts";
 import { Profile, SamlConfig, VerifiedCallback } from "passport-saml";
@@ -139,7 +138,7 @@ export function makeSpidStrategyOptions(
 export const getSpidStrategyOptionsUpdater = (
   samlConfig: SamlConfig,
   serviceProviderConfig: IServiceProviderConfig
-): (() => Task<ISpidStrategyOptions>) => () => {
+): (() => T.Task<ISpidStrategyOptions>) => () => {
   const idpOptionsTasks = [
     pipe(
       fetchIdpsMetadata(
