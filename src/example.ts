@@ -1,13 +1,17 @@
-import * as bodyParser from "body-parser";
-import * as express from "express";
-import * as fs from "fs";
-import * as t from "io-ts";
-import { ResponsePermanentRedirect } from "italia-ts-commons/lib/responses";
+// tslint:disable-next-line: no-submodule-imports
+import { ResponsePermanentRedirect } from "@pagopa/ts-commons/lib/responses";
 import {
   EmailString,
   FiscalCode,
   NonEmptyString
-} from "italia-ts-commons/lib/strings";
+  // tslint:disable-next-line: no-submodule-imports
+} from "@pagopa/ts-commons/lib/strings";
+import * as bodyParser from "body-parser";
+import * as express from "express";
+import { pipe } from "fp-ts/lib/function";
+import * as T from "fp-ts/lib/Task";
+import * as fs from "fs";
+import * as t from "io-ts";
 import passport = require("passport");
 import { SamlConfig } from "passport-saml";
 import * as redis from "redis";
@@ -152,17 +156,18 @@ const doneCb = (ip: string | null, request: string, response: string) => {
   console.log(response);
 };
 
-withSpid({
-  acs,
-  app,
-  appConfig,
-  doneCb,
-  logout,
-  redisClient,
-  samlConfig,
-  serviceProviderConfig
-})
-  .map(({ app: withSpidApp, idpMetadataRefresher }) => {
+pipe(
+  withSpid({
+    acs,
+    app,
+    appConfig,
+    doneCb,
+    logout,
+    redisClient,
+    samlConfig,
+    serviceProviderConfig
+  }),
+  T.map(({ app: withSpidApp, idpMetadataRefresher }) => {
     withSpidApp.get("/success", (_, res) =>
       res.json({
         success: "success"
@@ -176,7 +181,7 @@ withSpid({
         .status(400)
     );
     withSpidApp.get("/refresh", async (_, res) => {
-      await idpMetadataRefresher().run();
+      await idpMetadataRefresher()();
       res.json({
         metadataUpdate: "completed"
       });
@@ -194,6 +199,6 @@ withSpid({
     );
     withSpidApp.listen(3000);
   })
-  .run()
+)()
   // tslint:disable-next-line: no-console
   .catch(e => console.error("Application error: ", e));
