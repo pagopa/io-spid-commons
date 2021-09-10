@@ -103,8 +103,8 @@ describe("getExtendedRedisCacheProvider#save", () => {
     expect(mockSet.mock.calls[0][2]).toBe("EX");
     expect(mockSet.mock.calls[0][3]).toBe(keyExpirationPeriodSeconds);
     expect(isRight(cacheSAMLResponse)).toBeFalsy();
-    if (isRight(cacheSAMLResponse)) {
-      expect(cacheSAMLResponse.right).toEqual(
+    if (isLeft(cacheSAMLResponse)) {
+      expect(cacheSAMLResponse.left).toEqual(
         new Error(
           `SAML#ExtendedRedisCacheProvider: set() error ${expectedRedisError}`
         )
@@ -115,8 +115,8 @@ describe("getExtendedRedisCacheProvider#save", () => {
     const redisCacheProvider = getExtendedRedisCacheProvider(mockRedisClient);
     const cacheSAMLResponse = await redisCacheProvider.save(SAMLRequest, {})();
     expect(isRight(cacheSAMLResponse)).toBeFalsy();
-    if (isRight(cacheSAMLResponse)) {
-      expect(cacheSAMLResponse.right).toEqual(
+    if (isLeft(cacheSAMLResponse)) {
+      expect(cacheSAMLResponse.left).toEqual(
         new Error("Missing idpIssuer inside configuration")
       );
     }
@@ -132,8 +132,8 @@ describe("getExtendedRedisCacheProvider#save", () => {
       samlConfig
     )();
     expect(isRight(cacheSAMLResponse)).toBeFalsy();
-    if (isRight(cacheSAMLResponse)) {
-      expect(cacheSAMLResponse.right).toEqual(
+    if (isLeft(cacheSAMLResponse)) {
+      expect(cacheSAMLResponse.left).toEqual(
         new Error(`SAML#ExtendedRedisCacheProvider: missing AuthnRequest ID`)
       );
     }
@@ -166,8 +166,8 @@ describe("getExtendedRedisCacheProvider#save", () => {
     const cacheSAMLResponse = await redisCacheProvider.get(expectedRequestID)();
     expect(mockGet.mock.calls[0][0]).toBe(`SAML-EXT-${expectedRequestID}`);
     expect(isRight(cacheSAMLResponse)).toBeFalsy();
-    if (isRight(cacheSAMLResponse)) {
-      expect(cacheSAMLResponse.right).toEqual(
+    if (isLeft(cacheSAMLResponse)) {
+      expect(cacheSAMLResponse.left).toEqual(
         new Error(
           `SAML#ExtendedRedisCacheProvider: get() error ${expectedRedisError}`
         )
