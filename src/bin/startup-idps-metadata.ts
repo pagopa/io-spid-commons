@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 
-import { array } from "fp-ts/lib/Array";
-import { fromNullable } from "fp-ts/lib/Option";
-import { task } from "fp-ts/lib/Task";
+import * as AP from "fp-ts/lib/Apply";
+import { pipe } from "fp-ts/lib/function";
+import * as O from "fp-ts/lib/Option";
+import * as T from "fp-ts/lib/Task";
+import * as TE from "fp-ts/lib/TaskEither";
 import * as yargs from "yargs";
 import { logger } from "../utils/logger";
 import { fetchMetadataXML } from "../utils/metadata";
@@ -44,44 +46,56 @@ function printIdpsMetadata(
 ): Promise<IIDPSMetadataXML> {
   // tslint:disable: no-object-mutation no-any no-empty
   logger.info = (): any => {};
-  const maybeIdpsMetadataURL = fromNullable(idpsMetadataENV)
-    .mapNullable(_ => process.env[_])
-    .map((_: string) =>
-      fetchMetadataXML(_)
-        .map<{ idps?: string }>(_1 => ({
+  const maybeIdpsMetadataURL = pipe(
+    O.fromNullable(idpsMetadataENV),
+    O.chainNullableK(_ => process.env[_]),
+    O.map((_: string) =>
+      pipe(
+        fetchMetadataXML(_),
+        TE.map(_1 => ({
           idps: _1
-        }))
-        .getOrElse({})
-    )
-    .getOrElse(task.of({}));
-  const maybeTestEnvMetadataURL = fromNullable(testEnv2MetadataENV)
-    .mapNullable(_ => process.env[_])
-    .map((_: string) =>
-      fetchMetadataXML(`${_}/metadata`)
-        .map<{ xx_testenv2?: string }>(_1 => ({
+        })),
+        TE.getOrElseW(() => T.of({}))
+      )
+    ),
+    O.getOrElseW(() => T.of({}))
+  );
+  const maybeTestEnvMetadataURL = pipe(
+    O.fromNullable(testEnv2MetadataENV),
+    O.chainNullableK(_ => process.env[_]),
+    O.map((_: string) =>
+      pipe(
+        fetchMetadataXML(`${_}/metadata`),
+        TE.map(_1 => ({
           xx_testenv2: _1
-        }))
-        .getOrElse({})
-    )
-    .getOrElse(task.of({}));
-  const maybeCIEMetadataURL = fromNullable(cieMetadataENV)
-    .mapNullable(_ => process.env[_])
-    .map((_: string) =>
-      fetchMetadataXML(_)
-        .map<{ xx_servizicie?: string }>(_1 => ({
+        })),
+        TE.getOrElseW(() => T.of({}))
+      )
+    ),
+    O.getOrElseW(() => T.of({}))
+  );
+  const maybeCIEMetadataURL = pipe(
+    O.fromNullable(cieMetadataENV),
+    O.chainNullableK(_ => process.env[_]),
+    O.map((_: string) =>
+      pipe(
+        fetchMetadataXML(_),
+        TE.map(_1 => ({
           xx_servizicie: _1
-        }))
-        .getOrElse({})
-    )
-    .getOrElse(task.of({}));
-  return array
-    .sequence(task)<IIDPSMetadataXML>([
+        })),
+        TE.getOrElseW(() => T.of({}))
+      )
+    ),
+    O.getOrElseW(() => T.of({}))
+  );
+  return pipe(
+    AP.sequenceT(T.ApplicativePar)(
       maybeIdpsMetadataURL,
       maybeTestEnvMetadataURL,
       maybeCIEMetadataURL
-    ])
-    .map(_ => _.reduce((prev, current) => ({ ...prev, ...current }), {}))
-    .run();
+    ),
+    T.map(_ => _.reduce((prev, current) => ({ ...prev, ...current }), {}))
+  )();
 }
 
 printIdpsMetadata(
