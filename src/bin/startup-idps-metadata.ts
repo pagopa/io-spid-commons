@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import * as AP from "fp-ts/lib/Apply";
+import * as A from "fp-ts/lib/Array";
 import { pipe } from "fp-ts/lib/function";
 import * as O from "fp-ts/lib/Option";
 import * as T from "fp-ts/lib/Task";
@@ -51,10 +52,8 @@ function printIdpsMetadata(
     O.chainNullableK(_ => process.env[_]),
     O.map((_: string) =>
       pipe(
-        fetchMetadataXML(_),
-        TE.map(_1 => ({
-          idps: _1
-        })),
+        TE.Do,
+        TE.bind("idps", () => fetchMetadataXML(_)),
         TE.getOrElseW(() => T.of({}))
       )
     ),
@@ -65,10 +64,8 @@ function printIdpsMetadata(
     O.chainNullableK(_ => process.env[_]),
     O.map((_: string) =>
       pipe(
-        fetchMetadataXML(`${_}/metadata`),
-        TE.map(_1 => ({
-          xx_testenv2: _1
-        })),
+        TE.Do,
+        TE.bind("xx_testenv2", () => fetchMetadataXML(`${_}/metadata`)),
         TE.getOrElseW(() => T.of({}))
       )
     ),
@@ -79,10 +76,8 @@ function printIdpsMetadata(
     O.chainNullableK(_ => process.env[_]),
     O.map((_: string) =>
       pipe(
-        fetchMetadataXML(_),
-        TE.map(_1 => ({
-          xx_servizicie: _1
-        })),
+        TE.Do,
+        TE.bind("xx_servizicie", () => fetchMetadataXML(_)),
         TE.getOrElseW(() => T.of({}))
       )
     ),
@@ -94,7 +89,8 @@ function printIdpsMetadata(
       maybeTestEnvMetadataURL,
       maybeCIEMetadataURL
     ),
-    T.map(_ => _.reduce((prev, current) => ({ ...prev, ...current }), {}))
+    // tslint:disable-next-line: no-inferred-empty-object-type
+    T.map(A.reduce({}, (prev, current) => ({ ...prev, ...current })))
   )();
 }
 
