@@ -602,21 +602,17 @@ export const getPreValidateResponse = (
   };
 
   return pipe(
-    stepOne,
-    TE.chain(stepTwo),
-    TE.chain(stepThree),
-    TE.chain(stepFour),
-    TE.chain(stepFive),
-    TE.chain(stepSix),
-    TE.chain(stepSeven),
-    TE.chain(stepEight),
-    TE.chain(stepNine),
-    TE.chain(stepTen),
-    // check for Transform over SAML Response
-    TE.chainW(stepEleven),
-    TE.bimap(
-      error => stepTwelveLeft(error),
-      _ => stepTwelveRight(_)
-    )
+    responseElementValidationStep,
+    TE.chain(returnRequestAndResponseStep),
+    TE.chain(parseSAMLRequestStep),
+    TE.chain(getIssueInstantFromRequestStep),
+    TE.chain(issueInstantValidationStep),
+    TE.chain(assertionIssueInstantValidationStep),
+    TE.chain(authnContextClassRefValidationStep),
+    TE.chain(attributesValidationStep),
+    TE.chain(responseIssuerValidationStep),
+    TE.chain(assertionIssuerValidationStep),
+    TE.chainW(transformValidationStep),
+    TE.bimap(validationFailure, validationSuccess)
   )().catch(callback);
 };
