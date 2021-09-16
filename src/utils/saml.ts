@@ -107,36 +107,26 @@ export const getPreValidateResponse = (
     idpIssuer: string;
   }
 
-  type IStepTwo = IBaseOutput & {
+  type IRequestAndResponseStep = IBaseOutput & {
     SAMLRequestCache: ISamlCacheType;
   };
 
-  type IStepThree = IStepTwo & { Request: Document };
+  type ISAMLRequest = IRequestAndResponseStep & { Request: Document };
 
-  type IStepFour = IStepThree & {
+  type IIssueInstant = ISAMLRequest & {
     RequestIssueInstant: Date;
     RequestAuthnRequest: Element;
   };
 
-  type IStepFive = IStepFour;
-
-  type IStepSix = IStepFive;
-
-  type IStepSeven = IStepSix & { RequestAuthnContextClassRef: NonEmptyString };
-
-  type IStepEight = IStepSeven;
-
-  type IStepNine = IStepEight;
-
-  type IStepTen = IStepNine;
+  type IIssueInstantWithAuthnContextCR = IIssueInstant & {
+    RequestAuthnContextClassRef: NonEmptyString;
+  };
 
   interface ITransformValidation {
     idpIssuer: string;
     message: string;
     numberOfTransforms: number;
   }
-
-  type IStepEleven = IStepTen;
 
   const responseElementValidationStep: TaskEither<
     Error,
@@ -297,7 +287,7 @@ export const getPreValidateResponse = (
 
   const returnRequestAndResponseStep = (
     _: IBaseOutput
-  ): TaskEither<Error, IStepTwo> =>
+  ): TaskEither<Error, IRequestAndResponseStep> =>
     pipe(
       extendedCacheProvider.get(_.InResponseTo),
       TE.map(SAMLRequestCache => ({ ..._, SAMLRequestCache })),
@@ -315,7 +305,9 @@ export const getPreValidateResponse = (
       )
     );
 
-  const parseSAMLRequestStep = (_: IStepTwo): TaskEither<Error, IStepThree> =>
+  const parseSAMLRequestStep = (
+    _: IRequestAndResponseStep
+  ): TaskEither<Error, ISAMLRequest> =>
     pipe(
       TE.fromEither(
         E.fromOption(
@@ -330,8 +322,8 @@ export const getPreValidateResponse = (
     );
 
   const getIssueInstantFromRequestStep = (
-    _: IStepThree
-  ): TaskEither<Error, IStepFour> =>
+    _: ISAMLRequest
+  ): TaskEither<Error, IIssueInstant> =>
     pipe(
       TE.fromEither(
         E.fromOption(
@@ -367,8 +359,8 @@ export const getPreValidateResponse = (
     );
 
   const issueInstantValidationStep = (
-    _: IStepFour
-  ): TaskEither<Error, IStepFive> =>
+    _: IIssueInstant
+  ): TaskEither<Error, IIssueInstant> =>
     pipe(
       TE.fromEither(
         pipe(
@@ -384,8 +376,8 @@ export const getPreValidateResponse = (
     );
 
   const assertionIssueInstantValidationStep = (
-    _: IStepFive
-  ): TaskEither<Error, IStepSix> =>
+    _: IIssueInstant
+  ): TaskEither<Error, IIssueInstant> =>
     pipe(
       TE.fromEither(
         pipe(
@@ -403,8 +395,8 @@ export const getPreValidateResponse = (
     );
 
   const authnContextClassRefValidationStep = (
-    _: IStepSix
-  ): TaskEither<Error, IStepSeven> =>
+    _: IIssueInstant
+  ): TaskEither<Error, IIssueInstantWithAuthnContextCR> =>
     TE.fromEither(
       pipe(
         E.fromOption(
@@ -456,8 +448,8 @@ export const getPreValidateResponse = (
     );
 
   const attributesValidationStep = (
-    _: IStepSeven
-  ): TaskEither<Error, IStepEight> =>
+    _: IIssueInstantWithAuthnContextCR
+  ): TaskEither<Error, IIssueInstantWithAuthnContextCR> =>
     pipe(
       TE.fromEither(
         assertionValidation(
@@ -499,8 +491,8 @@ export const getPreValidateResponse = (
     );
 
   const responseIssuerValidationStep = (
-    _: IStepEight
-  ): TaskEither<Error, IStepNine> =>
+    _: IIssueInstantWithAuthnContextCR
+  ): TaskEither<Error, IIssueInstantWithAuthnContextCR> =>
     pipe(
       TE.fromEither(
         pipe(
@@ -528,8 +520,8 @@ export const getPreValidateResponse = (
     );
 
   const assertionIssuerValidationStep = (
-    _: IStepNine
-  ): TaskEither<Error, IStepTen> =>
+    _: IIssueInstantWithAuthnContextCR
+  ): TaskEither<Error, IIssueInstantWithAuthnContextCR> =>
     pipe(
       TE.fromEither(
         pipe(
@@ -564,8 +556,8 @@ export const getPreValidateResponse = (
     );
 
   const transformValidationStep = (
-    _: IStepTen
-  ): TaskEither<ITransformValidation, IStepEleven> =>
+    _: IIssueInstantWithAuthnContextCR
+  ): TaskEither<ITransformValidation, IIssueInstantWithAuthnContextCR> =>
     pipe(
       TE.fromEither(
         transformsValidation(_.Response, _.SAMLRequestCache.idpIssuer)
@@ -596,7 +588,7 @@ export const getPreValidateResponse = (
     return callback(E.toError(error.message));
   };
 
-  const validationSuccess = (_: IStepEleven): void => {
+  const validationSuccess = (_: IIssueInstantWithAuthnContextCR): void => {
     // Number of the Response signature.
     // Calculated as number of the Signature elements inside the document minus number of the Signature element of the Assertion.
     const signatureOfResponseCount =
