@@ -1092,21 +1092,18 @@ export const assertionValidation = (
                             () => new Error("Empty AuthnContextClassRef")
                           )
                         ),
+                        E.map(AuthnContextClassRef =>
+                          AuthnContextClassRef.textContent?.trim()
+                        ),
                         E.chain(
                           E.fromPredicate(
                             AuthnContextClassRef =>
-                              AuthnContextClassRef.textContent?.trim() ===
-                                SPID_LEVELS.SpidL1 ||
-                              AuthnContextClassRef.textContent?.trim() ===
-                                SPID_LEVELS.SpidL2 ||
-                              AuthnContextClassRef.textContent?.trim() ===
-                                SPID_LEVELS.SpidL3,
+                              AuthnContextClassRef === SPID_LEVELS.SpidL1 ||
+                              AuthnContextClassRef === SPID_LEVELS.SpidL2 ||
+                              AuthnContextClassRef === SPID_LEVELS.SpidL3,
                             () =>
                               new Error("Invalid AuthnContextClassRef value")
                           )
-                        ),
-                        E.map(AuthnContextClassRef =>
-                          AuthnContextClassRef.textContent?.trim()
                         ),
                         E.chain(
                           E.fromPredicate(
