@@ -10,16 +10,14 @@ import { UTCISODateFromString } from "@pagopa/ts-commons/lib/dates";
 import { NonEmptyString } from "@pagopa/ts-commons/lib/strings";
 import { distanceInWordsToNow, isAfter, subDays } from "date-fns";
 import { Request as ExpressRequest } from "express";
+import { predicate as PR } from "fp-ts";
 import { flatten } from "fp-ts/lib/Array";
 import * as E from "fp-ts/lib/Either";
-import { Either } from "fp-ts/lib/Either";
-import { not, pipe } from "fp-ts/lib/function";
+import { pipe } from "fp-ts/lib/function";
 import * as O from "fp-ts/lib/Option";
-import { Option } from "fp-ts/lib/Option";
 import { collect, lookup } from "fp-ts/lib/Record";
 import { Ord } from "fp-ts/lib/string";
 import * as TE from "fp-ts/lib/TaskEither";
-import { TaskEither } from "fp-ts/lib/TaskEither";
 import * as t from "io-ts";
 import { pki } from "node-forge";
 import { SamlConfig } from "passport-saml";
@@ -90,11 +88,11 @@ const isSignedWithHmac = (e: Element): boolean => {
 };
 
 export const notSignedWithHmacPredicate = E.fromPredicate(
-  not(isSignedWithHmac),
+  PR.not(isSignedWithHmac),
   _ => new Error("HMAC Signature is forbidden")
 );
 
-export const getXmlFromSamlResponse = (body: unknown): Option<Document> =>
+export const getXmlFromSamlResponse = (body: unknown): O.Option<Document> =>
   pipe(
     O.fromEither(SAMLResponse.decode(body)),
     O.map(_ => decodeBase64(_.SAMLResponse)),
@@ -107,7 +105,7 @@ export const getXmlFromSamlResponse = (body: unknown): Option<Document> =>
  * ie. for <StatusMessage>ErrorCode nr22</StatusMessage>
  * returns "22"
  */
-export function getErrorCodeFromResponse(doc: Document): Option<string> {
+export function getErrorCodeFromResponse(doc: Document): O.Option<string> {
   return pipe(
     O.fromNullable(
       doc.getElementsByTagNameNS(SAML_NAMESPACE.PROTOCOL, "StatusMessage")
@@ -132,7 +130,7 @@ export function getErrorCodeFromResponse(doc: Document): Option<string> {
 /**
  * Extracts the issuer field from the response body.
  */
-export const getSamlIssuer = (doc: Document): Option<string> => {
+export const getSamlIssuer = (doc: Document): O.Option<string> => {
   return pipe(
     O.fromNullable(
       doc.getElementsByTagNameNS(SAML_NAMESPACE.ASSERTION, "Issuer").item(0)
@@ -152,7 +150,7 @@ export const getSamlIssuer = (doc: Document): Option<string> => {
 const getEntrypointCerts = (
   req: ExpressRequest,
   idps: ISpidStrategyOptions["idp"]
-): Option<IEntrypointCerts> => {
+): O.Option<IEntrypointCerts> => {
   return pipe(
     O.fromNullable(req),
     O.chainNullableK(r => r.query),
@@ -190,7 +188,7 @@ const getEntrypointCerts = (
   );
 };
 
-export const getIDFromRequest = (requestXML: string): Option<string> => {
+export const getIDFromRequest = (requestXML: string): O.Option<string> => {
   const xmlRequest = new DOMParser().parseFromString(requestXML, "text/xml");
   return pipe(
     O.fromNullable(
@@ -204,7 +202,9 @@ export const getIDFromRequest = (requestXML: string): Option<string> => {
   );
 };
 
-const getAuthnContextValueFromResponse = (response: string): Option<string> => {
+const getAuthnContextValueFromResponse = (
+  response: string
+): O.Option<string> => {
   const xmlResponse = new DOMParser().parseFromString(response, "text/xml");
   // ie. <saml2:AuthnContextClassRef>https://www.spid.gov.it/SpidL2</saml2:AuthnContextClassRef>
   const responseAuthLevelEl = xmlResponse.getElementsByTagNameNS(
@@ -222,7 +222,7 @@ const getAuthnContextValueFromResponse = (response: string): Option<string> => {
 const getAuthSalmOptions = (
   req: ExpressRequest,
   decodedResponse?: string
-): Option<Partial<SamlConfig>> => {
+): O.Option<Partial<SamlConfig>> => {
   return pipe(
     O.fromNullable(req),
     O.chainNullableK(r => r.query),
@@ -469,7 +469,7 @@ export const getMetadataTamperer = (
   xmlBuilder: Builder,
   serviceProviderConfig: IServiceProviderConfig,
   samlConfig: SamlConfig
-) => (generateXml: string): TaskEither<Error, string> => {
+) => (generateXml: string): TE.TaskEither<Error, string> => {
   return pipe(
     TE.tryCatch(() => parseStringPromise(generateXml), E.toError),
     TE.chain(o =>
@@ -569,7 +569,7 @@ export const getAuthorizeRequestTamperer = (
   xmlBuilder: Builder,
   _: IServiceProviderConfig,
   samlConfig: SamlConfig
-) => (generateXml: string): TaskEither<Error, string> => {
+) => (generateXml: string): TE.TaskEither<Error, string> => {
   return pipe(
     TE.tryCatch(() => parseStringPromise(generateXml), E.toError),
     TE.chain(o =>
@@ -597,7 +597,7 @@ export const getAuthorizeRequestTamperer = (
 //  Validate response
 //
 
-const utcStringToDate = (value: string, tag: string): Either<Error, Date> =>
+const utcStringToDate = (value: string, tag: string): E.Either<Error, Date> =>
   pipe(
     UTCISODateFromString.decode(value),
     E.mapLeft(() => new Error(`${tag} must be an UTCISO format date string`))
@@ -606,7 +606,7 @@ const utcStringToDate = (value: string, tag: string): Either<Error, Date> =>
 export const validateIssuer = (
   fatherElement: Element,
   idpIssuer: string
-): Either<Error, Element> =>
+): E.Either<Error, Element> =>
   pipe(
     E.fromOption(() => new Error("Issuer element must be present"))(
       O.fromNullable(
@@ -635,7 +635,7 @@ export const validateIssuer = (
 export const mainAttributeValidation = (
   requestOrAssertion: Element,
   acceptedClockSkewMs: number = 0
-): Either<Error, Date> => {
+): E.Either<Error, Date> => {
   return pipe(
     NonEmptyString.decode(requestOrAssertion.getAttribute("ID")),
     E.mapLeft(() => new Error("Assertion must contain a non empty ID")),
@@ -699,7 +699,7 @@ export type TransformError = t.TypeOf<typeof TransformError>;
 export const transformsValidation = (
   targetElement: Element,
   idpIssuer: string
-): Either<TransformError, Element> => {
+): E.Either<TransformError, Element> => {
   return pipe(
     O.fromPredicate((elements: readonly Element[]) => elements.length > 0)(
       Array.from(
@@ -757,7 +757,7 @@ export const assertionValidation = (
   InResponseTo: string,
   requestAuthnContextClassRef: string
   // tslint:disable-next-line: no-big-function
-): Either<Error, HTMLCollectionOf<Element>> => {
+): E.Either<Error, HTMLCollectionOf<Element>> => {
   const acceptedClockSkewMs = samlConfig.acceptedClockSkewMs || 0;
   return pipe(
     E.fromOption(() => new Error("Assertion must be signed"))(
@@ -782,7 +782,7 @@ export const assertionValidation = (
         ),
         E.chain(
           E.fromPredicate(
-            not(isEmptyNode),
+            PR.not(isEmptyNode),
             () => new Error("Subject element must be not empty")
           )
         ),
@@ -798,7 +798,7 @@ export const assertionValidation = (
             ),
             E.chain(
               E.fromPredicate(
-                not(isEmptyNode),
+                PR.not(isEmptyNode),
                 () => new Error("NameID element must be not empty")
               )
             ),
@@ -851,7 +851,7 @@ export const assertionValidation = (
             ),
             E.chain(
               E.fromPredicate(
-                not(isEmptyNode),
+                PR.not(isEmptyNode),
                 () => new Error("SubjectConfirmation element must be not empty")
               )
             ),
@@ -967,7 +967,7 @@ export const assertionValidation = (
             ),
             E.chain(
               E.fromPredicate(
-                not(isEmptyNode),
+                PR.not(isEmptyNode),
                 () => new Error("Conditions element must be provided")
               )
             ),
@@ -1014,7 +1014,7 @@ export const assertionValidation = (
                 ),
                 E.chain(
                   E.fromPredicate(
-                    not(isEmptyNode),
+                    PR.not(isEmptyNode),
                     () =>
                       new Error(
                         "AudienceRestriction element must be present and not empty"
@@ -1054,7 +1054,7 @@ export const assertionValidation = (
                 ),
                 E.chain(
                   E.fromPredicate(
-                    not(isEmptyNode),
+                    PR.not(isEmptyNode),
                     () => new Error("Empty AuthnStatement")
                   )
                 ),
@@ -1070,7 +1070,7 @@ export const assertionValidation = (
                     ),
                     E.chain(
                       E.fromPredicate(
-                        not(isEmptyNode),
+                        PR.not(isEmptyNode),
                         () => new Error("Empty AuthnContext")
                       )
                     ),
@@ -1088,7 +1088,7 @@ export const assertionValidation = (
                         ),
                         E.chain(
                           E.fromPredicate(
-                            not(isEmptyNode),
+                            PR.not(isEmptyNode),
                             () => new Error("Empty AuthnContextClassRef")
                           )
                         ),
