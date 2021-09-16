@@ -1,11 +1,14 @@
 /**
  * SPID Passport strategy
  */
+// tslint:disable-next-line: no-submodule-imports
+import { EmailString, NonEmptyString } from "@pagopa/ts-commons/lib/strings";
 import * as express from "express";
-import { array } from "fp-ts/lib/Array";
-import { Task, task } from "fp-ts/lib/Task";
+import * as A from "fp-ts/lib/Array";
+import { pipe } from "fp-ts/lib/function";
+import * as T from "fp-ts/lib/Task";
+import * as TE from "fp-ts/lib/TaskEither";
 import * as t from "io-ts";
-import { EmailString, NonEmptyString } from "italia-ts-commons/lib/strings";
 import { Profile, SamlConfig, VerifiedCallback } from "passport-saml";
 import { RedisClient } from "redis";
 import { DoneCallbackT } from "..";
@@ -135,61 +138,75 @@ export function makeSpidStrategyOptions(
 export const getSpidStrategyOptionsUpdater = (
   samlConfig: SamlConfig,
   serviceProviderConfig: IServiceProviderConfig
-): (() => Task<ISpidStrategyOptions>) => () => {
+): (() => T.Task<ISpidStrategyOptions>) => () => {
   const idpOptionsTasks = [
-    fetchIdpsMetadata(
-      serviceProviderConfig.IDPMetadataUrl,
-      SPID_IDP_IDENTIFIERS
-    ).getOrElse({})
+    pipe(
+      fetchIdpsMetadata(
+        serviceProviderConfig.IDPMetadataUrl,
+        SPID_IDP_IDENTIFIERS
+      ),
+      TE.getOrElseW(() => T.of({}))
+    )
   ]
     .concat(
-      NonEmptyString.is(serviceProviderConfig.spidValidatorUrl)
-        ? [
-            fetchIdpsMetadata(
-              `${serviceProviderConfig.spidValidatorUrl}/metadata.xml`,
-              {
-                // "https://validator.spid.gov.it" or "http://localhost:8080"
-                [serviceProviderConfig.spidValidatorUrl]: "xx_validator"
-              }
-            ).getOrElse({})
-          ]
-        : []
+      pipe(
+        NonEmptyString.is(serviceProviderConfig.spidValidatorUrl)
+          ? [
+              pipe(
+                fetchIdpsMetadata(
+                  `${serviceProviderConfig.spidValidatorUrl}/metadata.xml`,
+                  {
+                    // "https://validator.spid.gov.it" or "http://localhost:8080"
+                    [serviceProviderConfig.spidValidatorUrl]: "xx_validator"
+                  }
+                ),
+                TE.getOrElseW(() => T.of({}))
+              )
+            ]
+          : []
+      )
     )
     .concat(
       NonEmptyString.is(serviceProviderConfig.spidCieUrl)
         ? [
-            fetchIdpsMetadata(
-              serviceProviderConfig.spidCieUrl,
-              CIE_IDP_IDENTIFIERS
-            ).getOrElse({})
+            pipe(
+              fetchIdpsMetadata(
+                serviceProviderConfig.spidCieUrl,
+                CIE_IDP_IDENTIFIERS
+              ),
+              TE.getOrElseW(() => T.of({}))
+            )
           ]
         : []
     )
     .concat(
       NonEmptyString.is(serviceProviderConfig.spidTestEnvUrl)
         ? [
-            fetchIdpsMetadata(
-              `${serviceProviderConfig.spidTestEnvUrl}/metadata`,
-              {
-                [serviceProviderConfig.spidTestEnvUrl]: "xx_testenv2"
-              }
-            ).getOrElse({})
+            pipe(
+              fetchIdpsMetadata(
+                `${serviceProviderConfig.spidTestEnvUrl}/metadata`,
+                {
+                  [serviceProviderConfig.spidTestEnvUrl]: "xx_testenv2"
+                }
+              ),
+              TE.getOrElseW(() => T.of({}))
+            )
           ]
         : []
     );
-  return array
-    .sequence(task)(idpOptionsTasks)
-    .map(idpOptionsRecords =>
-      idpOptionsRecords.reduce((prev, current) => ({ ...prev, ...current }), {})
-    )
-    .map(idpOptionsRecord => {
+  return pipe(
+    A.sequence(T.ApplicativePar)(idpOptionsTasks),
+    // tslint:disable-next-line: no-inferred-empty-object-type
+    T.map(A.reduce({}, (prev, current) => ({ ...prev, ...current }))),
+    T.map(idpOptionsRecord => {
       logSamlCertExpiration(serviceProviderConfig.publicCert);
       return makeSpidStrategyOptions(
         samlConfig,
         serviceProviderConfig,
         idpOptionsRecord
       );
-    });
+    })
+  );
 };
 
 const SPID_STRATEGY_OPTIONS_KEY = "spidStrategyOptions";

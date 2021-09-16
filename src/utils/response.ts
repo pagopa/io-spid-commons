@@ -1,8 +1,11 @@
 import { DOMParser } from "xmldom";
 
+// tslint:disable-next-line: no-submodule-imports
+import { ResponseErrorInternal } from "@pagopa/ts-commons/lib/responses";
 import { NextFunction, Request, Response } from "express";
-import { fromNullable, none, Option, some, tryCatch } from "fp-ts/lib/Option";
-import { ResponseErrorInternal } from "italia-ts-commons/lib/responses";
+import { pipe } from "fp-ts/lib/function";
+import * as O from "fp-ts/lib/Option";
+import { Option } from "fp-ts/lib/Option";
 import { SAML_NAMESPACE } from "./saml";
 
 /**
@@ -12,25 +15,29 @@ import { SAML_NAMESPACE } from "./saml";
  * returns "https://www.spid.gov.it/SpidL2"
  */
 export function getAuthnContextFromResponse(xml: string): Option<string> {
-  return fromNullable(xml)
-    .chain(xmlStr => tryCatch(() => new DOMParser().parseFromString(xmlStr)))
-    .chain(xmlResponse =>
+  return pipe(
+    O.fromNullable(xml),
+    O.chain(xmlStr =>
+      O.tryCatch(() => new DOMParser().parseFromString(xmlStr))
+    ),
+    O.chain(xmlResponse =>
       xmlResponse
-        ? some(
+        ? O.some(
             xmlResponse.getElementsByTagNameNS(
               SAML_NAMESPACE.ASSERTION,
               "AuthnContextClassRef"
             )
           )
-        : none
-    )
-    .chain(responseAuthLevelEl =>
+        : O.none
+    ),
+    O.chain(responseAuthLevelEl =>
       responseAuthLevelEl &&
       responseAuthLevelEl[0] &&
       responseAuthLevelEl[0].textContent
-        ? some(responseAuthLevelEl[0].textContent.trim())
-        : none
-    );
+        ? O.some(responseAuthLevelEl[0].textContent.trim())
+        : O.none
+    )
+  );
 }
 
 export function middlewareCatchAsInternalError(

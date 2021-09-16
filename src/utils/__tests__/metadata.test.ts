@@ -1,5 +1,5 @@
 import { isLeft, isRight, left } from "fp-ts/lib/Either";
-import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
+// tslint:disable-next-line: no-submodule-imports
 import * as nock from "nock";
 import { CIE_IDP_IDENTIFIERS, SPID_IDP_IDENTIFIERS } from "../../config";
 import cieIdpMetadata from "../__mocks__/cie-idp-metadata";
@@ -19,9 +19,11 @@ describe("fetchIdpsMetadata", () => {
     const result = await fetchIdpsMetadata(
       mockedIdpsRegistryHost + notExistingPath,
       SPID_IDP_IDENTIFIERS
-    ).run();
+    )();
     expect(isLeft(result)).toBeTruthy();
-    expect(result.value).toEqual(expect.any(Error));
+    if (isLeft(result)) {
+      expect(result.left).toEqual(expect.any(Error));
+    }
   });
 
   it("should reject an error if the fetch of IdP metadata returns no useful data", async () => {
@@ -32,9 +34,11 @@ describe("fetchIdpsMetadata", () => {
     const result = await fetchIdpsMetadata(
       mockedIdpsRegistryHost + wrongIdpMetadataPath,
       SPID_IDP_IDENTIFIERS
-    ).run();
+    )();
     expect(isLeft(result)).toBeTruthy();
-    expect(result.value).toEqual(expect.any(Error));
+    if (isLeft(result)) {
+      expect(result.left).toEqual(expect.any(Error));
+    }
   });
 
   it("should reject an error if the fetch of IdP metadata returns an unparsable response", async () => {
@@ -45,9 +49,11 @@ describe("fetchIdpsMetadata", () => {
     const result = await fetchIdpsMetadata(
       mockedIdpsRegistryHost + wrongIdpMetadataPath,
       SPID_IDP_IDENTIFIERS
-    ).run();
+    )();
     expect(isLeft(result)).toBeTruthy();
-    expect(result.value).toEqual(expect.any(Error));
+    if (isLeft(result)) {
+      expect(result.left).toEqual(expect.any(Error));
+    }
   });
 
   it("should resolve with the fetched IdP options", async () => {
@@ -58,7 +64,7 @@ describe("fetchIdpsMetadata", () => {
     const result = await fetchIdpsMetadata(
       mockedIdpsRegistryHost + validIdpMetadataPath,
       SPID_IDP_IDENTIFIERS
-    ).run();
+    )();
     expect(isRight(result)).toBeTruthy();
   });
 
@@ -70,16 +76,18 @@ describe("fetchIdpsMetadata", () => {
     const result = await fetchIdpsMetadata(
       mockedIdpsRegistryHost + validCieMetadataPath,
       CIE_IDP_IDENTIFIERS
-    ).run();
+    )();
     expect(isRight(result)).toBeTruthy();
-    expect(result.value).toHaveProperty("xx_servizicie_test", {
-      cert: expect.any(NonEmptyArray),
-      entityID:
-        "https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/POST/SSO",
-      entryPoint:
-        "https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/Redirect/SSO",
-      logoutUrl: ""
-    });
+    if (isRight(result)) {
+      expect(result.right).toHaveProperty("xx_servizicie_test", {
+        cert: expect.any(Array),
+        entityID:
+          "https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/POST/SSO",
+        entryPoint:
+          "https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/Redirect/SSO",
+        logoutUrl: ""
+      });
+    }
   });
 
   it("should resolve with the fetched TestEnv IdP options", async () => {
@@ -92,13 +100,15 @@ describe("fetchIdpsMetadata", () => {
       {
         [expectedTestenvEntityId]: "xx_testenv2"
       }
-    ).run();
+    )();
     expect(isRight(result)).toBeTruthy();
-    expect(result.value).toHaveProperty("xx_testenv2", {
-      cert: expect.any(NonEmptyArray),
-      entityID: expectedTestenvEntityId,
-      entryPoint: "https://spid-testenv.dev.io.italia.it/sso",
-      logoutUrl: "https://spid-testenv.dev.io.italia.it/slo"
-    });
+    if (isRight(result)) {
+      expect(result.right).toHaveProperty("xx_testenv2", {
+        cert: expect.any(Array),
+        entityID: expectedTestenvEntityId,
+        entryPoint: "https://spid-testenv.dev.io.italia.it/sso",
+        logoutUrl: "https://spid-testenv.dev.io.italia.it/slo"
+      });
+    }
   });
 });

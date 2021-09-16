@@ -5,12 +5,8 @@
  * Setups the endpoint to generate service provider metadata
  * and a scheduled process to refresh IDP metadata from providers.
  */
-import * as express from "express";
-import { constVoid } from "fp-ts/lib/function";
-import { fromNullable, fromPredicate } from "fp-ts/lib/Option";
-import { Task, task } from "fp-ts/lib/Task";
-import * as t from "io-ts";
-import { toExpressHandler } from "italia-ts-commons/lib/express";
+// tslint:disable-next-line: no-submodule-imports
+import { toExpressHandler } from "@pagopa/ts-commons/lib/express";
 import {
   IResponseErrorForbiddenNotAuthorized,
   IResponseErrorInternal,
@@ -20,7 +16,13 @@ import {
   ResponseErrorInternal,
   ResponseErrorValidation,
   ResponseSuccessXml
-} from "italia-ts-commons/lib/responses";
+  // tslint:disable-next-line: no-submodule-imports
+} from "@pagopa/ts-commons/lib/responses";
+import * as express from "express";
+import { constVoid, pipe } from "fp-ts/lib/function";
+import * as O from "fp-ts/lib/Option";
+import * as T from "fp-ts/lib/Task";
+import * as t from "io-ts";
 import * as passport from "passport";
 import { SamlConfig } from "passport-saml";
 import { RedisClient } from "redis";
@@ -116,14 +118,20 @@ const withSpidAuthMiddleware = (
   ) => {
     passport.authenticate("spid", async (err, user) => {
       const maybeDoc = getXmlFromSamlResponse(req.body);
-      const issuer = maybeDoc.chain(getSamlIssuer).getOrElse("UNKNOWN");
+      const issuer = pipe(
+        maybeDoc,
+        O.chain(getSamlIssuer),
+        O.getOrElse(() => "UNKNOWN")
+      );
       if (err) {
         const redirectionUrl =
           clientErrorRedirectionUrl +
-          maybeDoc
-            .chain(getErrorCodeFromResponse)
-            .map(errorCode => `?errorCode=${errorCode}`)
-            .getOrElse(`?errorMessage=${err}`);
+          pipe(
+            maybeDoc,
+            O.chain(getErrorCodeFromResponse),
+            O.map(errorCode => `?errorCode=${errorCode}`),
+            O.getOrElse(() => `?errorMessage=${err}`)
+          );
         logger.error(
           "Spid Authentication|Authentication Error|ERROR=%s|ISSUER=%s|REDIRECT_TO=%s",
           err,
@@ -170,9 +178,9 @@ export function withSpid({
   redisClient,
   samlConfig,
   serviceProviderConfig
-}: IWithSpidT): Task<{
+}: IWithSpidT): T.Task<{
   app: express.Express;
-  idpMetadataRefresher: () => Task<void>;
+  idpMetadataRefresher: () => T.Task<void>;
 }> {
   const loadSpidStrategyOptions = getSpidStrategyOptionsUpdater(
     samlConfig,
@@ -191,22 +199,25 @@ export function withSpid({
     samlConfig
   );
 
-  const maybeStartupIdpsMetadata = fromNullable(appConfig.startupIdpsMetadata);
+  const maybeStartupIdpsMetadata = O.fromNullable(
+    appConfig.startupIdpsMetadata
+  );
   // If `startupIdpsMetadata` is provided, IDP metadata
   // are initially taken from its value when the backend starts
-  return maybeStartupIdpsMetadata
-    .map(parseStartupIdpsMetadata)
-    .map(idpOptionsRecord =>
-      task.of(
+  return pipe(
+    maybeStartupIdpsMetadata,
+    O.map(parseStartupIdpsMetadata),
+    O.map(idpOptionsRecord =>
+      T.of(
         makeSpidStrategyOptions(
           samlConfig,
           serviceProviderConfig,
           idpOptionsRecord
         )
       )
-    )
-    .getOrElse(loadSpidStrategyOptions())
-    .map(spidStrategyOptions => {
+    ),
+    O.getOrElse(loadSpidStrategyOptions),
+    T.map(spidStrategyOptions => {
       upsertSpidStrategyOption(app, spidStrategyOptions);
       return makeSpidStrategy(
         spidStrategyOptions,
@@ -220,22 +231,26 @@ export function withSpid({
         ),
         doneCb
       );
-    })
-    .map(spidStrategy => {
+    }),
+    T.map(spidStrategy => {
       // Even when `startupIdpsMetadata` is provided, we try to load
       // IDP metadata from the remote registries
-      maybeStartupIdpsMetadata.map(() => {
-        loadSpidStrategyOptions()
-          .map(opts => upsertSpidStrategyOption(app, opts))
-          .run()
-          .catch(e => {
+      pipe(
+        maybeStartupIdpsMetadata,
+        O.map(() => {
+          pipe(
+            loadSpidStrategyOptions(),
+            T.map(opts => upsertSpidStrategyOption(app, opts))
+          )().catch(e => {
             logger.error("loadSpidStrategyOptions|error:%s", e);
           });
-      });
+        })
+      );
       // Fetch IDPs metadata from remote URL and update SPID passport strategy options
       const idpMetadataRefresher = () =>
-        loadSpidStrategyOptions().map(opts =>
-          upsertSpidStrategyOption(app, opts)
+        pipe(
+          loadSpidStrategyOptions(),
+          T.map(opts => upsertSpidStrategyOption(app, opts))
         );
 
       // Initializes SpidStrategy for passport
@@ -249,15 +264,16 @@ export function withSpid({
       app.get(
         appConfig.loginPath,
         middlewareCatchAsInternalError((req, res, next) => {
-          fromNullable(req.query)
-            .mapNullable(q => q.authLevel)
-            .filter(t.keyof(SPID_LEVELS).is)
-            .chain(
-              fromPredicate(authLevel =>
+          pipe(
+            O.fromNullable(req.query),
+            O.chainNullableK(q => q.authLevel),
+            O.filter(t.keyof(SPID_LEVELS).is),
+            O.chain(
+              O.fromPredicate(authLevel =>
                 appConfig.spidLevelsWhitelist.includes(authLevel)
               )
-            )
-            .foldL(
+            ),
+            O.fold(
               () => {
                 logger.error(
                   `Missing or invalid authLevel [${req?.query?.authLevel}]`
@@ -267,8 +283,9 @@ export function withSpid({
                   "Missing or invalid authLevel"
                 ).apply(res);
               },
-              () => next()
-            );
+              _ => next()
+            )
+          );
         }),
         middlewareCatchAsInternalError(spidAuth)
       );
@@ -321,5 +338,6 @@ export function withSpid({
       app.post(appConfig.sloPath, toExpressHandler(logout));
 
       return { app, idpMetadataRefresher };
-    });
+    })
+  );
 }
