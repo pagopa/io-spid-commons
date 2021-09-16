@@ -17,7 +17,7 @@ import {
   getXmlFromSamlResponse,
   TransformError
 } from "../saml";
-import * as saml from "../samlUtils";
+import * as saml from "../saml";
 
 const samlConfig: SamlConfig = ({
   attributes: {
