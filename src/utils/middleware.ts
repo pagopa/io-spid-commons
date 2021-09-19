@@ -24,14 +24,14 @@ interface IServiceProviderOrganization {
   name: string;
 }
 
-interface IServiceProviderContactPersonOther{
-  vatNumber : string;
-  fiscalCode : string;
-  emailAddress : string;
-  telephoneNumber : string;
+interface IServiceProviderContactPersonOther {
+  vatNumber: string;
+  fiscalCode: string;
+  emailAddress: string;
+  telephoneNumber: string;
 }
 
-interface IServiceProviderContactPersonBilling{
+interface IServiceProviderContactPersonBilling {
   IVAIdPaese: string;
   IVAIdCodice: string;
   IVADenominazione: string;

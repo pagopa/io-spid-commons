@@ -68,6 +68,11 @@ export const SAML_NAMESPACE = {
   XMLDSIG: "http://www.w3.org/2000/09/xmldsig#"
 };
 
+export const SAML_EXTENSIONS = "https://spid.gov.it/saml-extensions";
+
+export const SAML_SPID_FPA =
+  "http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2";
+
 const ISSUER_FORMAT = "urn:oasis:names:tc:SAML:2.0:nameid-format:entity";
 
 const decodeBase64 = (s: string) => Buffer.from(s, "base64").toString("utf8");
@@ -392,27 +397,27 @@ const getSpidContactPersonOther = (
 ) => {
   return serviceProviderConfig.contactPersonOther
     ? {
-          $: { "contactType": "other" },
-          Extensions: {
-            VATNumber:{
-              $: { "xmlns": "https://spid.gov.it/saml-extensions"},
-              _: serviceProviderConfig.contactPersonOther.vatNumber
-            },
-            FiscalCode:{
-              $: { "xmlns": "https://spid.gov.it/saml-extensions"},
-              _: serviceProviderConfig.contactPersonOther.fiscalCode
-            },
-            Private:{
-              $: { "xmlns": "https://spid.gov.it/saml-extensions"},
-            }
+        $: { contactType: "other" },
+        EmailAddress: {
+          _: serviceProviderConfig.contactPersonOther.emailAddress
+        },
+        Extensions: {
+          FiscalCode: {
+            $: { xmlns: SAML_EXTENSIONS },
+            _: serviceProviderConfig.contactPersonOther.fiscalCode
           },
-          EmailAddress: {
-            _: serviceProviderConfig.contactPersonOther.emailAddress
+          Private: {
+            $: { xmlns: SAML_EXTENSIONS }
           },
-          TelephoneNumber: {
-            _: serviceProviderConfig.contactPersonOther.telephoneNumber
+          VATNumber: {
+            $: { xmlns: SAML_EXTENSIONS },
+            _: serviceProviderConfig.contactPersonOther.vatNumber
           }
+        },
+        TelephoneNumber: {
+          _: serviceProviderConfig.contactPersonOther.telephoneNumber
         }
+      }
     : {};
 };
 
@@ -421,71 +426,99 @@ const getSpidContactPersonBilling = (
 ) => {
   return serviceProviderConfig.contactPersonBilling
     ? {
-          $: { "contactType": "billing" },
-          Extensions: {
-            CessionarioCommittente:{
-              $: { "xmlns": "http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2"},
-              DatiAnagrafici:{
-                $: { "xmlns": "http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2"},
-                IdFiscaleIVA:{
-                  $: { "xmlns": "http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2"},
-                  IdPaese:{
-                    $: { "xmlns": "http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2"},
-                    _: serviceProviderConfig.contactPersonBilling.IVAIdPaese
-                  },
-                  IdCodice:{
-                    $: { "xmlns": "http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2"},
-                    _: serviceProviderConfig.contactPersonBilling.IVAIdCodice
-                  }
-                },
-                Anagrafica:{
-                  $: { "xmlns": "http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2"},
-                  Denominazione:{
-                    $: { "xmlns": "http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2"},
-                    _: serviceProviderConfig.contactPersonBilling.IVADenominazione
-                  }
-                }
-              },
-              Sede:{
-                $: { "xmlns": "http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2"},
-                Indirizzo:{
-                  $: { "xmlns": "http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2"},
-                  _: serviceProviderConfig.contactPersonBilling.sedeIndirizzo
-                },
-                NumeroCivico:{
-                  $: { "xmlns": "http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2"},
-                  _: serviceProviderConfig.contactPersonBilling.sedeNumeroCivico
-                },
-                CAP:{
-                  $: { "xmlns": "http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2"},
-                  _: serviceProviderConfig.contactPersonBilling.sedeCap
-                },
-                Comune:{
-                  $: { "xmlns": "http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2"},
-                  _: serviceProviderConfig.contactPersonBilling.sedeComune
-                },
-                Provincia:{
-                  $: { "xmlns": "http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2"},
-                  _: serviceProviderConfig.contactPersonBilling.sedeProvincia
-                },
-                Nazione:{
-                  $: { "xmlns": "http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2"},
-                  _: serviceProviderConfig.contactPersonBilling.sedeNazione
-                }
-              }
-          }
-        },
+        $: { contactType: "billing" },
         Company: {
           _: serviceProviderConfig.contactPersonBilling.company
         },
         EmailAddress: {
           _: serviceProviderConfig.contactPersonBilling.emailAddress
         },
+        Extensions: {
+          CessionarioCommittente: {
+            $: {
+              xmlns: SAML_SPID_FPA
+            },
+            DatiAnagrafici: {
+              $: {
+                xmlns: SAML_SPID_FPA
+              },
+              Anagrafica: {
+                $: {
+                  xmlns: SAML_SPID_FPA
+                },
+                Denominazione: {
+                  $: {
+                    xmlns: SAML_SPID_FPA
+                  },
+                  _: serviceProviderConfig.contactPersonBilling.IVADenominazione
+                }
+              },
+              IdFiscaleIVA: {
+                $: {
+                  xmlns: SAML_SPID_FPA
+                },
+                IdCodice: {
+                  $: {
+                    xmlns: SAML_SPID_FPA
+                  },
+                  _: serviceProviderConfig.contactPersonBilling.IVAIdCodice
+                },
+                IdPaese: {
+                  $: {
+                    xmlns: SAML_SPID_FPA
+                  },
+                  _: serviceProviderConfig.contactPersonBilling.IVAIdPaese
+                }
+              }
+            },
+            Sede: {
+              $: {
+                xmlns: SAML_SPID_FPA
+              },
+              CAP: {
+                $: {
+                  xmlns: SAML_SPID_FPA
+                },
+                _: serviceProviderConfig.contactPersonBilling.sedeCap
+              },
+              Comune: {
+                $: {
+                  xmlns: SAML_SPID_FPA
+                },
+                _: serviceProviderConfig.contactPersonBilling.sedeComune
+              },
+              Indirizzo: {
+                $: {
+                  xmlns: SAML_SPID_FPA
+                },
+                _: serviceProviderConfig.contactPersonBilling.sedeIndirizzo
+              },
+              Nazione: {
+                $: {
+                  xmlns: SAML_SPID_FPA
+                },
+                _: serviceProviderConfig.contactPersonBilling.sedeNazione
+              },
+              NumeroCivico: {
+                $: {
+                  xmlns: SAML_SPID_FPA
+                },
+                _: serviceProviderConfig.contactPersonBilling.sedeNumeroCivico
+              },
+              Provincia: {
+                $: {
+                  xmlns: SAML_SPID_FPA
+                },
+                _: serviceProviderConfig.contactPersonBilling.sedeProvincia
+              }
+            }
+          }
+        },
         TelephoneNumber: {
           _: serviceProviderConfig.contactPersonBilling.telephoneNumber
         }
       }
-  : {};
+    : {};
 };
 
 const getKeyInfoForMetadata = (publicCert: string, privateKey: string) => ({
@@ -529,17 +562,18 @@ export const getMetadataTamperer = (
           // tslint:disable-next-line: object-literal-sort-keys
           RequestedAttribute: getSpidAttributesMetadata(serviceProviderConfig)
         };
-        if("private" === process.env.SERVICE_PROVIDER_TYPE){
+        if ("private" === process.env.SERVICE_PROVIDER_TYPE) {
           // tslint:disable-next-line: no-object-mutation
           o.EntityDescriptor = {
             ...o.EntityDescriptor,
             ...getSpidOrganizationMetadata(serviceProviderConfig),
             ContactPerson: [
-              {...getSpidContactPersonOther(serviceProviderConfig)},
-              {...getSpidContactPersonBilling(serviceProviderConfig)}
+              { ...getSpidContactPersonOther(serviceProviderConfig) },
+              { ...getSpidContactPersonBilling(serviceProviderConfig) }
             ]
           };
-        }else{
+        } else {
+          // tslint:disable-next-line: no-object-mutation
           o.EntityDescriptor = {
             ...o.EntityDescriptor,
             ...getSpidOrganizationMetadata(serviceProviderConfig)

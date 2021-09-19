@@ -19,7 +19,8 @@ const argv = yargs
   })
   .option("validator-metadata-url-env", {
     demandOption: false,
-    description: "ENV var name containing spid-saml-check validator Metadata URL",
+    description:
+      "ENV var name containing spid-saml-check validator Metadata URL",
     normalize: true,
     string: true
   })
