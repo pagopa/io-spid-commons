@@ -17,9 +17,9 @@ const argv = yargs
     normalize: true,
     string: true
   })
-  .option("testenv-metadata-url-env", {
+  .option("validator-metadata-url-env", {
     demandOption: false,
-    description: "ENV var name containing TestEnv2 Metadata URL",
+    description: "ENV var name containing spid-saml-check validator Metadata URL",
     normalize: true,
     string: true
   })
@@ -33,7 +33,7 @@ const argv = yargs
 
 interface IIDPSMetadataXML {
   idps?: string;
-  xx_testenv2?: string;
+  xx_validator?: string;
   xx_servizicie?: string;
 }
 
@@ -58,8 +58,8 @@ function printIdpsMetadata(
     .mapNullable(_ => process.env[_])
     .map((_: string) =>
       fetchMetadataXML(`${_}/metadata`)
-        .map<{ xx_testenv2?: string }>(_1 => ({
-          xx_testenv2: _1
+        .map<{ xx_validator?: string }>(_1 => ({
+          xx_validator: _1
         }))
         .getOrElse({})
     )
@@ -86,7 +86,7 @@ function printIdpsMetadata(
 
 printIdpsMetadata(
   argv["idp-metadata-url-env"],
-  argv["testenv-metadata-url-env"],
+  argv["validator-metadata-url-env"],
   argv["cie-metadata-url-env"]
 )
   // tslint:disable-next-line: no-console

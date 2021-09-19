@@ -68,11 +68,9 @@ const serviceProviderConfig: IServiceProviderConfig = {
   },
   spidCieUrl:
     "https://preproduzione.idserver.servizicie.interno.gov.it/idp/shibboleth?Metadata",
-  spidTestEnvUrl: process.env.SPID_TESTENV_URL,
   spidValidatorUrl: process.env.SPID_VALIDATOR_URL,
   strictResponseValidation: {
     [process.env.SPID_VALIDATOR_URL]: true,
-    [process.env.SPID_TESTENV_URL]: true
   }
 };
 

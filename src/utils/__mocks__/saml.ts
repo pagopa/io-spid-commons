@@ -9,7 +9,7 @@ export const getSamlAssertion = (
   Date.now() + clockSkewMs
 ).toISOString()}" Version="2.0" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
         <saml:Issuer Format="urn:oasis:names:tc:SAML:2.0:nameid-format:entity">
-            http://localhost:8080
+            https://localhost:8080
         </saml:Issuer>
         <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
             <ds:SignedInfo>
@@ -125,7 +125,7 @@ export const getSamlResponse: (params?: IGetSAMLResponseParams) => string = (
     Date.now() + clockSkewMs
   ).toISOString()}" Version="2.0" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol">
 <saml:Issuer Format="urn:oasis:names:tc:SAML:2.0:nameid-format:entity">
-    http://localhost:8080
+    https://localhost:8080
 </saml:Issuer>
 ${
   hasResponseSignature !== false
@@ -180,8 +180,8 @@ export const samlRequest = `<?xml version="1.0"?>
 </samlp:AuthnRequest>`;
 
 export const samlResponseCIE = `<?xml version="1.0" encoding="UTF-8"?>
-<saml2p:Response Destination="https://app-backend.dev.io.italia.it/assertionConsumerService" ID="_36e7b2c177afab6db4302732a68403cb" InResponseTo="_61395d807fb9fe6a869b" IssueInstant="2020-02-27T13:40:57.746Z" Version="2.0" 
-  xmlns:saml2p="urn:oasis:names:tc:SAML:2.0:protocol" 
+<saml2p:Response Destination="https://app-backend.dev.io.italia.it/assertionConsumerService" ID="_36e7b2c177afab6db4302732a68403cb" InResponseTo="_61395d807fb9fe6a869b" IssueInstant="2020-02-27T13:40:57.746Z" Version="2.0"
+  xmlns:saml2p="urn:oasis:names:tc:SAML:2.0:protocol"
   xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <saml2:Issuer xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion">https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SSO</saml2:Issuer>
   <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
@@ -192,7 +192,7 @@ export const samlResponseCIE = `<?xml version="1.0" encoding="UTF-8"?>
         <ds:Transforms>
           <ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
           <ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#">
-            <ec:InclusiveNamespaces PrefixList="xsd" 
+            <ec:InclusiveNamespaces PrefixList="xsd"
               xmlns:ec="http://www.w3.org/2001/10/xml-exc-c14n#"/>
           </ds:Transform>
         </ds:Transforms>
@@ -212,8 +212,8 @@ AIa2vTA8uOKizFvCqNchj4Dby8eDOi5UaOEZYJ4NV0RorEj2wkSFbhX65FYLt68VUGY5YR1tqDfl d0A
   <saml2p:Status>
     <saml2p:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/>
   </saml2p:Status>
-  <saml2:Assertion ID="_6aa64187239cb0852096c42c33e176ca" IssueInstant="2020-02-27T13:40:57.746Z" Version="2.0" 
-    xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" 
+  <saml2:Assertion ID="_6aa64187239cb0852096c42c33e176ca" IssueInstant="2020-02-27T13:40:57.746Z" Version="2.0"
+    xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion"
     xmlns:xsd="http://www.w3.org/2001/XMLSchema">
     <saml2:Issuer>https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SSO</saml2:Issuer>
     <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
@@ -224,7 +224,7 @@ AIa2vTA8uOKizFvCqNchj4Dby8eDOi5UaOEZYJ4NV0RorEj2wkSFbhX65FYLt68VUGY5YR1tqDfl d0A
           <ds:Transforms>
             <ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
             <ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#">
-              <ec:InclusiveNamespaces PrefixList="xsd" 
+              <ec:InclusiveNamespaces PrefixList="xsd"
                 xmlns:ec="http://www.w3.org/2001/10/xml-exc-c14n#"/>
             </ds:Transform>
           </ds:Transforms>

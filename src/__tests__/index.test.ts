@@ -134,7 +134,7 @@ const serviceProviderConfig: IServiceProviderConfig = {
   spidCieUrl,
   spidTestEnvUrl,
   strictResponseValidation: {
-    "http://localhost:8080": true
+    "https://localhost:8080": true
   }
 };
 

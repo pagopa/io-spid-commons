@@ -45,14 +45,13 @@ const serviceProviderConfig: IServiceProviderConfig = {
     name: "Required attrs"
   },
   spidCieUrl: "https://preproduzione.idserver.servizicie.interno.gov.it/idp/shibboleth?Metadata",
-  spidTestEnvUrl: "https://spid-testenv2:8088",
-  spidValidatorUrl: "http://localhost:8080"
+  spidValidatorUrl: "https://localhost:8080"
 };
 const expectedRequestID = "123456";
 const SAMLRequest = `<?xml version="1.0"?>
-<samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ID="${expectedRequestID}" Version="2.0" 
+<samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ID="${expectedRequestID}" Version="2.0"
   IssueInstant="2020-02-17T10:20:28.417Z"
-  ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Destination="http://localhost:8080/samlsso" ForceAuthn="true" 
+  ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Destination="https://localhost:8080/samlsso" ForceAuthn="true"
   AssertionConsumerServiceURL="http://localhost:3000/acs" AttributeConsumingServiceIndex="0">
   <saml:Issuer xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"
     NameQualifier="https://spid.agid.gov.it/cd" Format="urn:oasis:names:tc:SAML:2.0:nameid-format:entity">https://spid.agid.gov.it/cd</saml:Issuer>

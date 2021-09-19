@@ -16,7 +16,6 @@ declare global {
       ENDPOINT_METADATA: string;
       ENDPOINT_LOGOUT: string;
       SPID_VALIDATOR_URL: string;
-      SPID_TESTENV_URL: string;
       NODE_ENV: 'development' | 'production';
       PORT?: string;
     }

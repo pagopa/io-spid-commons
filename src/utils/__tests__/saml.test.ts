@@ -65,7 +65,7 @@ describe("preValidateResponse", () => {
     save: jest.fn()
   };
   const mockBody = "MOCKED BODY";
-  const mockTestIdpIssuer = "http://localhost:8080";
+  const mockTestIdpIssuer = "https://localhost:8080";
 
   const mockEventTracker = jest.fn() as EventTracker;
 

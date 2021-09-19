@@ -52,7 +52,6 @@ ENV ENDPOINT_LOGIN="/login"
 ENV ENDPOINT_METADATA="/metadata"
 ENV ENDPOINT_LOGOUT="/logout"
 
-ENV SPID_VALIDATOR_URL="http://localhost:8080"
-ENV SPID_TESTENV_URL="https://spid-testenv2:8088"
+ENV SPID_VALIDATOR_URL="https://localhost:8080"
 
 CMD ["yarn", "dev"]

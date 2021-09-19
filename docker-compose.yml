@@ -1,4 +1,4 @@
-version: "2.2"
+version: "3"
 
 services:
   spid-express-app:
@@ -19,17 +19,18 @@ services:
     networks:
       - spid-express-app
     depends_on:
-      - spid-testenv2
+      - spid-saml-check
 
-  spid-testenv2:
-    image: italia/spid-testenv2:1.1.0
+  spid-saml-check:
+    image: italia/spid-saml-check
     ports:
-      - "8088:8088"
-    volumes:
-      - "./spid-testenv/config.yaml:/app/conf/config.yaml"
-      - "./spid-testenv/users.json:/app/conf/users.json"
+      - "8080:8080"
     networks:
       - spid-express-app
+    #volumes:
+      #- "./docker/spid-saml-check-config/idp.json:/spid-saml-check/spid-validator/config/idp.json:ro"
+      #- "./docker/spid-saml-check-config/idp_demo.json:/spid-saml-check/spid-validator/config/idp_demo.json:ro"
+      #- "./docker/spid-saml-check-config/server.json:/spid-saml-check/spid-validator/config/server.json:ro"
 
   redis:
     image: wodby/redis:3.2-2.1.5

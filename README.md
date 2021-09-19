@@ -181,11 +181,9 @@ L'oggetto `serviceProviderConfig` contiene i parametri del Service Provider. Es:
        name: "Required attrs"
      },
      spidCieUrl: "https://preproduzione.idserver.servizicie.interno.gov.it/idp/shibboleth?Metadata",
-     spidTestEnvUrl: "https://spid-testenv2:8088",
-     spidValidatorUrl: "http://localhost:8080",
+     spidValidatorUrl: "https://localhost:8080",
      strictResponseValidation: {
-       "http://localhost:8080": true,
-       "https://spid-testenv2:8088": true
+       "https://localhost:8080": true,
      }
    };
 ```
@@ -199,12 +197,9 @@ L'oggetto `serviceProviderConfig` contiene i parametri del Service Provider. Es:
   ("Entra con CIE").
   Impostare a "`https://preproduzione.idserver.servizicie.interno.gov.it/idp/shibboleth?Metadata`"
   per lo sviluppo.
-* **`spidTestEnvUrl`**: URL dell'istanza di [spid-testenv2](https://github.com/italia/spid-testenv2).
-  Lasciare vuoto per disabilitare.
 * **`spidValidatorUrl`**: URL dell'istanza di [spid-saml-check](https://github.com/italia/spid-saml-check).
   Lasciare vuoto per disabilitare.
-* **`strictResponseValidation`**: Impostare come da esempio con gli URL di
-  `spid-testenv2` e `spid-saml-check` (se abilitati).
+* **`strictResponseValidation`**: Impostare come da esempio con l'URL di `spid-saml-check` (se abilitati).
 
 ## Avvio dell'applicazione di esempio integrata
 
@@ -218,8 +213,8 @@ Dopo il messaggio `[spid-express] info: samlCert expire in 12 months`) l'app sar
 pronta e in ascolto su <http://localhost:3000>.
 
 Iniziare la sessione SPID con una GET su
-[`http://localhost:3000/login?entityID=xx_testenv2`](http://localhost:3000/login?entityID=xx_testenv2).
-`xx_testenv2` è l'`entityID` di sviluppo che redirigerà il login a spid-testenv2.
+[`http://localhost:3000/login?entityID=xx_validator`](http://localhost:3000/login?entityID=xx_validator).
+`xx_validator` è l'`entityID` di sviluppo che redirigerà il login a spid-saml-check validator.
 
 Gli `entityID` che si possono usare in produzione sono "`lepidaid`", "`infocertid`",
 "`sielteid`", "`namirialid`", "`timid`", "`arubaid`", "`posteid`", "`intesaid`"

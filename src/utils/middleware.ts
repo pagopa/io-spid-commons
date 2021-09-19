@@ -105,7 +105,7 @@ export const getSpidStrategyOptionsUpdater = (
             fetchIdpsMetadata(
               `${serviceProviderConfig.spidValidatorUrl}/metadata.xml`,
               {
-                // "https://validator.spid.gov.it" or "http://localhost:8080"
+                // "https://validator.spid.gov.it" or "https://localhost:8080"
                 [serviceProviderConfig.spidValidatorUrl]: "xx_validator"
               }
             ).getOrElse({})
@@ -118,18 +118,6 @@ export const getSpidStrategyOptionsUpdater = (
             fetchIdpsMetadata(
               serviceProviderConfig.spidCieUrl,
               CIE_IDP_IDENTIFIERS
-            ).getOrElse({})
-          ]
-        : []
-    )
-    .concat(
-      NonEmptyString.is(serviceProviderConfig.spidTestEnvUrl)
-        ? [
-            fetchIdpsMetadata(
-              `${serviceProviderConfig.spidTestEnvUrl}/metadata`,
-              {
-                [serviceProviderConfig.spidTestEnvUrl]: "xx_testenv2"
-              }
             ).getOrElse({})
           ]
         : []
