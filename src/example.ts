@@ -71,13 +71,7 @@ const serviceProviderConfig: IServiceProviderConfig = {
   },
   publicCert: fs.readFileSync("./certs/cert.pem", "utf-8"),
   requiredAttributes: {
-    attributes: [
-      "email",
-      "name",
-      "familyName",
-      "fiscalNumber",
-      "dateOfBirth"
-    ],
+    attributes: ["email", "name", "familyName", "fiscalNumber", "dateOfBirth"],
     name: "Required attrs"
   },
   spidCieUrl:
