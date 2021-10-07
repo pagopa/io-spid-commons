@@ -72,12 +72,11 @@ const serviceProviderConfig: IServiceProviderConfig = {
   publicCert: fs.readFileSync("./certs/cert.pem", "utf-8"),
   requiredAttributes: {
     attributes: [
-      "address",
       "email",
       "name",
       "familyName",
       "fiscalNumber",
-      "mobilePhone"
+      "dateOfBirth"
     ],
     name: "Required attrs"
   },
