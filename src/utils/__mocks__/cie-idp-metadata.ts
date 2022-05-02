@@ -1,11 +1,12 @@
-export default `<?xml version="1.0" encoding="UTF-8"?>
+export default `
+<?xml version="1.0" encoding="UTF-8"?>
 <!--
      This is example metadata only. Do *NOT* supply it as is without review,
      and do *NOT* provide it in real time to your partners.
 
      This metadata is not dynamic - it will not change as your configuration changes.
 -->
-<EntityDescriptor  xmlns="urn:oasis:names:tc:SAML:2.0:metadata" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:shibmd="urn:mace:shibboleth:metadata:1.0" xmlns:xml="http://www.w3.org/XML/1998/namespace" xmlns:mdui="urn:oasis:names:tc:SAML:metadata:ui" entityID="https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/POST/SSO">
+<EntityDescriptor  xmlns="urn:oasis:names:tc:SAML:2.0:metadata" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:shibmd="urn:mace:shibboleth:metadata:1.0" xmlns:xml="http://www.w3.org/XML/1998/namespace" xmlns:mdui="urn:oasis:names:tc:SAML:metadata:ui" entityID="https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SSO">
 
     <IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol urn:oasis:names:tc:SAML:1.1:protocol urn:mace:shibboleth:1.0">
 
@@ -79,20 +80,20 @@ export default `<?xml version="1.0" encoding="UTF-8"?>
 
         </KeyDescriptor>
 
-        <ArtifactResolutionService Binding="urn:oasis:names:tc:SAML:1.0:bindings:SOAP-binding" Location="https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML1/SOAP/ArtifactResolution" index="1"/>
-        <ArtifactResolutionService Binding="urn:oasis:names:tc:SAML:2.0:bindings:SOAP" Location="https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/SOAP/ArtifactResolution" index="2"/>
+        <ArtifactResolutionService Binding="urn:oasis:names:tc:SAML:1.0:bindings:SOAP-binding" Location="https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML1/SOAP/ArtifactResolution" index="1"/>
+        <ArtifactResolutionService Binding="urn:oasis:names:tc:SAML:2.0:bindings:SOAP" Location="https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML2/SOAP/ArtifactResolution" index="2"/>
 
-        <!--
-        <SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://idserver.servizicie.interno.gov.it/idp/profile/SAML2/Redirect/SLO"/>
-        <SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SLO"/>
-        <SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST-SimpleSign" Location="https://idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST-SimpleSign/SLO"/>
-        <SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:SOAP" Location="https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/SOAP/SLO"/>
-        -->
+        
+        <SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML2/Redirect/SLO"/>
+        <SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SLO"/>
+        <SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST-SimpleSign" Location="https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST-SimpleSign/SLO"/>
+        <SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:SOAP" Location="https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML2/SOAP/SLO"/>
+       
 
-        <SingleSignOnService Binding="urn:mace:shibboleth:1.0:profiles:AuthnRequest" Location="https://idserver.servizicie.interno.gov.it:8443/idp/profile/Shibboleth/SSO"/>
-        <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/POST/SSO"/>
-        <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST-SimpleSign" Location="https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/POST-SimpleSign/SSO"/>
-        <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/Redirect/SSO"/>
+        <SingleSignOnService Binding="urn:mace:shibboleth:1.0:profiles:AuthnRequest" Location="https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/Shibboleth/SSO"/>
+        <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SSO"/>
+        <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST-SimpleSign" Location="https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST-SimpleSign/SSO"/>
+        <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML2/Redirect/SSO"/>
 
     </IDPSSODescriptor>
 
@@ -161,8 +162,8 @@ export default `<?xml version="1.0" encoding="UTF-8"?>
 
         </KeyDescriptor>
 
-        <AttributeService Binding="urn:oasis:names:tc:SAML:1.0:bindings:SOAP-binding" Location="https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML1/SOAP/AttributeQuery"/>
-        <!-- <AttributeService Binding="urn:oasis:names:tc:SAML:2.0:bindings:SOAP" Location="https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/SOAP/AttributeQuery"/> -->
+        <AttributeService Binding="urn:oasis:names:tc:SAML:1.0:bindings:SOAP-binding" Location="https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML1/SOAP/AttributeQuery"/>
+        <!-- <AttributeService Binding="urn:oasis:names:tc:SAML:2.0:bindings:SOAP" Location="https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML2/SOAP/AttributeQuery"/> -->
         <!-- If you uncomment the above you should add urn:oasis:names:tc:SAML:2.0:protocol to the protocolSupportEnumeration above -->
 
     </AttributeAuthorityDescriptor>

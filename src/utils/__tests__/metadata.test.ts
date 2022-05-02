@@ -82,10 +82,11 @@ describe("fetchIdpsMetadata", () => {
       expect(result.right).toHaveProperty("xx_servizicie_test", {
         cert: expect.any(Array),
         entityID:
-          "https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/POST/SSO",
+          "https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SSO",
         entryPoint:
-          "https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/Redirect/SSO",
-        logoutUrl: ""
+          "https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML2/Redirect/SSO",
+        logoutUrl:
+          "https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML2/Redirect/SLO"
       });
     }
   });
