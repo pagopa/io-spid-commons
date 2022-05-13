@@ -254,7 +254,7 @@ export const makeSpidStrategy = (
   // eslint-disable-next-line max-params
 ): SpidStrategy =>
   new SpidStrategy(
-    { ...options, passReqToCallback: true },
+    { ...options.sp, passReqToCallback: true },
     getSamlOptions,
     (_: express.Request, profile: Profile, done: VerifiedCallback) => {
       // at this point SAML authentication is successful
