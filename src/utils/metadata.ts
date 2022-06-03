@@ -1,7 +1,6 @@
 /**
  * Methods to fetch and parse Identity service providers metadata.
  */
-// tslint:disable-next-line: no-submodule-imports
 import { errorsToReadableMessages } from "@pagopa/ts-commons/lib/reporters";
 import * as E from "fp-ts/lib/Either";
 import { Either } from "fp-ts/lib/Either";
@@ -35,10 +34,10 @@ const METADATA_NAMESPACES = {
  *
  * An example file is provided in /test_idps/spid-entities-idps.xml of this project.
  */
-export function parseIdpMetadata(
+export const parseIdpMetadata = (
   ipdMetadataPage: string
-): Either<Error, ReadonlyArray<IDPEntityDescriptor>> {
-  return pipe(
+): Either<Error, ReadonlyArray<IDPEntityDescriptor>> =>
+  pipe(
     E.right<Error, Document>(new DOMParser().parseFromString(ipdMetadataPage)),
     E.chain(
       E.fromPredicate(
@@ -112,7 +111,6 @@ export function parseIdpMetadata(
       );
     })
   );
-}
 
 /**
  * Map provided idpMetadata into an object with idp key whitelisted in ipdIds.
@@ -136,20 +134,17 @@ export const mapIpdMetadata = (
 /**
  * Lazy version of mapIpdMetadata()
  */
-export const mapIpdMetadataL = (
-  idpIds: Record<string, string>
-): ((
+export const mapIpdMetadataL = (idpIds: Record<string, string>) => (
   idpMetadata: ReadonlyArray<IDPEntityDescriptor>
-) => Record<string, IDPEntityDescriptor>) => idpMetadata =>
-  mapIpdMetadata(idpMetadata, idpIds);
+): Record<string, IDPEntityDescriptor> => mapIpdMetadata(idpMetadata, idpIds);
 
 /**
  * Fetch an XML from a remote URL
  */
-export function fetchMetadataXML(
+export const fetchMetadataXML = (
   idpMetadataUrl: string
-): TaskEither<Error, string> {
-  return pipe(
+): TaskEither<Error, string> =>
+  pipe(
     TE.tryCatch(() => {
       logger.info("Fetching SPID metadata from [%s]...", idpMetadataUrl);
       return nodeFetch(idpMetadataUrl);
@@ -165,17 +160,16 @@ export function fetchMetadataXML(
     ),
     TE.chain(p => TE.tryCatch(() => p.text(), E.toError))
   );
-}
 
 /**
  * Load idp Metadata from a remote url, parse infos and return a mapped and whitelisted idp options
  * for spidStrategy object.
  */
-export function fetchIdpsMetadata(
+export const fetchIdpsMetadata = (
   idpMetadataUrl: string,
   idpIds: Record<string, string>
-): TaskEither<Error, Record<string, IDPEntityDescriptor>> {
-  return pipe(
+): TaskEither<Error, Record<string, IDPEntityDescriptor>> =>
+  pipe(
     fetchMetadataXML(idpMetadataUrl),
     TE.chain(idpMetadataXML => {
       logger.info("Parsing SPID metadata for %s", idpMetadataUrl);
@@ -198,17 +192,16 @@ export function fetchIdpsMetadata(
       return mapIpdMetadata(idpMetadata, idpIds);
     })
   );
-}
 
 /**
  * This method expects in input a Record where key are idp identifier
  * and values are an XML string (idp metadata).
  * Provided metadata are parsed and converted into IDP Entity Descriptor objects.
  */
-export function parseStartupIdpsMetadata(
+export const parseStartupIdpsMetadata = (
   idpsMetadata: Record<string, string>
-): Record<string, IDPEntityDescriptor> {
-  return pipe(
+): Record<string, IDPEntityDescriptor> =>
+  pipe(
     idpsMetadata,
     R.reduce(Ord)(
       [] as ReadonlyArray<IDPEntityDescriptor>,
@@ -222,4 +215,3 @@ export function parseStartupIdpsMetadata(
     ),
     mapIpdMetadataL({ ...SPID_IDP_IDENTIFIERS, ...CIE_IDP_IDENTIFIERS })
   );
-}

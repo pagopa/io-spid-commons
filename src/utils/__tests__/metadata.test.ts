@@ -1,5 +1,5 @@
 import { isLeft, isRight, left } from "fp-ts/lib/Either";
-// tslint:disable-next-line: no-submodule-imports
+// eslint-disable-next-line import/no-internal-modules
 import * as nock from "nock";
 import { CIE_IDP_IDENTIFIERS, SPID_IDP_IDENTIFIERS } from "../../config";
 import cieIdpMetadata from "../__mocks__/cie-idp-metadata";

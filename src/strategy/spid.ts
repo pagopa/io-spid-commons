@@ -11,10 +11,8 @@ import {
 import { Strategy as SamlStrategy } from "passport-saml";
 import { RedisClient } from "redis";
 
-// tslint:disable-next-line: no-submodule-imports
 import { MultiSamlConfig } from "passport-saml/multiSamlStrategy";
 
-// tslint:disable-next-line: no-submodule-imports
 import { Second } from "@pagopa/ts-commons/lib/units";
 import { pipe } from "fp-ts/lib/function";
 import { DoneCallbackT } from "..";
@@ -37,27 +35,28 @@ export type PreValidateResponseT = (
   body: unknown,
   extendedRedisCacheProvider: IExtendedCacheProvider,
   doneCb: PreValidateResponseDoneCallbackT | undefined,
-  // tslint:disable-next-line: bool-param-default
+
   callback: (
     err: Error | null,
-    // tslint:disable-next-line: bool-param-default
+
     isValid?: boolean,
     InResponseTo?: string
   ) => void
 ) => void;
 
 export class SpidStrategy extends SamlStrategy {
-  private extendedRedisCacheProvider: IExtendedCacheProvider;
+  private readonly extendedRedisCacheProvider: IExtendedCacheProvider;
 
+  // eslint-disable-next-line max-params
   constructor(
-    private options: SamlConfig,
-    private getSamlOptions: MultiSamlConfig["getSamlOptions"],
+    private readonly options: SamlConfig,
+    private readonly getSamlOptions: MultiSamlConfig["getSamlOptions"],
     verify: VerifyWithRequest | VerifyWithoutRequest,
-    private redisClient: RedisClient,
-    private tamperAuthorizeRequest?: XmlTamperer,
-    private tamperMetadata?: XmlTamperer,
-    private preValidateResponse?: PreValidateResponseT,
-    private doneCb?: DoneCallbackT
+    private readonly redisClient: RedisClient,
+    private readonly tamperAuthorizeRequest?: XmlTamperer,
+    private readonly tamperMetadata?: XmlTamperer,
+    private readonly preValidateResponse?: PreValidateResponseT,
+    private readonly doneCb?: DoneCallbackT
   ) {
     super(options, verify);
     if (!options.requestIdExpirationPeriodMs) {

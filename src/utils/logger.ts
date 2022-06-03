@@ -6,9 +6,9 @@ export const logger = createLogger({
     label({ label: "io-spid-commons" }),
     timestamp(),
     format.splat(),
-    printf(info => {
-      return `${info.timestamp} [${info.label}] ${info.level}: ${info.message}`;
-    })
+    printf(
+      info => `${info.timestamp} [${info.label}] ${info.level}: ${info.message}`
+    )
   ),
   level: process.env.NODE_ENV !== "production" ? "debug" : "info",
   transports: [new transports.Console()]

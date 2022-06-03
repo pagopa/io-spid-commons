@@ -1,4 +1,4 @@
-// tslint:disable-next-line: no-submodule-imports
+// eslint-disable-next-line import/no-internal-modules
 import { ResponsePermanentRedirect } from "@pagopa/ts-commons/lib/responses";
 import * as express from "express";
 import { left, right } from "fp-ts/lib/Either";
@@ -141,7 +141,7 @@ const serviceProviderConfig: IServiceProviderConfig = {
   }
 };
 
-// tslint:disable-next-line: no-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockRedisClient: RedisClient = (createMockRedis() as any).createClient();
 
 function initMockFetchIDPMetadata(): void {
@@ -174,7 +174,7 @@ describe("io-spid-commons withSpid", () => {
       appConfig,
       samlConfig,
       serviceProviderConfig,
-      // tslint:disable-next-line: object-literal-sort-keys
+      // eslint-disable-next-line sort-keys
       redisClient: mockRedisClient,
       app,
       acs: async () => ResponsePermanentRedirect({ href: "/success?acs" }),
@@ -217,7 +217,7 @@ describe("io-spid-commons withSpid", () => {
       appConfig,
       samlConfig,
       serviceProviderConfig,
-      // tslint:disable-next-line: object-literal-sort-keys
+      // eslint-disable-next-line sort-keys
       redisClient: mockRedisClient,
       app,
       acs: async () => ResponsePermanentRedirect({ href: "/success?acs" }),

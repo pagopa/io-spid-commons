@@ -1,19 +1,19 @@
-// tslint:disable: no-any
+// eslint-disable @typescript-eslint/no-explicit-any
 import * as express from "express";
 import { SamlConfig } from "passport-saml";
-// tslint:disable-next-line: no-var-requires
+
 const OriginalSAML = require("passport-saml").SAML;
 
 export const mockWrapCallback = jest.fn();
 
-// tslint:disable: max-classes-per-file
+// eslint-disable max-classes-per-file
 export class SAML {
   public options: any;
   public cacheProvider: any;
 
   private initialize = OriginalSAML.prototype.initialize;
   constructor(samlConfig: SamlConfig) {
-    // tslint:disable-next-line: no-string-literal
+    
     this.options = this.initialize(samlConfig);
     this.cacheProvider = this.options.cacheProvider;
   }
@@ -23,7 +23,7 @@ export class SAML {
     callback: (
       err: Error | null,
       profile?: unknown,
-      // tslint:disable-next-line: bool-param-default
+      
       loggedOut?: boolean
     ) => void
   ): void {
@@ -42,7 +42,7 @@ export class SAML {
 
 export class Strategy {
   constructor() {
-    // tslint:disable-next-line: no-console
+    // eslint-disable-next-line no-console
     console.log("Mock Strategy: constructor was called");
   }
 }

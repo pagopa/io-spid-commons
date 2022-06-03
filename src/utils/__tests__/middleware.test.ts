@@ -1,4 +1,4 @@
-// tslint:disable-next-line: ordered-imports
+
 import { left, right } from "fp-ts/lib/Either";
 import { fromEither } from "fp-ts/lib/TaskEither";
 import { SamlConfig } from "passport-saml";
@@ -125,13 +125,13 @@ describe("getSpidStrategyOptionsUpdater", () => {
         left<Error, Record<string, IDPEntityDescriptor>>(expectedFetchError)
       );
     });
-    // tslint:disable-next-line: no-identical-functions
+    // eslint-disable-next-line sonarjs/no-identical-functions
     mockFetchIdpsMetadata.mockImplementationOnce(() => {
       return fromEither(
         right<Error, Record<string, IDPEntityDescriptor>>(mockCIEIdpMetadata)
       );
     });
-    // tslint:disable-next-line: no-identical-functions
+    // eslint-disable-next-line sonarjs/no-identical-functions
     mockFetchIdpsMetadata.mockImplementationOnce(() => {
       return fromEither(
         right<Error, Record<string, IDPEntityDescriptor>>(
@@ -189,7 +189,7 @@ describe("getSpidStrategyOptionsUpdater", () => {
         name: "Required attrs"
       }
     };
-    // tslint:disable-next-line: no-identical-functions
+    // eslint-disable-next-line sonarjs/no-identical-functions
     mockFetchIdpsMetadata.mockImplementationOnce(() => {
       return fromEither(
         right<Error, Record<string, IDPEntityDescriptor>>(mockIdpMetadata)

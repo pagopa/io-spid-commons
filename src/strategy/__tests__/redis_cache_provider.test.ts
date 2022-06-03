@@ -1,4 +1,4 @@
-// tslint:disable: no-object-mutation
+// eslint-disable functional/immutable-data
 import { isLeft, isRight } from "fp-ts/lib/Either";
 import { createMockRedis } from "mock-redis-client";
 import { SamlConfig } from "passport-saml";
@@ -13,7 +13,7 @@ const mockSet = jest.fn();
 const mockGet = jest.fn();
 const mockDel = jest.fn();
 
-// tslint:disable-next-line: no-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockRedisClient: RedisClient = (createMockRedis() as any).createClient();
 mockRedisClient.set = mockSet;
 mockRedisClient.get = mockGet;
@@ -145,7 +145,7 @@ describe("getExtendedRedisCacheProvider#save", () => {
     const expectedRequestData: SAMLRequestCacheItem = {
       RequestXML: SAMLRequest,
       createdAt: new Date(),
-      // tslint:disable-next-line: no-useless-cast
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
       idpIssuer: samlConfig.idpIssuer as string
     };
     mockGet.mockImplementation((_, callback) =>

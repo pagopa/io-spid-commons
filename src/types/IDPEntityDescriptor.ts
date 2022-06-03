@@ -1,7 +1,5 @@
-// tslint:disable-next-line: no-submodule-imports
 import { NonEmptyString } from "@pagopa/ts-commons/lib/strings";
 import * as t from "io-ts";
-// tslint:disable-next-line: no-submodule-imports
 import { nonEmptyArray as createNonEmptyArrayFromArray } from "io-ts-types/nonEmptyArray";
 
 export const IDPEntityDescriptor = t.interface({
