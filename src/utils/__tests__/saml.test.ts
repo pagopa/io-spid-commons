@@ -53,7 +53,6 @@ describe("getXmlFromSamlResponse", () => {
   });
 });
 
-// eslint-disable-next-line sonar/sonar-max-lines-per-function
 describe("preValidateResponse", () => {
   const mockCallback = jest.fn();
   const mockGetXmlFromSamlResponse = jest
@@ -440,7 +439,6 @@ describe("preValidateResponse", () => {
       mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
         tryCatch(() => new DOMParser().parseFromString(samlResponseCIE))
       );
-      // eslint-disable-next-line sonarjs/no-identical-functions
       mockGet.mockImplementation(() => {
         return fromEither(
           right({

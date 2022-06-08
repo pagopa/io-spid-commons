@@ -1,4 +1,3 @@
-// eslint-disable functional/immutable-data
 import { left, right } from "fp-ts/lib/Either";
 import { fromEither } from "fp-ts/lib/TaskEither";
 import { createMockRedis } from "mock-redis-client";
@@ -16,7 +15,6 @@ const mockSet = jest.fn();
 const mockGet = jest.fn();
 const mockDel = jest.fn();
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockRedisClient: RedisClient = (createMockRedis() as any).createClient();
 mockRedisClient.set = mockSet;
 mockRedisClient.get = mockGet;
@@ -72,7 +70,6 @@ const authReqTampener = getAuthorizeRequestTamperer(
 const mockedCallback = jest.fn();
 
 describe("SAML prototype arguments check", () => {
-  // eslint-disable-next-line functional/no-let, @typescript-eslint/no-explicit-any
   let OriginalPassportSaml: any;
   beforeAll(() => {
     OriginalPassportSaml = jest.requireActual("passport-saml");

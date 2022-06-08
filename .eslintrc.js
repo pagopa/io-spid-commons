@@ -1,6 +1,5 @@
 module.exports = {
     "env": {
-        "browser": true,
         "es6": true,
         "node": true
     },
@@ -10,6 +9,7 @@ module.exports = {
         "**/__tests__/*",
         "**/__mocks__/*",
         "Dangerfile.*",
+        ".eslintrc.js",
         "*.d.ts"
     ],
     "parser": "@typescript-eslint/parser",

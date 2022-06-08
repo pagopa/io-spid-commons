@@ -7,11 +7,9 @@ import { getSamlOptions } from "../../utils/saml";
 import * as redisCacheProvider from "../redis_cache_provider";
 import { SpidStrategy } from "../spid";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockRedisClient: RedisClient = (createMockRedis() as any).createClient();
 
 describe("SamlStrategy prototype arguments check", () => {
-  // eslint-disable-next-line functional/no-let, @typescript-eslint/no-explicit-any
   let OriginalPassportSaml: any;
   beforeAll(() => {
     OriginalPassportSaml = jest.requireActual("passport-saml").Strategy;
@@ -30,7 +28,6 @@ describe("SamlStrategy#constructor", () => {
   });
   it("should SamlStrategy constructor has 2 parameters", () => {
     const expectedNoopCacheProvider = {
-      // eslint-disable-next-line no-empty, no-empty-function
       get: () => () => {
         return;
       },

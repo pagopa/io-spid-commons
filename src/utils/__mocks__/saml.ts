@@ -137,7 +137,7 @@ export const getSamlResponse: (params?: IGetSAMLResponseParams) => string = (
 </saml:Issuer>
 ${
   hasResponseSignature !== false
-    ? // eslint-disable-next-line sonar/no-nested-template-literals
+    ?
       `<ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
     <ds:SignedInfo>
         <ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>

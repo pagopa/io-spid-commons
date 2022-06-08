@@ -1,4 +1,3 @@
-// eslint-disable @typescript-eslint/no-explicit-any
 import * as express from "express";
 import { SamlConfig } from "passport-saml";
 
@@ -6,7 +5,6 @@ const OriginalSAML = require("passport-saml").SAML;
 
 export const mockWrapCallback = jest.fn();
 
-// eslint-disable max-classes-per-file
 export class SAML {
   public options: any;
   public cacheProvider: any;
@@ -42,7 +40,6 @@ export class SAML {
 
 export class Strategy {
   constructor() {
-    // eslint-disable-next-line no-console
     console.log("Mock Strategy: constructor was called");
   }
 }
