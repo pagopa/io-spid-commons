@@ -128,8 +128,7 @@ export const getExtendedRedisCacheProvider = (
               () => new Error("Missing idpIssuer inside configuration")
             )(O.fromNullable(samlConfig.idpIssuer))
           ),
-          // eslint-disable-next-line sort-keys
-          TE.map(idpIssuer => ({ idpIssuer, AuthnRequestID }))
+          TE.map(idpIssuer => ({ AuthnRequestID, idpIssuer }))
         )
       ),
       TE.chain(_ => {
