@@ -76,6 +76,7 @@ export interface IServiceProviderConfig {
   spidCieUrl?: string;
   spidTestEnvUrl?: string;
   spidValidatorUrl?: string;
+  spidSamlCheckUrl?: string;
   IDPMetadataUrl: string;
   organization: IServiceProviderOrganization;
   contacts?: ReadonlyArray<ContactPerson>;
@@ -187,6 +188,21 @@ export const getSpidStrategyOptionsUpdater = (
                 `${serviceProviderConfig.spidTestEnvUrl}/metadata`,
                 {
                   [serviceProviderConfig.spidTestEnvUrl]: "xx_testenv2"
+                }
+              ),
+              TE.getOrElseW(() => T.of({}))
+            )
+          ]
+        : []
+    )
+    .concat(
+      NonEmptyString.is(serviceProviderConfig.spidSamlCheckUrl)
+        ? [
+            pipe(
+              fetchIdpsMetadata(
+                `${serviceProviderConfig.spidSamlCheckUrl}/metadata.xml`,
+                {
+                  [serviceProviderConfig.spidSamlCheckUrl]: "xx_samlcheck"
                 }
               ),
               TE.getOrElseW(() => T.of({}))
