@@ -5,7 +5,8 @@
 import { EmailString, NonEmptyString } from "@pagopa/ts-commons/lib/strings";
 import * as express from "express";
 import * as A from "fp-ts/lib/Array";
-import { pipe } from "fp-ts/lib/function";
+import { flow, pipe } from "fp-ts/lib/function";
+import * as O from "fp-ts/lib/Option";
 import * as T from "fp-ts/lib/Task";
 import * as TE from "fp-ts/lib/TaskEither";
 import * as t from "io-ts";
@@ -76,6 +77,7 @@ export interface IServiceProviderConfig {
   spidCieUrl?: string;
   spidTestEnvUrl?: string;
   spidValidatorUrl?: string;
+  spidSamlCheckUrl?: string;
   IDPMetadataUrl: string;
   organization: IServiceProviderOrganization;
   contacts?: ReadonlyArray<ContactPerson>;
@@ -129,6 +131,69 @@ export function makeSpidStrategyOptions(
   };
 }
 
+// Just an utility to normalize idp metadata fetching task
+const maybeIdpMetadata = (
+  url: string | undefined,
+  idpMetadataUrl: string,
+  idpConfig: Record<string, string>
+): O.Option<T.Task<Record<string, IDPEntityDescriptor>>> =>
+  pipe(
+    url,
+    O.fromNullable,
+    O.map(
+      flow(
+        NonEmptyString.decode,
+        TE.fromEither,
+        TE.chainW(_ => fetchIdpsMetadata(idpMetadataUrl, idpConfig)),
+        // idp metadadata fetching won't fail but returning an empty dataset
+        TE.getOrElseW(() => T.of({}))
+      )
+    )
+  );
+
+// Fetch every and only metatadata for IDPs to be mount
+const fetchAllIdpsMetadata = (serviceProviderConfig: IServiceProviderConfig) =>
+  [
+    // Production SPID IDP metadata
+    maybeIdpMetadata(
+      serviceProviderConfig.IDPMetadataUrl,
+      `${serviceProviderConfig.IDPMetadataUrl}`,
+      SPID_IDP_IDENTIFIERS
+    ),
+    // Production CIE IDP metadata
+    maybeIdpMetadata(
+      serviceProviderConfig.spidCieUrl,
+      `${serviceProviderConfig.spidCieUrl}`,
+      CIE_IDP_IDENTIFIERS
+    ),
+    // Development Saml Validator IDP metadata
+    maybeIdpMetadata(
+      serviceProviderConfig.spidValidatorUrl,
+      `${serviceProviderConfig.spidValidatorUrl}/metadata.xml`,
+      {
+        [`${serviceProviderConfig.spidValidatorUrl}`]: "xx_validator"
+      }
+    ),
+    // Development Spid-Testenv2 IDP metadata
+    maybeIdpMetadata(
+      serviceProviderConfig.spidTestEnvUrl,
+      `${serviceProviderConfig.spidTestEnvUrl}/metadata`,
+      {
+        [`${serviceProviderConfig.spidTestEnvUrl}`]: "xx_testenv2"
+      }
+    ),
+    // Development Spid-Saml-Check IDP metadata
+    maybeIdpMetadata(
+      serviceProviderConfig.spidSamlCheckUrl,
+      `${serviceProviderConfig.spidSamlCheckUrl}/metadata.xml`,
+      {
+        [`${serviceProviderConfig.spidSamlCheckUrl}`]: "xx_samlcheck"
+      }
+    )
+  ]
+    .filter(O.isSome)
+    .map(e => e.value);
+
 /**
  * Merge strategy configuration with metadata from IDP.
  *
@@ -138,64 +203,11 @@ export function makeSpidStrategyOptions(
 export const getSpidStrategyOptionsUpdater = (
   samlConfig: SamlConfig,
   serviceProviderConfig: IServiceProviderConfig
-): (() => T.Task<ISpidStrategyOptions>) => () => {
-  const idpOptionsTasks = [
-    pipe(
-      fetchIdpsMetadata(
-        serviceProviderConfig.IDPMetadataUrl,
-        SPID_IDP_IDENTIFIERS
-      ),
-      TE.getOrElseW(() => T.of({}))
-    )
-  ]
-    .concat(
-      pipe(
-        NonEmptyString.is(serviceProviderConfig.spidValidatorUrl)
-          ? [
-              pipe(
-                fetchIdpsMetadata(
-                  `${serviceProviderConfig.spidValidatorUrl}/metadata.xml`,
-                  {
-                    // "https://validator.spid.gov.it" or "http://localhost:8080"
-                    [serviceProviderConfig.spidValidatorUrl]: "xx_validator"
-                  }
-                ),
-                TE.getOrElseW(() => T.of({}))
-              )
-            ]
-          : []
-      )
-    )
-    .concat(
-      NonEmptyString.is(serviceProviderConfig.spidCieUrl)
-        ? [
-            pipe(
-              fetchIdpsMetadata(
-                serviceProviderConfig.spidCieUrl,
-                CIE_IDP_IDENTIFIERS
-              ),
-              TE.getOrElseW(() => T.of({}))
-            )
-          ]
-        : []
-    )
-    .concat(
-      NonEmptyString.is(serviceProviderConfig.spidTestEnvUrl)
-        ? [
-            pipe(
-              fetchIdpsMetadata(
-                `${serviceProviderConfig.spidTestEnvUrl}/metadata`,
-                {
-                  [serviceProviderConfig.spidTestEnvUrl]: "xx_testenv2"
-                }
-              ),
-              TE.getOrElseW(() => T.of({}))
-            )
-          ]
-        : []
-    );
-  return pipe(
-    A.sequence(T.ApplicativePar)(idpOptionsTasks),
+): (() => T.Task<ISpidStrategyOptions>) => () =>
+  pipe(
+    serviceProviderConfig,
+    fetchAllIdpsMetadata,
+    A.sequence(T.ApplicativePar),
     // tslint:disable-next-line: no-inferred-empty-object-type
     T.map(A.reduce({}, (prev, current) => ({ ...prev, ...current }))),
     T.map(idpOptionsRecord => {
@@ -207,7 +219,6 @@ export const getSpidStrategyOptionsUpdater = (
       );
     })
   );
-};
 
 const SPID_STRATEGY_OPTIONS_KEY = "spidStrategyOptions";
 
