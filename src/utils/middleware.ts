@@ -2,10 +2,10 @@
  * SPID Passport strategy
  */
 // tslint:disable-next-line: no-submodule-imports
-import { EmailString } from "@pagopa/ts-commons/lib/strings";
+import { EmailString, NonEmptyString } from "@pagopa/ts-commons/lib/strings";
 import * as express from "express";
 import * as A from "fp-ts/lib/Array";
-import { pipe } from "fp-ts/lib/function";
+import { flow, pipe } from "fp-ts/lib/function";
 import * as O from "fp-ts/lib/Option";
 import * as T from "fp-ts/lib/Task";
 import * as TE from "fp-ts/lib/TaskEither";
@@ -140,9 +140,15 @@ const maybeIdpMetadata = (
   pipe(
     url,
     O.fromNullable,
-    O.map(_ => fetchIdpsMetadata(idpMetadataUrl, idpConfig)),
-    // idp metadadata fetching won't fail but returning an empty dataset
-    O.map(TE.getOrElseW(() => T.of({})))
+    O.map(
+      flow(
+        NonEmptyString.decode,
+        TE.fromEither,
+        TE.chainW(_ => fetchIdpsMetadata(idpMetadataUrl, idpConfig)),
+        // idp metadadata fetching won't fail but returning an empty dataset
+        TE.getOrElseW(() => T.of({}))
+      )
+    )
   );
 
 // Fetch every and only metatadata for IDPs to be mount
