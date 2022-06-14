@@ -4,9 +4,7 @@
  * SPID protocol has some peculiarities that need to be addressed
  * to make request, metadata and responses compliant.
  */
-// tslint:disable-next-line: no-submodule-imports
 import { UTCISODateFromString } from "@pagopa/ts-commons/lib/dates";
-// tslint:disable-next-line: no-submodule-imports
 import { NonEmptyString } from "@pagopa/ts-commons/lib/strings";
 import { predicate as PR } from "fp-ts";
 import { difference } from "fp-ts/lib/Array";
@@ -58,18 +56,19 @@ export {
 
 export type SamlAttributeT = keyof typeof SPID_USER_ATTRIBUTES;
 
+// eslint-disable-next-line max-lines-per-function
 export const getPreValidateResponse = (
   strictValidationOptions?: StrictResponseValidationOptions,
   eventHandler?: EventTracker
-  // tslint:disable-next-line: no-big-function
+  // eslint-disable-next-line max-lines-per-function
 ): PreValidateResponseT => (
   samlConfig,
   body,
   extendedCacheProvider,
   doneCb,
   callback
-  // tslint:disable-next-line: no-big-function
-) => {
+  // eslint-disable-next-line sonarjs/cognitive-complexity
+): Promise<void | E.Left<void> | E.Right<void>> => {
   const maybeDoc = getXmlFromSamlResponse(body);
 
   if (O.isNone(maybeDoc)) {
@@ -94,38 +93,38 @@ export const getPreValidateResponse = (
   );
 
   interface IBaseOutput {
-    InResponseTo: NonEmptyString;
-    Assertion: Element;
-    IssueInstant: Date;
-    Response: Element;
-    AssertionIssueInstant: Date;
+    readonly InResponseTo: NonEmptyString;
+    readonly Assertion: Element;
+    readonly IssueInstant: Date;
+    readonly Response: Element;
+    readonly AssertionIssueInstant: Date;
   }
 
   interface ISamlCacheType {
-    RequestXML: string;
-    createdAt: Date;
-    idpIssuer: string;
+    readonly RequestXML: string;
+    readonly createdAt: Date;
+    readonly idpIssuer: string;
   }
 
   type IRequestAndResponseStep = IBaseOutput & {
-    SAMLRequestCache: ISamlCacheType;
+    readonly SAMLRequestCache: ISamlCacheType;
   };
 
-  type ISAMLRequest = IRequestAndResponseStep & { Request: Document };
+  type ISAMLRequest = IRequestAndResponseStep & { readonly Request: Document };
 
   type IIssueInstant = ISAMLRequest & {
-    RequestIssueInstant: Date;
-    RequestAuthnRequest: Element;
+    readonly RequestIssueInstant: Date;
+    readonly RequestAuthnRequest: Element;
   };
 
   type IIssueInstantWithAuthnContextCR = IIssueInstant & {
-    RequestAuthnContextClassRef: NonEmptyString;
+    readonly RequestAuthnContextClassRef: NonEmptyString;
   };
 
   interface ITransformValidation {
-    idpIssuer: string;
-    message: string;
-    numberOfTransforms: number;
+    readonly idpIssuer: string;
+    readonly message: string;
+    readonly numberOfTransforms: number;
   }
 
   const responseElementValidationStep: TaskEither<
@@ -205,9 +204,9 @@ export const getPreValidateResponse = (
               E.fromOption(
                 () => new Error("StatusCode must contain a non empty Value")
               )(O.fromNullable(StatusCode.getAttribute("Value"))),
-              E.chain(statusCode => {
+              E.chain(statusCode =>
                 // TODO: Must show an error page to the user (26)
-                return pipe(
+                pipe(
                   statusCode,
                   E.fromPredicate(
                     Value =>
@@ -218,8 +217,8 @@ export const getPreValidateResponse = (
                         `Value attribute of StatusCode is invalid: ${statusCode}`
                       )
                   )
-                );
-              }),
+                )
+              ),
               E.map(() => _)
             )
           )
@@ -465,7 +464,7 @@ export const getPreValidateResponse = (
           return TE.right(Attributes);
         }
         const missingAttributes = difference(Eq)(
-          // tslint:disable-next-line: no-any
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (samlConfig as any).attributes?.attributes?.attributes || [
             "Request attributes must be defined"
           ],
@@ -567,6 +566,7 @@ export const getPreValidateResponse = (
 
   const validationFailure = (error: Error | ITransformValidation): void => {
     if (eventHandler) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       TransformError.is(error)
         ? eventHandler({
             data: {

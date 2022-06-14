@@ -13,11 +13,11 @@ import {
 
 export class CustomSamlClient extends PassportSaml.SAML {
   constructor(
-    private config: SamlConfig,
-    private extededCacheProvider: IExtendedCacheProvider,
-    private tamperAuthorizeRequest?: XmlTamperer,
-    private preValidateResponse?: PreValidateResponseT,
-    private doneCb?: PreValidateResponseDoneCallbackT
+    private readonly config: SamlConfig,
+    private readonly extededCacheProvider: IExtendedCacheProvider,
+    private readonly tamperAuthorizeRequest?: XmlTamperer,
+    private readonly preValidateResponse?: PreValidateResponseT,
+    private readonly doneCb?: PreValidateResponseDoneCallbackT
   ) {
     // validateInResponseTo must be set to false to disable
     // internal cacheProvider of passport-saml
@@ -32,8 +32,8 @@ export class CustomSamlClient extends PassportSaml.SAML {
    * the response XML to satisfy SPID protocol constrains
    */
   public validatePostResponse(
-    body: { SAMLResponse: string },
-    // tslint:disable-next-line: bool-param-default
+    body: { readonly SAMLResponse: string },
+
     callback: (err: Error, profile?: unknown, loggedOut?: boolean) => void
   ): void {
     if (this.preValidateResponse) {
@@ -49,7 +49,7 @@ export class CustomSamlClient extends PassportSaml.SAML {
           // go on with checks in case no error is found
           return super.validatePostResponse(body, (error, __, ___) => {
             if (!error && isValid && AuthnRequestID) {
-              // tslint:disable-next-line: no-floating-promises
+              // eslint-disable-next-line @typescript-eslint/no-floating-promises
               pipe(
                 this.extededCacheProvider.remove(AuthnRequestID),
                 TE.map(_ => callback(error, __, ___)),
@@ -77,7 +77,8 @@ export class CustomSamlClient extends PassportSaml.SAML {
   ): void {
     const newCallback = pipe(
       O.fromNullable(this.tamperAuthorizeRequest),
-      O.map(tamperAuthorizeRequest => (e: Error, xml?: string) => {
+      O.map(tamperAuthorizeRequest => (e: Error, xml?: string): void => {
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises, @typescript-eslint/no-unused-expressions
         xml
           ? pipe(
               tamperAuthorizeRequest(xml),

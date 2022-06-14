@@ -7,11 +7,9 @@ import { getSamlOptions } from "../../utils/saml";
 import * as redisCacheProvider from "../redis_cache_provider";
 import { SpidStrategy } from "../spid";
 
-// tslint:disable-next-line: no-any
 const mockRedisClient: RedisClient = (createMockRedis() as any).createClient();
 
 describe("SamlStrategy prototype arguments check", () => {
-  // tslint:disable-next-line: no-let no-any
   let OriginalPassportSaml: any;
   beforeAll(() => {
     OriginalPassportSaml = jest.requireActual("passport-saml").Strategy;
@@ -30,7 +28,6 @@ describe("SamlStrategy#constructor", () => {
   });
   it("should SamlStrategy constructor has 2 parameters", () => {
     const expectedNoopCacheProvider = {
-      // tslint:disable-next-line: no-empty
       get: () => () => {
         return;
       },
@@ -54,18 +51,18 @@ describe("SamlStrategy#constructor", () => {
       },
       mockRedisClient
     );
-    // tslint:disable-next-line: no-string-literal
+    
     expect(spidStrategy["options"]).toHaveProperty(
       "requestIdExpirationPeriodMs",
       900000
     );
-    // tslint:disable-next-line: no-string-literal
+    
     expect(spidStrategy["options"]).toHaveProperty(
       "cacheProvider",
       expectedNoopCacheProvider
     );
     expect(mockNoopCacheProvider).toBeCalledTimes(1);
-    // tslint:disable-next-line: no-string-literal
+    
     expect(spidStrategy["extendedRedisCacheProvider"]).toBeTruthy();
   });
 });

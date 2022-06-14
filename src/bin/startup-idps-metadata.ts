@@ -18,34 +18,37 @@ const argv = yargs
     demandOption: false,
     description: "ENV var name containing IDP Metadata URL",
     normalize: true,
+    // eslint-disable-next-line id-blacklist
     string: true
   })
   .option("testenv-metadata-url-env", {
     demandOption: false,
     description: "ENV var name containing TestEnv2 Metadata URL",
     normalize: true,
+    // eslint-disable-next-line id-blacklist
     string: true
   })
   .option("cie-metadata-url-env", {
     demandOption: false,
     description: "ENV var name containing CIE Metadata URL",
     normalize: true,
+    // eslint-disable-next-line id-blacklist
     string: true
   })
   .help().argv;
 
 interface IIDPSMetadataXML {
-  idps?: string;
-  xx_testenv2?: string;
-  xx_servizicie?: string;
+  readonly idps?: string;
+  readonly xx_testenv2?: string;
+  readonly xx_servizicie?: string;
 }
 
-function printIdpsMetadata(
+const printIdpsMetadata = (
   idpsMetadataENV: string | undefined,
   testEnv2MetadataENV: string | undefined,
   cieMetadataENV: string | undefined
-): Promise<IIDPSMetadataXML> {
-  // tslint:disable: no-object-mutation no-any no-empty
+): Promise<IIDPSMetadataXML> => {
+  // eslint-disable-next-line functional/immutable-data, @typescript-eslint/no-explicit-any, @typescript-eslint/no-empty-function
   logger.info = (): any => {};
   const maybeIdpsMetadataURL = pipe(
     O.fromNullable(idpsMetadataENV),
@@ -89,16 +92,16 @@ function printIdpsMetadata(
       maybeTestEnvMetadataURL,
       maybeCIEMetadataURL
     ),
-    // tslint:disable-next-line: no-inferred-empty-object-type
+
     T.map(A.reduce({}, (prev, current) => ({ ...prev, ...current })))
   )();
-}
+};
 
 printIdpsMetadata(
   argv["idp-metadata-url-env"],
   argv["testenv-metadata-url-env"],
   argv["cie-metadata-url-env"]
 )
-  // tslint:disable-next-line: no-console
+  // eslint-disable-next-line no-console
   .then(metadata => console.log(JSON.stringify(metadata, null, 2)))
   .catch(() => logger.error("Error fetching IDP metadata"));

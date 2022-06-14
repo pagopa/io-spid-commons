@@ -1,4 +1,3 @@
-// tslint:disable: no-object-mutation
 import { left, right } from "fp-ts/lib/Either";
 import { fromEither } from "fp-ts/lib/TaskEither";
 import { createMockRedis } from "mock-redis-client";
@@ -16,7 +15,6 @@ const mockSet = jest.fn();
 const mockGet = jest.fn();
 const mockDel = jest.fn();
 
-// tslint:disable-next-line: no-any
 const mockRedisClient: RedisClient = (createMockRedis() as any).createClient();
 mockRedisClient.set = mockSet;
 mockRedisClient.get = mockGet;
@@ -72,7 +70,6 @@ const authReqTampener = getAuthorizeRequestTamperer(
 const mockedCallback = jest.fn();
 
 describe("SAML prototype arguments check", () => {
-  // tslint:disable-next-line: no-let no-any
   let OriginalPassportSaml: any;
   beforeAll(() => {
     OriginalPassportSaml = jest.requireActual("passport-saml");
@@ -107,7 +104,7 @@ describe("CustomSamlClient#constructor", () => {
       redisCacheProvider
     );
     expect(customSamlClient).toBeTruthy();
-    // tslint:disable-next-line: no-string-literal
+    
     expect(customSamlClient["options"]).toHaveProperty(
       "validateInResponseTo",
       false
