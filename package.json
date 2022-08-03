@@ -1,6 +1,6 @@
 {
   "name": "@pagopa/io-spid-commons",
-  "version": "7.0.2",
+  "version": "8.0.0",
   "description": "Common code for integrating SPID authentication",
   "repository": {
     "type": "git",
@@ -57,14 +57,14 @@
   },
   "dependencies": {
     "@pagopa/ts-commons": "^10.0.0",
-    "@types/redis": "^2.8.14",
+    "@types/redis": "^2.8.32",
     "date-fns": "^1.30.1",
     "fp-ts": "^2.11.1",
     "io-ts": "^2.2.16",
     "io-ts-types": "^0.5.16",
     "node-fetch": "^2.2.0",
     "node-forge": "^1.0.0",
-    "passport": "^0.4.1",
+    "passport": "^0.6.0",
     "passport-saml": "1.3.5",
     "redis": "^2.8.0",
     "winston": "^3.0.0",
