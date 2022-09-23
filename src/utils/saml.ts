@@ -56,7 +56,7 @@ export {
 
 export type SamlAttributeT = keyof typeof SPID_USER_ATTRIBUTES;
 
-export interface SAMLError extends Error {
+export interface ISAMLError extends Error {
   readonly idpIssuer: string;
   readonly requestId: string;
 }
@@ -98,14 +98,15 @@ interface ITransformValidation {
 
 export const errorToSamlError = (
   e: Error,
-  info?: { requestId?: string; idpIssuer?: string }
-): SAMLError => ({
+  info?: { readonly requestId?: string; readonly idpIssuer?: string }
+): ISAMLError => ({
+  // the nullish coalescing operator and optional chaining will cover all cases here
+  // eslint-disable-next-line sonarjs/no-duplicate-string
+  idpIssuer: info?.idpIssuer ?? "not available",
   message: e.message,
   name: e.name,
-  stack: e.stack,
-  // the nullish coalescing operator and optional chaining will cover all cases here
   requestId: info?.requestId ?? "not available",
-  idpIssuer: info?.idpIssuer ?? "not available"
+  stack: e.stack
 });
 
 // eslint-disable-next-line max-lines-per-function
@@ -153,7 +154,7 @@ export const getPreValidateResponse = (
 
   const errorOrResponse: E.Either<
     Error,
-    { InResponseTo: NonEmptyString; Response: Element }
+    { readonly InResponseTo: NonEmptyString; readonly Response: Element }
   > = pipe(
     responsesCollection,
     E.fromPredicate(
@@ -170,7 +171,7 @@ export const getPreValidateResponse = (
         E.mapLeft(
           () => new Error("InResponseTo must contain a non empty string")
         ),
-        E.map(requestId => ({ InResponseTo: requestId, Response }))
+        E.map(InResponseTo => ({ InResponseTo, Response }))
       )
     )
   );
@@ -181,9 +182,9 @@ export const getPreValidateResponse = (
     E.getOrElse(() => "not available")
   );
 
-  //this method make idpIssuer and requestId available on all the scope
+  // this method make idpIssuer and requestId available on all the scope
   // this is useful while logging errors
-  const toSamlError = (message: string): SAMLError =>
+  const toSamlError = (message: string): ISAMLError =>
     errorToSamlError(new Error(message), { idpIssuer, requestId });
 
   const responseElementValidationStep: TaskEither<
@@ -196,9 +197,9 @@ export const getPreValidateResponse = (
         pipe(
           mainAttributeValidation(Response, samlConfig.acceptedClockSkewMs),
           E.map(IssueInstant => ({
+            InResponseTo,
             IssueInstant,
-            Response,
-            InResponseTo
+            Response
           }))
         )
       ),
@@ -612,18 +613,18 @@ export const getPreValidateResponse = (
           data: {
             idpIssuer: error.idpIssuer,
             message: error.message,
-            requestId,
-            numberOfTransforms: String(error.numberOfTransforms)
+            numberOfTransforms: String(error.numberOfTransforms),
+            requestId
           },
           name: "spid.error.transformOccurenceOverflow",
           type: "ERROR"
         });
       } else {
-        const samlError: SAMLError = toSamlError(error.message);
+        const samlError: ISAMLError = toSamlError(error.message);
         eventHandler({
           data: {
-            message: samlError.message,
             idpIssuer: samlError.idpIssuer,
+            message: samlError.message,
             requestId: samlError.requestId
           },
           name: "spid.error.generic",
