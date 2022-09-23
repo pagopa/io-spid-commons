@@ -132,7 +132,9 @@ describe("preValidateResponse", () => {
     await asyncExpectOnCallback(mockCallback, expectedError);
     expect(mockEventTracker).toBeCalledWith({
       data: {
-        message: expectedError.message
+        message: expectedError.message,
+        requestId: expect.any(String),
+        idpIssuer: expect.any(String)
       },
       name: expectedGenericEventName,
       type: "ERROR"
@@ -151,7 +153,7 @@ describe("preValidateResponse", () => {
       mockTestIdpIssuer: true
     };
     getPreValidateResponse(strictValidationOption, mockEventTracker)(
-      { ...samlConfig, acceptedClockSkewMs: 0 },
+      { ...samlConfig, acceptedClockSkewMs: 2000 },
       mockBody,
       mockRedisCacheProvider,
       undefined,
@@ -162,7 +164,9 @@ describe("preValidateResponse", () => {
     await asyncExpectOnCallback(mockCallback, expectedError);
     expect(mockEventTracker).toBeCalledWith({
       data: {
-        message: expectedError.message
+        message: expectedError.message,
+        requestId: expect.any(String),
+        idpIssuer: expect.any(String)
       },
       name: expectedGenericEventName,
       type: "ERROR"
@@ -192,7 +196,9 @@ describe("preValidateResponse", () => {
     await asyncExpectOnCallback(mockCallback, expectedError);
     expect(mockEventTracker).toBeCalledWith({
       data: {
-        message: expectedError.message
+        message: expectedError.message,
+        requestId: expect.any(String),
+        idpIssuer: expect.any(String)
       },
       name: expectedGenericEventName,
       type: "ERROR"
@@ -234,7 +240,8 @@ describe("preValidateResponse", () => {
       data: {
         idpIssuer: expectedError.idpIssuer,
         message: expectedError.message,
-        numberOfTransforms: String(expectedError.numberOfTransforms)
+        numberOfTransforms: String(expectedError.numberOfTransforms),
+        requestId: expect.any(String)
       },
       name: expectedTransformEventName,
       type: "ERROR"
@@ -269,7 +276,8 @@ describe("preValidateResponse", () => {
       data: {
         idpIssuer: expectedError.idpIssuer,
         message: expectedError.message,
-        numberOfTransforms: String(expectedError.numberOfTransforms)
+        numberOfTransforms: String(expectedError.numberOfTransforms),
+        requestId: expect.any(String)
       },
       name: expectedTransformEventName,
       type: "ERROR"
@@ -317,7 +325,8 @@ describe("preValidateResponse", () => {
     expect(mockEventTracker).toBeCalledWith({
       data: {
         idpIssuer: mockTestIdpIssuer,
-        message: expect.any(String)
+        message: expect.any(String),
+        requestId: expect.any(String)
       },
       name: expectedSignatureErrorName,
       type: "INFO"
@@ -422,7 +431,9 @@ describe("preValidateResponse", () => {
       await asyncExpectOnCallback(mockCallback, expectedError);
       expect(mockEventTracker).toBeCalledWith({
         data: {
-          message: expectedError.message
+          message: expectedError.message,
+          requestId: expect.any(String),
+          idpIssuer: expect.any(String)
         },
         name: expectedGenericEventName,
         type: "ERROR"
@@ -486,7 +497,9 @@ describe("preValidateResponse", () => {
     await asyncExpectOnCallback(mockCallback, expectedError);
     expect(mockEventTracker).toBeCalledWith({
       data: {
-        message: expectedError.message
+        message: expectedError.message,
+        requestId: expect.any(String),
+        idpIssuer: expect.any(String)
       },
       name: expectedGenericEventName,
       type: "ERROR"
