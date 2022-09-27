@@ -121,7 +121,7 @@ export const getPreValidateResponse = (
   doneCb,
   callback
   // eslint-disable-next-line sonarjs/cognitive-complexity
-): Promise<void | E.Either<void, void>> => {
+): void => {
   const maybeDoc = getXmlFromSamlResponse(body);
 
   if (O.isNone(maybeDoc)) {
@@ -138,10 +138,10 @@ export const getPreValidateResponse = (
 
   const hasStrictValidation = pipe(
     O.fromNullable(strictValidationOptions),
-    O.chain(_ =>
+    O.chain(validationOptions =>
       pipe(
         maybeIdpIssuer,
-        O.chainNullableK(issuer => _[issuer])
+        O.chainNullableK(issuer => validationOptions[issuer])
       )
     ),
     O.getOrElse(() => false)
@@ -152,7 +152,9 @@ export const getPreValidateResponse = (
     O.getOrElse(() => "not available")
   );
 
-  const errorOrResponse: E.Either<
+  // here we are partially validating the response just to obtain a requestId (InResponseTo) before doing any more step.
+  // this is needed if we want to have to log the requestId at any step further
+  const errorOrPartiallyValidatedResponse: E.Either<
     Error,
     { readonly InResponseTo: NonEmptyString; readonly Response: Element }
   > = pipe(
@@ -162,6 +164,7 @@ export const getPreValidateResponse = (
       _ => new Error("SAML Response must have only one Response element")
     ),
     E.map(coll => coll.item(0)),
+    // this check is bound to the previous one, because we can receive no Response based on the official validator guidelines
     E.chain(
       E.fromNullable(new Error("Missing Response element inside SAML Response"))
     ),
@@ -177,7 +180,7 @@ export const getPreValidateResponse = (
   );
 
   const requestId: string = pipe(
-    errorOrResponse,
+    errorOrPartiallyValidatedResponse,
     E.map(({ InResponseTo }) => InResponseTo),
     E.getOrElse(() => "not available")
   );
@@ -192,7 +195,7 @@ export const getPreValidateResponse = (
     IBaseOutput
   > = TE.fromEither(
     pipe(
-      errorOrResponse,
+      errorOrPartiallyValidatedResponse,
       E.chainW(({ Response, InResponseTo }) =>
         pipe(
           mainAttributeValidation(Response, samlConfig.acceptedClockSkewMs),
@@ -606,6 +609,12 @@ export const getPreValidateResponse = (
       TE.map(() => _)
     );
 
+  /* LOGGING INFOS:
+    having the idpIssuer and requestId as data here we leverage multiple advantages:
+    1. we can query based on the idp and display graphs about errors/usage
+    2. we know what idp is causing the error
+    3. having the requestId it's possible to analyze further the problem encountered
+  */
   const validationFailure = (error: Error | ITransformValidation): void => {
     if (eventHandler) {
       if (TransformError.is(error)) {
@@ -661,7 +670,7 @@ export const getPreValidateResponse = (
     return callback(null, true, _.InResponseTo);
   };
 
-  return pipe(
+  pipe(
     responseElementValidationStep,
     TE.chain(returnRequestAndResponseStep),
     TE.chain(parseSAMLRequestStep),
