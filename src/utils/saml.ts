@@ -678,8 +678,7 @@ export const getPreValidateResponse = (
   };
 
   const extractAndLogTimings = (
-    info: IIssueInstantWithAuthnContextCR,
-    eventHandler?: EventTracker
+    info: IIssueInstantWithAuthnContextCR
   ): void => {
     if (eventHandler) {
       const extractNotOnOrAfterDelta = (
@@ -739,18 +738,18 @@ export const getPreValidateResponse = (
       );
 
       const timings = {
-        ResponseIssueInstantDelta,
-        AssertionIssueInstantDelta,
-        AssertionSubjectNotOnOrAfterDelta,
         AssertionConditionsNotOnOrAfterDelta,
-        AssertionNotBeforeDelta
+        AssertionIssueInstantDelta,
+        AssertionNotBeforeDelta,
+        AssertionSubjectNotOnOrAfterDelta,
+        ResponseIssueInstantDelta
       };
 
       eventHandler({
         data: {
+          idpIssuer,
           message: "Deltas infos to determine a valid clockSkewMs",
-          idpIssuer: idpIssuer,
-          requestId: requestId,
+          requestId,
           ...timings
         },
         name: "spid.info.deltas",
@@ -771,9 +770,9 @@ export const getPreValidateResponse = (
     TE.chainFirst(responseIssuerValidationStep),
     TE.chainFirst(assertionIssuerValidationStep),
     TE.chainFirstW(transformValidationStep),
-    //log timings infos
+    // log timings infos
     TE.chainFirst(IssueInstantWithAuthnContextCR => {
-      extractAndLogTimings(IssueInstantWithAuthnContextCR, eventHandler);
+      extractAndLogTimings(IssueInstantWithAuthnContextCR);
       return TE.right(void 0);
     }),
     TE.bimap(validationFailure, validationSuccess)

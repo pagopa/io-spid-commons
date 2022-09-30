@@ -757,6 +757,7 @@ export const assertionValidation = (startTime: number) => (
   samlConfig: SamlConfig,
   InResponseTo: string,
   requestAuthnContextClassRef: string
+  // eslint-disable-next-line sonarjs/cognitive-complexity
 ): E.Either<Error, HTMLCollectionOf<Element>> => {
   const acceptedClockSkewMs = samlConfig.acceptedClockSkewMs || 0;
   return pipe(
