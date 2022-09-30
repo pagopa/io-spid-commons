@@ -632,7 +632,7 @@ export const validateIssuer = (
     )
   );
 
-export const mainAttributeValidation = (
+export const mainAttributeValidation = (startTime: number) => (
   requestOrAssertion: Element,
   acceptedClockSkewMs: number = 0
 ): E.Either<Error, Date> =>
@@ -654,11 +654,11 @@ export const mainAttributeValidation = (
     E.chain(IssueInstant => utcStringToDate(IssueInstant, "IssueInstant")),
     E.chain(
       E.fromPredicate(
-        _ =>
-          _.getTime() <
+        IssueInstant =>
+          IssueInstant.getTime() <
           (acceptedClockSkewMs === -1
             ? Infinity
-            : Date.now() + acceptedClockSkewMs),
+            : startTime + acceptedClockSkewMs),
         () => new Error("IssueInstant must be in the past")
       )
     )
@@ -729,7 +729,7 @@ export const transformsValidation = (
     )
   );
 
-const notOnOrAfterValidation = (
+const notOnOrAfterValidation = (startTime: number) => (
   element: Element,
   acceptedClockSkewMs: number = 0
 ): E.Either<Error, Date> =>
@@ -745,14 +745,14 @@ const notOnOrAfterValidation = (
           NotOnOrAfter.getTime() >
           (acceptedClockSkewMs === -1
             ? -Infinity
-            : Date.now() - acceptedClockSkewMs),
+            : startTime - acceptedClockSkewMs),
         () => new Error("NotOnOrAfter must be in the future")
       )
     )
   );
 
 // eslint-disable-next-line max-lines-per-function
-export const assertionValidation = (
+export const assertionValidation = (startTime: number) => (
   Assertion: Element,
   samlConfig: SamlConfig,
   InResponseTo: string,
@@ -919,7 +919,7 @@ export const assertionValidation = (
                 ),
                 E.chain(SubjectConfirmationData =>
                   pipe(
-                    notOnOrAfterValidation(
+                    notOnOrAfterValidation(startTime)(
                       SubjectConfirmationData,
                       acceptedClockSkewMs
                     ),
@@ -973,11 +973,14 @@ export const assertionValidation = (
             ),
             E.chain(Conditions =>
               pipe(
-                notOnOrAfterValidation(Conditions, acceptedClockSkewMs),
+                notOnOrAfterValidation(startTime)(
+                  Conditions,
+                  acceptedClockSkewMs
+                ),
                 E.map(() => Conditions)
               )
             ),
-            E.chain(Conditions =>
+            E.chainFirst(Conditions =>
               pipe(
                 NonEmptyString.decode(Conditions.getAttribute("NotBefore")),
                 E.mapLeft(
@@ -990,14 +993,13 @@ export const assertionValidation = (
                       NotBefore.getTime() <=
                       (acceptedClockSkewMs === -1
                         ? Infinity
-                        : Date.now() + acceptedClockSkewMs),
+                        : startTime + acceptedClockSkewMs),
                     () => new Error("NotBefore must be in the past")
                   )
-                ),
-                E.map(() => Conditions)
+                )
               )
             ),
-            E.chain(Conditions =>
+            E.chainFirst(Conditions =>
               pipe(
                 E.fromOption(
                   () =>
@@ -1043,7 +1045,7 @@ export const assertionValidation = (
                 )
               )
             ),
-            E.chain(() =>
+            E.chainFirst(() =>
               pipe(
                 E.fromOption(() => new Error("Missing AuthnStatement"))(
                   O.fromNullable(

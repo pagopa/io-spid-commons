@@ -123,6 +123,7 @@ export const getPreValidateResponse = (
   // eslint-disable-next-line sonarjs/cognitive-complexity
 ): void => {
   const maybeDoc = getXmlFromSamlResponse(body);
+  const startTime = Date.now();
 
   if (O.isNone(maybeDoc)) {
     throw new Error("Empty SAML response");
@@ -198,7 +199,10 @@ export const getPreValidateResponse = (
       errorOrPartiallyValidatedResponse,
       E.chainW(({ Response, InResponseTo }) =>
         pipe(
-          mainAttributeValidation(Response, samlConfig.acceptedClockSkewMs),
+          mainAttributeValidation(startTime)(
+            Response,
+            samlConfig.acceptedClockSkewMs
+          ),
           E.map(IssueInstant => ({
             InResponseTo,
             IssueInstant,
@@ -319,7 +323,10 @@ export const getPreValidateResponse = (
       ),
       E.chain(_ =>
         pipe(
-          mainAttributeValidation(_.Assertion, samlConfig.acceptedClockSkewMs),
+          mainAttributeValidation(startTime)(
+            _.Assertion,
+            samlConfig.acceptedClockSkewMs
+          ),
           E.map(IssueInstant => ({
             AssertionIssueInstant: IssueInstant,
             ..._
@@ -496,7 +503,7 @@ export const getPreValidateResponse = (
   ): TaskEither<Error, IIssueInstantWithAuthnContextCR> =>
     pipe(
       TE.fromEither(
-        assertionValidation(
+        assertionValidation(startTime)(
           _.Assertion,
           samlConfig,
           _.InResponseTo,
@@ -670,18 +677,105 @@ export const getPreValidateResponse = (
     return callback(null, true, _.InResponseTo);
   };
 
+  const extractAndLogTimings = (
+    info: IIssueInstantWithAuthnContextCR,
+    eventHandler?: EventTracker
+  ): void => {
+    if (eventHandler) {
+      const extractNotOnOrAfterDelta = (
+        element: Element
+      ): E.Either<Error, string> =>
+        pipe(
+          NonEmptyString.decode(element.getAttribute("NotOnOrAfter")),
+          E.chain(UTCISODateFromString.decode),
+          E.mapLeft(() => new Error("Could not find/convert NotOnOrAfter")),
+          E.map(NotOnOrAfter => String(startTime - NotOnOrAfter.getTime()))
+        );
+
+      const ResponseIssueInstantDelta = String(
+        startTime - info.IssueInstant.getTime()
+      );
+      const AssertionIssueInstantDelta = String(
+        startTime - info.AssertionIssueInstant.getTime()
+      );
+      const AssertionNotBeforeDelta = pipe(
+        info.Assertion.getAttribute("NotBefore"),
+        NonEmptyString.decode,
+        E.chain(UTCISODateFromString.decode),
+        E.map(NotBefore => String(startTime - NotBefore.getTime())),
+        E.getOrElseW(() => "not available")
+      );
+      const AssertionSubjectNotOnOrAfterDelta = pipe(
+        info.Assertion.getElementsByTagNameNS(
+          SAML_NAMESPACE.ASSERTION,
+          "Subject"
+        ).item(0),
+        O.fromNullable,
+        O.chainNullableK(Subject =>
+          Subject.getElementsByTagNameNS(
+            SAML_NAMESPACE.ASSERTION,
+            "SubjectConfirmation"
+          ).item(0)
+        ),
+        O.chainNullableK(SubjectConfirmation =>
+          SubjectConfirmation.getElementsByTagNameNS(
+            SAML_NAMESPACE.ASSERTION,
+            "SubjectConfirmationData"
+          ).item(0)
+        ),
+        E.fromOption(() => new Error("Could not find elements")),
+        E.chainW(extractNotOnOrAfterDelta),
+        E.getOrElseW(() => "not available")
+      );
+      const AssertionConditionsNotOnOrAfterDelta = pipe(
+        info.Assertion.getElementsByTagNameNS(
+          SAML_NAMESPACE.ASSERTION,
+          "Conditions"
+        ).item(0),
+        O.fromNullable,
+        E.fromOption(() => new Error("Could not find elements")),
+        E.chainW(extractNotOnOrAfterDelta),
+        E.getOrElseW(() => "not available")
+      );
+
+      const timings = {
+        ResponseIssueInstantDelta,
+        AssertionIssueInstantDelta,
+        AssertionSubjectNotOnOrAfterDelta,
+        AssertionConditionsNotOnOrAfterDelta,
+        AssertionNotBeforeDelta
+      };
+
+      eventHandler({
+        data: {
+          message: "Deltas infos to determine a valid clockSkewMs",
+          idpIssuer: idpIssuer,
+          requestId: requestId,
+          ...timings
+        },
+        name: "spid.info.deltas",
+        type: "INFO"
+      });
+    }
+  };
+
   pipe(
     responseElementValidationStep,
     TE.chain(returnRequestAndResponseStep),
     TE.chain(parseSAMLRequestStep),
     TE.chain(getIssueInstantFromRequestStep),
-    TE.chain(issueInstantValidationStep),
-    TE.chain(assertionIssueInstantValidationStep),
+    TE.chainFirst(issueInstantValidationStep),
+    TE.chainFirst(assertionIssueInstantValidationStep),
     TE.chain(authnContextClassRefValidationStep),
-    TE.chain(attributesValidationStep),
-    TE.chain(responseIssuerValidationStep),
-    TE.chain(assertionIssuerValidationStep),
-    TE.chainW(transformValidationStep),
+    TE.chainFirst(attributesValidationStep),
+    TE.chainFirst(responseIssuerValidationStep),
+    TE.chainFirst(assertionIssuerValidationStep),
+    TE.chainFirstW(transformValidationStep),
+    //log timings infos
+    TE.chainFirst(IssueInstantWithAuthnContextCR => {
+      extractAndLogTimings(IssueInstantWithAuthnContextCR, eventHandler);
+      return TE.right(void 0);
+    }),
     TE.bimap(validationFailure, validationSuccess)
   )().catch(callback);
 };
