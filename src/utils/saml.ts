@@ -96,16 +96,17 @@ interface ITransformValidation {
   readonly numberOfTransforms: number;
 }
 
+const InfoNotAvailable = "NOT AVAILABLE";
+
 export const errorToSamlError = (
   e: Error,
   info?: { readonly requestId?: string; readonly idpIssuer?: string }
 ): ISAMLError => ({
   // the nullish coalescing operator and optional chaining will cover all cases here
-  // eslint-disable-next-line sonarjs/no-duplicate-string
-  idpIssuer: info?.idpIssuer ?? "not available",
+  idpIssuer: info?.idpIssuer ?? InfoNotAvailable,
   message: e.message,
   name: e.name,
-  requestId: info?.requestId ?? "not available",
+  requestId: info?.requestId ?? InfoNotAvailable,
   stack: e.stack
 });
 
@@ -150,7 +151,7 @@ export const getPreValidateResponse = (
 
   const idpIssuer: string = pipe(
     maybeIdpIssuer,
-    O.getOrElse(() => "not available")
+    O.getOrElse(() => InfoNotAvailable)
   );
 
   // here we are partially validating the response just to obtain a requestId (InResponseTo) before doing any more step.
@@ -183,13 +184,8 @@ export const getPreValidateResponse = (
   const requestId: string = pipe(
     errorOrPartiallyValidatedResponse,
     E.map(({ InResponseTo }) => InResponseTo),
-    E.getOrElse(() => "not available")
+    E.getOrElse(() => InfoNotAvailable)
   );
-
-  // this method make idpIssuer and requestId available on all the scope
-  // this is useful while logging errors
-  const toSamlError = (message: string): ISAMLError =>
-    errorToSamlError(new Error(message), { idpIssuer, requestId });
 
   const responseElementValidationStep: TaskEither<
     Error,
@@ -636,12 +632,11 @@ export const getPreValidateResponse = (
           type: "ERROR"
         });
       } else {
-        const samlError: ISAMLError = toSamlError(error.message);
         eventHandler({
           data: {
-            idpIssuer: samlError.idpIssuer,
-            message: samlError.message,
-            requestId: samlError.requestId
+            idpIssuer,
+            message: error.message,
+            requestId
           },
           name: "spid.error.generic",
           type: "ERROR"
@@ -702,7 +697,7 @@ export const getPreValidateResponse = (
         NonEmptyString.decode,
         E.chain(UTCISODateFromString.decode),
         E.map(NotBefore => String(startTime - NotBefore.getTime())),
-        E.getOrElseW(() => "not available")
+        E.getOrElseW(() => InfoNotAvailable)
       );
       const AssertionSubjectNotOnOrAfterDelta = pipe(
         info.Assertion.getElementsByTagNameNS(
@@ -724,7 +719,7 @@ export const getPreValidateResponse = (
         ),
         E.fromOption(() => new Error("Could not find elements")),
         E.chainW(extractNotOnOrAfterDelta),
-        E.getOrElseW(() => "not available")
+        E.getOrElseW(() => InfoNotAvailable)
       );
       const AssertionConditionsNotOnOrAfterDelta = pipe(
         info.Assertion.getElementsByTagNameNS(
@@ -734,7 +729,7 @@ export const getPreValidateResponse = (
         O.fromNullable,
         E.fromOption(() => new Error("Could not find elements")),
         E.chainW(extractNotOnOrAfterDelta),
-        E.getOrElseW(() => "not available")
+        E.getOrElseW(() => InfoNotAvailable)
       );
 
       const timings = {
