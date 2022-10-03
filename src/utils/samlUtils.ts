@@ -24,6 +24,7 @@ import * as xmlCrypto from "xml-crypto";
 import { Builder, parseStringPromise } from "xml2js";
 import { DOMParser } from "xmldom";
 import { SPID_LEVELS, SPID_URLS, SPID_USER_ATTRIBUTES } from "../config";
+import { EventTracker } from "..";
 import { logger } from "./logger";
 import {
   ContactType,
@@ -32,7 +33,6 @@ import {
   IServiceProviderConfig,
   ISpidStrategyOptions
 } from "./middleware";
-import { EventTracker } from "..";
 import { IIssueInstantWithAuthnContextCR } from "./saml";
 
 export type SamlAttributeT = keyof typeof SPID_USER_ATTRIBUTES;
