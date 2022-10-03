@@ -25,7 +25,8 @@ import {
   notSignedWithHmacPredicate,
   TransformError,
   transformsValidation,
-  validateIssuer
+  validateIssuer,
+  extractAndLogTimings
 } from "./samlUtils";
 import {
   getAuthorizeRequestTamperer,
@@ -38,7 +39,8 @@ import {
   isEmptyNode,
   logSamlCertExpiration,
   mainAttributeValidation,
-  SAML_NAMESPACE
+  SAML_NAMESPACE,
+  InfoNotAvailable
 } from "./samlUtils";
 
 export {
@@ -86,7 +88,7 @@ type IIssueInstant = ISAMLRequest & {
   readonly RequestAuthnRequest: Element;
 };
 
-type IIssueInstantWithAuthnContextCR = IIssueInstant & {
+export type IIssueInstantWithAuthnContextCR = IIssueInstant & {
   readonly RequestAuthnContextClassRef: NonEmptyString;
 };
 
@@ -96,24 +98,11 @@ interface ITransformValidation {
   readonly numberOfTransforms: number;
 }
 
-const InfoNotAvailable = "NOT AVAILABLE";
-
-export const errorToSamlError = (
-  e: Error,
-  info?: { readonly requestId?: string; readonly idpIssuer?: string }
-): ISAMLError => ({
-  // the nullish coalescing operator and optional chaining will cover all cases here
-  idpIssuer: info?.idpIssuer ?? InfoNotAvailable,
-  message: e.message,
-  name: e.name,
-  requestId: info?.requestId ?? InfoNotAvailable,
-  stack: e.stack
-});
-
 // eslint-disable-next-line max-lines-per-function
 export const getPreValidateResponse = (
   strictValidationOptions?: StrictResponseValidationOptions,
-  eventHandler?: EventTracker
+  eventHandler?: EventTracker,
+  hasDeltasLogging?: boolean
   // eslint-disable-next-line max-lines-per-function
 ): PreValidateResponseT => (
   samlConfig,
@@ -613,11 +602,11 @@ export const getPreValidateResponse = (
     );
 
   /* LOGGING INFOS:
-            having the idpIssuer and requestId as data here we leverage multiple advantages:
-            1. we can query based on the idp and display graphs about errors/usage
-            2. we know what idp is causing the error
-            3. having the requestId it's possible to analyze further the problem encountered
-          */
+   * having the idpIssuer and requestId as data here we leverage multiple advantages:
+   * 1. we can query based on the idp and display graphs about errors/usage
+   * 2. we know what idp is causing the error
+   * 3. having the requestId it's possible to analyze further the problem encountered
+   */
   const validationFailure = (error: Error | ITransformValidation): void => {
     if (eventHandler) {
       if (TransformError.is(error)) {
@@ -672,89 +661,6 @@ export const getPreValidateResponse = (
     return callback(null, true, _.InResponseTo);
   };
 
-  const extractAndLogTimings = (
-    info: IIssueInstantWithAuthnContextCR
-  ): TE.TaskEither<never, void> => {
-    if (eventHandler) {
-      const extractNotOnOrAfterDelta = (
-        element: Element
-      ): E.Either<Error, string> =>
-        pipe(
-          NonEmptyString.decode(element.getAttribute("NotOnOrAfter")),
-          E.chain(UTCISODateFromString.decode),
-          E.mapLeft(() => new Error("Could not find/convert NotOnOrAfter")),
-          E.map(NotOnOrAfter => String(startTime - NotOnOrAfter.getTime()))
-        );
-
-      const ResponseIssueInstantDelta = String(
-        startTime - info.IssueInstant.getTime()
-      );
-      const AssertionIssueInstantDelta = String(
-        startTime - info.AssertionIssueInstant.getTime()
-      );
-      const AssertionNotBeforeDelta = pipe(
-        info.Assertion.getAttribute("NotBefore"),
-        NonEmptyString.decode,
-        E.chain(UTCISODateFromString.decode),
-        E.map(NotBefore => String(startTime - NotBefore.getTime())),
-        E.getOrElseW(() => InfoNotAvailable)
-      );
-      const AssertionSubjectNotOnOrAfterDelta = pipe(
-        info.Assertion.getElementsByTagNameNS(
-          SAML_NAMESPACE.ASSERTION,
-          "Subject"
-        ).item(0),
-        O.fromNullable,
-        O.chainNullableK(Subject =>
-          Subject.getElementsByTagNameNS(
-            SAML_NAMESPACE.ASSERTION,
-            "SubjectConfirmation"
-          ).item(0)
-        ),
-        O.chainNullableK(SubjectConfirmation =>
-          SubjectConfirmation.getElementsByTagNameNS(
-            SAML_NAMESPACE.ASSERTION,
-            "SubjectConfirmationData"
-          ).item(0)
-        ),
-        E.fromOption(() => new Error("Could not find elements")),
-        E.chainW(extractNotOnOrAfterDelta),
-        E.getOrElseW(() => InfoNotAvailable)
-      );
-      const AssertionConditionsNotOnOrAfterDelta = pipe(
-        info.Assertion.getElementsByTagNameNS(
-          SAML_NAMESPACE.ASSERTION,
-          "Conditions"
-        ).item(0),
-        O.fromNullable,
-        E.fromOption(() => new Error("Could not find elements")),
-        E.chainW(extractNotOnOrAfterDelta),
-        E.getOrElseW(() => InfoNotAvailable)
-      );
-
-      const timings = {
-        AssertionConditionsNotOnOrAfterDelta,
-        AssertionIssueInstantDelta,
-        AssertionNotBeforeDelta,
-        AssertionSubjectNotOnOrAfterDelta,
-        ResponseIssueInstantDelta
-      };
-
-      eventHandler({
-        data: {
-          idpIssuer,
-          message: "Deltas infos to determine a valid clockSkewMs",
-          requestId,
-          ...timings
-        },
-        name: "spid.info.deltas",
-        type: "INFO"
-      });
-    }
-
-    return TE.right(void 0);
-  };
-
   pipe(
     responseElementValidationStep,
     TE.chain(returnRequestAndResponseStep),
@@ -768,7 +674,15 @@ export const getPreValidateResponse = (
     TE.chainFirst(assertionIssuerValidationStep),
     TE.chainFirstW(transformValidationStep),
     // log timings infos
-    TE.chainFirstW(extractAndLogTimings),
+    TE.chainFirstW(
+      extractAndLogTimings(
+        startTime,
+        idpIssuer,
+        requestId,
+        eventHandler,
+        hasDeltasLogging
+      )
+    ),
     TE.bimap(validationFailure, validationSuccess)
   )().catch(callback);
 };

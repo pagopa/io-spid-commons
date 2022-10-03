@@ -32,6 +32,8 @@ import {
   IServiceProviderConfig,
   ISpidStrategyOptions
 } from "./middleware";
+import { EventTracker } from "..";
+import { IIssueInstantWithAuthnContextCR } from "./saml";
 
 export type SamlAttributeT = keyof typeof SPID_USER_ATTRIBUTES;
 
@@ -76,6 +78,99 @@ const cleanCert = (cert: string): string =>
 const SAMLResponse = t.type({
   SAMLResponse: t.string
 });
+
+export const InfoNotAvailable = "NOT AVAILABLE";
+
+/**
+ * If an eventHandler and a feature flag are provided this function logs the timing deltas.
+ * This is useful to monitor the timings and to adjust the clockSkewMs variable
+ */
+export const extractAndLogTimings = (
+  startTime: number,
+  idpIssuer: string,
+  requestId: string,
+  eventHandler?: EventTracker,
+  hasDeltasLogging?: boolean
+) => (info: IIssueInstantWithAuthnContextCR): TE.TaskEither<never, void> => {
+  if (eventHandler && hasDeltasLogging) {
+    const extractNotOnOrAfterDelta = (
+      element: Element
+    ): E.Either<Error, string> =>
+      pipe(
+        NonEmptyString.decode(element.getAttribute("NotOnOrAfter")),
+        E.chain(UTCISODateFromString.decode),
+        E.mapLeft(() => new Error("Could not find/convert NotOnOrAfter")),
+        E.map(NotOnOrAfter => String(startTime - NotOnOrAfter.getTime()))
+      );
+
+    const ResponseIssueInstantDelta = String(
+      startTime - info.IssueInstant.getTime()
+    );
+    const AssertionIssueInstantDelta = String(
+      startTime - info.AssertionIssueInstant.getTime()
+    );
+    const AssertionNotBeforeDelta = pipe(
+      info.Assertion.getAttribute("NotBefore"),
+      NonEmptyString.decode,
+      E.chain(UTCISODateFromString.decode),
+      E.map(NotBefore => String(startTime - NotBefore.getTime())),
+      E.getOrElseW(() => InfoNotAvailable)
+    );
+    const AssertionSubjectNotOnOrAfterDelta = pipe(
+      info.Assertion.getElementsByTagNameNS(
+        SAML_NAMESPACE.ASSERTION,
+        "Subject"
+      ).item(0),
+      O.fromNullable,
+      O.chainNullableK(Subject =>
+        Subject.getElementsByTagNameNS(
+          SAML_NAMESPACE.ASSERTION,
+          "SubjectConfirmation"
+        ).item(0)
+      ),
+      O.chainNullableK(SubjectConfirmation =>
+        SubjectConfirmation.getElementsByTagNameNS(
+          SAML_NAMESPACE.ASSERTION,
+          "SubjectConfirmationData"
+        ).item(0)
+      ),
+      E.fromOption(() => new Error("Could not find elements")),
+      E.chainW(extractNotOnOrAfterDelta),
+      E.getOrElseW(() => InfoNotAvailable)
+    );
+    const AssertionConditionsNotOnOrAfterDelta = pipe(
+      info.Assertion.getElementsByTagNameNS(
+        SAML_NAMESPACE.ASSERTION,
+        "Conditions"
+      ).item(0),
+      O.fromNullable,
+      E.fromOption(() => new Error("Could not find elements")),
+      E.chainW(extractNotOnOrAfterDelta),
+      E.getOrElseW(() => InfoNotAvailable)
+    );
+
+    const timings = {
+      AssertionConditionsNotOnOrAfterDelta,
+      AssertionIssueInstantDelta,
+      AssertionNotBeforeDelta,
+      AssertionSubjectNotOnOrAfterDelta,
+      ResponseIssueInstantDelta
+    };
+
+    eventHandler({
+      data: {
+        idpIssuer,
+        message: "Deltas infos to determine a valid clockSkewMs",
+        requestId,
+        ...timings
+      },
+      name: "spid.info.deltas",
+      type: "INFO"
+    });
+  }
+
+  return TE.right(void 0);
+};
 
 /**
  * True if the element contains at least one element signed using hamc
@@ -1000,7 +1095,7 @@ export const assertionValidation = (validationTimestamp: number) => (
                 )
               )
             ),
-            E.chainFirst(Conditions =>
+            E.chain(Conditions =>
               pipe(
                 E.fromOption(
                   () =>
@@ -1046,7 +1141,7 @@ export const assertionValidation = (validationTimestamp: number) => (
                 )
               )
             ),
-            E.chainFirst(() =>
+            E.chain(() =>
               pipe(
                 E.fromOption(() => new Error("Missing AuthnStatement"))(
                   O.fromNullable(
