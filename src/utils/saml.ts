@@ -613,11 +613,11 @@ export const getPreValidateResponse = (
     );
 
   /* LOGGING INFOS:
-    having the idpIssuer and requestId as data here we leverage multiple advantages:
-    1. we can query based on the idp and display graphs about errors/usage
-    2. we know what idp is causing the error
-    3. having the requestId it's possible to analyze further the problem encountered
-  */
+            having the idpIssuer and requestId as data here we leverage multiple advantages:
+            1. we can query based on the idp and display graphs about errors/usage
+            2. we know what idp is causing the error
+            3. having the requestId it's possible to analyze further the problem encountered
+          */
   const validationFailure = (error: Error | ITransformValidation): void => {
     if (eventHandler) {
       if (TransformError.is(error)) {
@@ -674,7 +674,7 @@ export const getPreValidateResponse = (
 
   const extractAndLogTimings = (
     info: IIssueInstantWithAuthnContextCR
-  ): void => {
+  ): TE.TaskEither<never, void> => {
     if (eventHandler) {
       const extractNotOnOrAfterDelta = (
         element: Element
@@ -751,6 +751,8 @@ export const getPreValidateResponse = (
         type: "INFO"
       });
     }
+
+    return TE.right(void 0);
   };
 
   pipe(
@@ -766,10 +768,7 @@ export const getPreValidateResponse = (
     TE.chainFirst(assertionIssuerValidationStep),
     TE.chainFirstW(transformValidationStep),
     // log timings infos
-    TE.chainFirst(IssueInstantWithAuthnContextCR => {
-      extractAndLogTimings(IssueInstantWithAuthnContextCR);
-      return TE.right(void 0);
-    }),
+    TE.chainFirstW(extractAndLogTimings),
     TE.bimap(validationFailure, validationSuccess)
   )().catch(callback);
 };
