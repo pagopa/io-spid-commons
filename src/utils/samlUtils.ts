@@ -100,7 +100,7 @@ export const extractAndLogTimings = (
         NonEmptyString.decode(element.getAttribute("NotOnOrAfter")),
         E.chain(UTCISODateFromString.decode),
         E.mapLeft(() => new Error("Could not find/convert NotOnOrAfter")),
-        E.map(NotOnOrAfter => String(startTime - NotOnOrAfter.getTime()))
+        E.map(NotOnOrAfter => String(NotOnOrAfter.getTime() - startTime))
       );
 
     const ResponseIssueInstantDelta = String(
