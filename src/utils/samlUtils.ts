@@ -90,9 +90,9 @@ export const extractAndLogTimings = (
   idpIssuer: string,
   requestId: string,
   eventHandler?: EventTracker,
-  hasDeltasLogging?: boolean
+  hasClockSkewLoggingEvent?: boolean
 ) => (info: IIssueInstantWithAuthnContextCR): TE.TaskEither<never, void> => {
-  if (eventHandler && hasDeltasLogging) {
+  if (eventHandler && hasClockSkewLoggingEvent) {
     const extractNotOnOrAfterDelta = (
       element: Element
     ): E.Either<Error, string> =>

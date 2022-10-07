@@ -102,7 +102,7 @@ interface ITransformValidation {
 export const getPreValidateResponse = (
   strictValidationOptions?: StrictResponseValidationOptions,
   eventHandler?: EventTracker,
-  hasDeltasLogging?: boolean
+  hasClockSkewLoggingEvent?: boolean
   // eslint-disable-next-line max-lines-per-function
 ): PreValidateResponseT => (
   samlConfig,
@@ -680,7 +680,7 @@ export const getPreValidateResponse = (
         idpIssuer,
         requestId,
         eventHandler,
-        hasDeltasLogging
+        hasClockSkewLoggingEvent
       )
     ),
     TE.bimap(validationFailure, validationSuccess)

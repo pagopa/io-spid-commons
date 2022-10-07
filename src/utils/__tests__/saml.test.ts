@@ -377,7 +377,7 @@ describe("preValidateResponse", () => {
     await asyncExpectOnCallback(mockCallback);
   });
 
-  it("should preValidate succeed and log the timing deltas when hasDeltaLoggings is provided", async () => {
+  it("should preValidate succeed and log the timing deltas when hasClockSkewLoggingEvent is provided", async () => {
     mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
       tryCatch(() => new DOMParser().parseFromString(getSamlResponse()))
     );

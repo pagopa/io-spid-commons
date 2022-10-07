@@ -90,7 +90,7 @@ export interface IApplicationConfig {
   readonly spidLevelsWhitelist: ReadonlyArray<keyof SPID_LEVELS>;
   readonly startupIdpsMetadata?: Record<string, string>;
   readonly eventTraker?: EventTracker;
-  readonly hasDeltasLogging?: boolean;
+  readonly hasClockSkewLoggingEvent?: boolean;
 }
 
 // re-export
@@ -220,7 +220,7 @@ export const withSpid = ({
         getPreValidateResponse(
           serviceProviderConfig.strictResponseValidation,
           appConfig.eventTraker,
-          appConfig.hasDeltasLogging
+          appConfig.hasClockSkewLoggingEvent
         ),
         doneCb
       );
