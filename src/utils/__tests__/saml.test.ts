@@ -377,6 +377,42 @@ describe("preValidateResponse", () => {
     await asyncExpectOnCallback(mockCallback);
   });
 
+  it("should preValidate succeed and log the timing deltas when hasDeltaLoggings is provided", async () => {
+    mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
+      tryCatch(() => new DOMParser().parseFromString(getSamlResponse()))
+    );
+    const strictValidationOption: StrictResponseValidationOptions = {
+      mockTestIdpIssuer: true
+    };
+    getPreValidateResponse(strictValidationOption, mockEventTracker, true)(
+      { ...samlConfig, acceptedClockSkewMs: 0 },
+      mockBody,
+      mockRedisCacheProvider,
+      undefined,
+      mockCallback
+    );
+    expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
+    await asyncExpectOnCallback(mockCallback);
+
+    expect(mockEventTracker).toHaveBeenCalledTimes(1);
+    expect(mockEventTracker).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          idpIssuer: expect.any(String),
+          message: "Deltas infos to determine a valid clockSkewMs",
+          requestId: expect.any(String),
+          AssertionConditionsNotOnOrAfterDelta: expect.any(String),
+          AssertionIssueInstantDelta: expect.any(String),
+          AssertionNotBeforeDelta: expect.any(String),
+          AssertionSubjectNotOnOrAfterDelta: expect.any(String),
+          ResponseIssueInstantDelta: expect.any(String)
+        },
+        name: "spid.info.deltas",
+        type: "INFO"
+      })
+    );
+  });
+
   it("should preValidate fail if timer desync exceeds acceptedClockSkewMs", async () => {
     mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
       tryCatch(() =>
