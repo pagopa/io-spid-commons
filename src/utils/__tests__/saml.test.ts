@@ -399,15 +399,15 @@ describe("preValidateResponse", () => {
       expect.objectContaining({
         data: {
           idpIssuer: expect.any(String),
-          message: "Deltas infos to determine a valid clockSkewMs",
+          message: "Clockskew validations logging",
           requestId: expect.any(String),
-          AssertionConditionsNotOnOrAfterDelta: expect.any(String),
-          AssertionIssueInstantDelta: expect.any(String),
-          AssertionNotBeforeDelta: expect.any(String),
-          AssertionSubjectNotOnOrAfterDelta: expect.any(String),
-          ResponseIssueInstantDelta: expect.any(String)
+          AssertionConditionsNotOnOrAfterClockSkew: expect.any(String),
+          AssertionIssueInstantClockSkew: expect.any(String),
+          AssertionNotBeforeClockSkew: expect.any(String),
+          AssertionSubjectNotOnOrAfterClockSkew: expect.any(String),
+          ResponseIssueInstantClockSkew: expect.any(String)
         },
-        name: "spid.info.deltas",
+        name: "spid.info.clockskew",
         type: "INFO"
       })
     );
