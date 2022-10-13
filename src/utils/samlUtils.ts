@@ -89,10 +89,12 @@ export const extractAndLogTimings = (
   startTime: number,
   idpIssuer: string,
   requestId: string,
+  clockSkewMs: number = 0,
   eventHandler?: EventTracker,
   hasClockSkewLoggingEvent?: boolean
 ) => (info: IIssueInstantWithAuthnContextCR): TE.TaskEither<never, void> => {
-  if (eventHandler && hasClockSkewLoggingEvent) {
+  // when clockSkewMs is set to -1 the validations are always true, so we skip the logs in that case
+  if (eventHandler && hasClockSkewLoggingEvent && clockSkewMs !== -1) {
     const extractNotOnOrAfterDelta = (
       element: Element
     ): E.Either<Error, string> =>
@@ -100,23 +102,25 @@ export const extractAndLogTimings = (
         NonEmptyString.decode(element.getAttribute("NotOnOrAfter")),
         E.chain(UTCISODateFromString.decode),
         E.mapLeft(() => new Error("Could not find/convert NotOnOrAfter")),
-        E.map(NotOnOrAfter => String(NotOnOrAfter.getTime() - startTime))
+        E.map(NotOnOrAfter =>
+          String(NotOnOrAfter.getTime() - (startTime - clockSkewMs))
+        )
       );
 
-    const ResponseIssueInstantDelta = String(
-      startTime - info.IssueInstant.getTime()
+    const ResponseIssueInstantClockSkew = String(
+      startTime + clockSkewMs - info.IssueInstant.getTime()
     );
-    const AssertionIssueInstantDelta = String(
-      startTime - info.AssertionIssueInstant.getTime()
+    const AssertionIssueInstantClockSkew = String(
+      startTime + clockSkewMs - info.AssertionIssueInstant.getTime()
     );
-    const AssertionNotBeforeDelta = pipe(
+    const AssertionNotBeforeClockSkew = pipe(
       info.Assertion.getAttribute("NotBefore"),
       NonEmptyString.decode,
       E.chain(UTCISODateFromString.decode),
-      E.map(NotBefore => String(startTime - NotBefore.getTime())),
+      E.map(NotBefore => String(startTime + clockSkewMs - NotBefore.getTime())),
       E.getOrElseW(() => InfoNotAvailable)
     );
-    const AssertionSubjectNotOnOrAfterDelta = pipe(
+    const AssertionSubjectNotOnOrAfterClockSkew = pipe(
       info.Assertion.getElementsByTagNameNS(
         SAML_NAMESPACE.ASSERTION,
         "Subject"
@@ -138,7 +142,7 @@ export const extractAndLogTimings = (
       E.chainW(extractNotOnOrAfterDelta),
       E.getOrElseW(() => InfoNotAvailable)
     );
-    const AssertionConditionsNotOnOrAfterDelta = pipe(
+    const AssertionConditionsNotOnOrAfterClockSkew = pipe(
       info.Assertion.getElementsByTagNameNS(
         SAML_NAMESPACE.ASSERTION,
         "Conditions"
@@ -150,21 +154,21 @@ export const extractAndLogTimings = (
     );
 
     const timings = {
-      AssertionConditionsNotOnOrAfterDelta,
-      AssertionIssueInstantDelta,
-      AssertionNotBeforeDelta,
-      AssertionSubjectNotOnOrAfterDelta,
-      ResponseIssueInstantDelta
+      AssertionConditionsNotOnOrAfterClockSkew,
+      AssertionIssueInstantClockSkew,
+      AssertionNotBeforeClockSkew,
+      AssertionSubjectNotOnOrAfterClockSkew,
+      ResponseIssueInstantClockSkew
     };
 
     eventHandler({
       data: {
         idpIssuer,
-        message: "Deltas infos to determine a valid clockSkewMs",
+        message: "Clockskew validations logging",
         requestId,
         ...timings
       },
-      name: "spid.info.deltas",
+      name: "spid.info.clockskew",
       type: "INFO"
     });
   }

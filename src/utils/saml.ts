@@ -679,6 +679,7 @@ export const getPreValidateResponse = (
         startTime,
         idpIssuer,
         requestId,
+        samlConfig.acceptedClockSkewMs,
         eventHandler,
         hasClockSkewLoggingEvent
       )
