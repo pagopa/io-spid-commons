@@ -92,6 +92,7 @@ export const extractAndLogTimings = (
   clockSkewMs: number = 0,
   eventHandler?: EventTracker,
   hasClockSkewLoggingEvent?: boolean
+  // eslint-disable-next-line max-params
 ) => (info: IIssueInstantWithAuthnContextCR): TE.TaskEither<never, void> => {
   // when clockSkewMs is set to -1 the validations are always true, so we skip the logs in that case
   if (eventHandler && hasClockSkewLoggingEvent && clockSkewMs !== -1) {
