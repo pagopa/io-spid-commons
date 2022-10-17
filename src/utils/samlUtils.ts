@@ -24,6 +24,7 @@ import * as xmlCrypto from "xml-crypto";
 import { Builder, parseStringPromise } from "xml2js";
 import { DOMParser } from "xmldom";
 import { SPID_LEVELS, SPID_URLS, SPID_USER_ATTRIBUTES } from "../config";
+import { EventTracker } from "..";
 import { logger } from "./logger";
 import {
   ContactType,
@@ -32,6 +33,7 @@ import {
   IServiceProviderConfig,
   ISpidStrategyOptions
 } from "./middleware";
+import { IIssueInstantWithAuthnContextCR } from "./saml";
 
 export type SamlAttributeT = keyof typeof SPID_USER_ATTRIBUTES;
 
@@ -76,6 +78,104 @@ const cleanCert = (cert: string): string =>
 const SAMLResponse = t.type({
   SAMLResponse: t.string
 });
+
+export const InfoNotAvailable = "NOT AVAILABLE";
+
+/**
+ * If an eventHandler and a feature flag are provided this function logs the timing deltas.
+ * This is useful to monitor the timings and to adjust the clockSkewMs variable
+ */
+export const extractAndLogTimings = (
+  startTime: number,
+  idpIssuer: string,
+  requestId: string,
+  clockSkewMs: number = 0,
+  eventHandler?: EventTracker,
+  hasClockSkewLoggingEvent?: boolean
+  // eslint-disable-next-line max-params
+) => (info: IIssueInstantWithAuthnContextCR): TE.TaskEither<never, void> => {
+  // when clockSkewMs is set to -1 the validations are always true, so we skip the logs in that case
+  if (eventHandler && hasClockSkewLoggingEvent && clockSkewMs !== -1) {
+    const extractNotOnOrAfterDelta = (
+      element: Element
+    ): E.Either<Error, string> =>
+      pipe(
+        NonEmptyString.decode(element.getAttribute("NotOnOrAfter")),
+        E.chain(UTCISODateFromString.decode),
+        E.mapLeft(() => new Error("Could not find/convert NotOnOrAfter")),
+        E.map(NotOnOrAfter =>
+          String(NotOnOrAfter.getTime() - (startTime - clockSkewMs))
+        )
+      );
+
+    const ResponseIssueInstantClockSkew = String(
+      startTime + clockSkewMs - info.IssueInstant.getTime()
+    );
+    const AssertionIssueInstantClockSkew = String(
+      startTime + clockSkewMs - info.AssertionIssueInstant.getTime()
+    );
+    const AssertionNotBeforeClockSkew = pipe(
+      info.Assertion.getAttribute("NotBefore"),
+      NonEmptyString.decode,
+      E.chain(UTCISODateFromString.decode),
+      E.map(NotBefore => String(startTime + clockSkewMs - NotBefore.getTime())),
+      E.getOrElseW(() => InfoNotAvailable)
+    );
+    const AssertionSubjectNotOnOrAfterClockSkew = pipe(
+      info.Assertion.getElementsByTagNameNS(
+        SAML_NAMESPACE.ASSERTION,
+        "Subject"
+      ).item(0),
+      O.fromNullable,
+      O.chainNullableK(Subject =>
+        Subject.getElementsByTagNameNS(
+          SAML_NAMESPACE.ASSERTION,
+          "SubjectConfirmation"
+        ).item(0)
+      ),
+      O.chainNullableK(SubjectConfirmation =>
+        SubjectConfirmation.getElementsByTagNameNS(
+          SAML_NAMESPACE.ASSERTION,
+          "SubjectConfirmationData"
+        ).item(0)
+      ),
+      E.fromOption(() => new Error("Could not find elements")),
+      E.chainW(extractNotOnOrAfterDelta),
+      E.getOrElseW(() => InfoNotAvailable)
+    );
+    const AssertionConditionsNotOnOrAfterClockSkew = pipe(
+      info.Assertion.getElementsByTagNameNS(
+        SAML_NAMESPACE.ASSERTION,
+        "Conditions"
+      ).item(0),
+      O.fromNullable,
+      E.fromOption(() => new Error("Could not find elements")),
+      E.chainW(extractNotOnOrAfterDelta),
+      E.getOrElseW(() => InfoNotAvailable)
+    );
+
+    const timings = {
+      AssertionConditionsNotOnOrAfterClockSkew,
+      AssertionIssueInstantClockSkew,
+      AssertionNotBeforeClockSkew,
+      AssertionSubjectNotOnOrAfterClockSkew,
+      ResponseIssueInstantClockSkew
+    };
+
+    eventHandler({
+      data: {
+        idpIssuer,
+        message: "Clockskew validations logging",
+        requestId,
+        ...timings
+      },
+      name: "spid.info.clockskew",
+      type: "INFO"
+    });
+  }
+
+  return TE.right(void 0);
+};
 
 /**
  * True if the element contains at least one element signed using hamc
@@ -632,7 +732,7 @@ export const validateIssuer = (
     )
   );
 
-export const mainAttributeValidation = (
+export const mainAttributeValidation = (validationTimestamp: number) => (
   requestOrAssertion: Element,
   acceptedClockSkewMs: number = 0
 ): E.Either<Error, Date> =>
@@ -654,11 +754,11 @@ export const mainAttributeValidation = (
     E.chain(IssueInstant => utcStringToDate(IssueInstant, "IssueInstant")),
     E.chain(
       E.fromPredicate(
-        _ =>
-          _.getTime() <
+        IssueInstant =>
+          IssueInstant.getTime() <
           (acceptedClockSkewMs === -1
             ? Infinity
-            : Date.now() + acceptedClockSkewMs),
+            : validationTimestamp + acceptedClockSkewMs),
         () => new Error("IssueInstant must be in the past")
       )
     )
@@ -729,7 +829,7 @@ export const transformsValidation = (
     )
   );
 
-const notOnOrAfterValidation = (
+const notOnOrAfterValidation = (validationTimestamp: number) => (
   element: Element,
   acceptedClockSkewMs: number = 0
 ): E.Either<Error, Date> =>
@@ -745,18 +845,19 @@ const notOnOrAfterValidation = (
           NotOnOrAfter.getTime() >
           (acceptedClockSkewMs === -1
             ? -Infinity
-            : Date.now() - acceptedClockSkewMs),
+            : validationTimestamp - acceptedClockSkewMs),
         () => new Error("NotOnOrAfter must be in the future")
       )
     )
   );
 
 // eslint-disable-next-line max-lines-per-function
-export const assertionValidation = (
+export const assertionValidation = (validationTimestamp: number) => (
   Assertion: Element,
   samlConfig: SamlConfig,
   InResponseTo: string,
   requestAuthnContextClassRef: string
+  // eslint-disable-next-line sonarjs/cognitive-complexity
 ): E.Either<Error, HTMLCollectionOf<Element>> => {
   const acceptedClockSkewMs = samlConfig.acceptedClockSkewMs || 0;
   return pipe(
@@ -919,7 +1020,7 @@ export const assertionValidation = (
                 ),
                 E.chain(SubjectConfirmationData =>
                   pipe(
-                    notOnOrAfterValidation(
+                    notOnOrAfterValidation(validationTimestamp)(
                       SubjectConfirmationData,
                       acceptedClockSkewMs
                     ),
@@ -973,11 +1074,14 @@ export const assertionValidation = (
             ),
             E.chain(Conditions =>
               pipe(
-                notOnOrAfterValidation(Conditions, acceptedClockSkewMs),
+                notOnOrAfterValidation(validationTimestamp)(
+                  Conditions,
+                  acceptedClockSkewMs
+                ),
                 E.map(() => Conditions)
               )
             ),
-            E.chain(Conditions =>
+            E.chainFirst(Conditions =>
               pipe(
                 NonEmptyString.decode(Conditions.getAttribute("NotBefore")),
                 E.mapLeft(
@@ -990,11 +1094,10 @@ export const assertionValidation = (
                       NotBefore.getTime() <=
                       (acceptedClockSkewMs === -1
                         ? Infinity
-                        : Date.now() + acceptedClockSkewMs),
+                        : validationTimestamp + acceptedClockSkewMs),
                     () => new Error("NotBefore must be in the past")
                   )
-                ),
-                E.map(() => Conditions)
+                )
               )
             ),
             E.chain(Conditions =>

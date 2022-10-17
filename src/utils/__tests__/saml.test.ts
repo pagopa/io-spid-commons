@@ -377,6 +377,42 @@ describe("preValidateResponse", () => {
     await asyncExpectOnCallback(mockCallback);
   });
 
+  it("should preValidate succeed and log the timing deltas when hasClockSkewLoggingEvent is provided", async () => {
+    mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
+      tryCatch(() => new DOMParser().parseFromString(getSamlResponse()))
+    );
+    const strictValidationOption: StrictResponseValidationOptions = {
+      mockTestIdpIssuer: true
+    };
+    getPreValidateResponse(strictValidationOption, mockEventTracker, true)(
+      { ...samlConfig, acceptedClockSkewMs: 0 },
+      mockBody,
+      mockRedisCacheProvider,
+      undefined,
+      mockCallback
+    );
+    expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
+    await asyncExpectOnCallback(mockCallback);
+
+    expect(mockEventTracker).toHaveBeenCalledTimes(1);
+    expect(mockEventTracker).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          idpIssuer: expect.any(String),
+          message: "Clockskew validations logging",
+          requestId: expect.any(String),
+          AssertionConditionsNotOnOrAfterClockSkew: expect.any(String),
+          AssertionIssueInstantClockSkew: expect.any(String),
+          AssertionNotBeforeClockSkew: expect.any(String),
+          AssertionSubjectNotOnOrAfterClockSkew: expect.any(String),
+          ResponseIssueInstantClockSkew: expect.any(String)
+        },
+        name: "spid.info.clockskew",
+        type: "INFO"
+      })
+    );
+  });
+
   it("should preValidate fail if timer desync exceeds acceptedClockSkewMs", async () => {
     mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
       tryCatch(() =>

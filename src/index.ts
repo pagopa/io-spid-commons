@@ -90,6 +90,7 @@ export interface IApplicationConfig {
   readonly spidLevelsWhitelist: ReadonlyArray<keyof SPID_LEVELS>;
   readonly startupIdpsMetadata?: Record<string, string>;
   readonly eventTraker?: EventTracker;
+  readonly hasClockSkewLoggingEvent?: boolean;
 }
 
 // re-export
@@ -218,7 +219,8 @@ export const withSpid = ({
         metadataTamperer,
         getPreValidateResponse(
           serviceProviderConfig.strictResponseValidation,
-          appConfig.eventTraker
+          appConfig.eventTraker,
+          appConfig.hasClockSkewLoggingEvent
         ),
         doneCb
       );

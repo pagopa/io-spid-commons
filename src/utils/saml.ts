@@ -25,7 +25,8 @@ import {
   notSignedWithHmacPredicate,
   TransformError,
   transformsValidation,
-  validateIssuer
+  validateIssuer,
+  extractAndLogTimings
 } from "./samlUtils";
 import {
   getAuthorizeRequestTamperer,
@@ -38,7 +39,8 @@ import {
   isEmptyNode,
   logSamlCertExpiration,
   mainAttributeValidation,
-  SAML_NAMESPACE
+  SAML_NAMESPACE,
+  InfoNotAvailable
 } from "./samlUtils";
 
 export {
@@ -86,7 +88,7 @@ type IIssueInstant = ISAMLRequest & {
   readonly RequestAuthnRequest: Element;
 };
 
-type IIssueInstantWithAuthnContextCR = IIssueInstant & {
+export type IIssueInstantWithAuthnContextCR = IIssueInstant & {
   readonly RequestAuthnContextClassRef: NonEmptyString;
 };
 
@@ -96,23 +98,11 @@ interface ITransformValidation {
   readonly numberOfTransforms: number;
 }
 
-export const errorToSamlError = (
-  e: Error,
-  info?: { readonly requestId?: string; readonly idpIssuer?: string }
-): ISAMLError => ({
-  // the nullish coalescing operator and optional chaining will cover all cases here
-  // eslint-disable-next-line sonarjs/no-duplicate-string
-  idpIssuer: info?.idpIssuer ?? "not available",
-  message: e.message,
-  name: e.name,
-  requestId: info?.requestId ?? "not available",
-  stack: e.stack
-});
-
 // eslint-disable-next-line max-lines-per-function
 export const getPreValidateResponse = (
   strictValidationOptions?: StrictResponseValidationOptions,
-  eventHandler?: EventTracker
+  eventHandler?: EventTracker,
+  hasClockSkewLoggingEvent?: boolean
   // eslint-disable-next-line max-lines-per-function
 ): PreValidateResponseT => (
   samlConfig,
@@ -123,6 +113,7 @@ export const getPreValidateResponse = (
   // eslint-disable-next-line sonarjs/cognitive-complexity
 ): void => {
   const maybeDoc = getXmlFromSamlResponse(body);
+  const startTime = Date.now();
 
   if (O.isNone(maybeDoc)) {
     throw new Error("Empty SAML response");
@@ -149,7 +140,7 @@ export const getPreValidateResponse = (
 
   const idpIssuer: string = pipe(
     maybeIdpIssuer,
-    O.getOrElse(() => "not available")
+    O.getOrElse(() => InfoNotAvailable)
   );
 
   // here we are partially validating the response just to obtain a requestId (InResponseTo) before doing any more step.
@@ -182,13 +173,8 @@ export const getPreValidateResponse = (
   const requestId: string = pipe(
     errorOrPartiallyValidatedResponse,
     E.map(({ InResponseTo }) => InResponseTo),
-    E.getOrElse(() => "not available")
+    E.getOrElse(() => InfoNotAvailable)
   );
-
-  // this method make idpIssuer and requestId available on all the scope
-  // this is useful while logging errors
-  const toSamlError = (message: string): ISAMLError =>
-    errorToSamlError(new Error(message), { idpIssuer, requestId });
 
   const responseElementValidationStep: TaskEither<
     Error,
@@ -198,7 +184,10 @@ export const getPreValidateResponse = (
       errorOrPartiallyValidatedResponse,
       E.chainW(({ Response, InResponseTo }) =>
         pipe(
-          mainAttributeValidation(Response, samlConfig.acceptedClockSkewMs),
+          mainAttributeValidation(startTime)(
+            Response,
+            samlConfig.acceptedClockSkewMs
+          ),
           E.map(IssueInstant => ({
             InResponseTo,
             IssueInstant,
@@ -319,7 +308,10 @@ export const getPreValidateResponse = (
       ),
       E.chain(_ =>
         pipe(
-          mainAttributeValidation(_.Assertion, samlConfig.acceptedClockSkewMs),
+          mainAttributeValidation(startTime)(
+            _.Assertion,
+            samlConfig.acceptedClockSkewMs
+          ),
           E.map(IssueInstant => ({
             AssertionIssueInstant: IssueInstant,
             ..._
@@ -496,7 +488,7 @@ export const getPreValidateResponse = (
   ): TaskEither<Error, IIssueInstantWithAuthnContextCR> =>
     pipe(
       TE.fromEither(
-        assertionValidation(
+        assertionValidation(startTime)(
           _.Assertion,
           samlConfig,
           _.InResponseTo,
@@ -610,11 +602,11 @@ export const getPreValidateResponse = (
     );
 
   /* LOGGING INFOS:
-    having the idpIssuer and requestId as data here we leverage multiple advantages:
-    1. we can query based on the idp and display graphs about errors/usage
-    2. we know what idp is causing the error
-    3. having the requestId it's possible to analyze further the problem encountered
-  */
+   * having the idpIssuer and requestId as data here we leverage multiple advantages:
+   * 1. we can query based on the idp and display graphs about errors/usage
+   * 2. we know what idp is causing the error
+   * 3. having the requestId it's possible to analyze further the problem encountered
+   */
   const validationFailure = (error: Error | ITransformValidation): void => {
     if (eventHandler) {
       if (TransformError.is(error)) {
@@ -629,12 +621,11 @@ export const getPreValidateResponse = (
           type: "ERROR"
         });
       } else {
-        const samlError: ISAMLError = toSamlError(error.message);
         eventHandler({
           data: {
-            idpIssuer: samlError.idpIssuer,
-            message: samlError.message,
-            requestId: samlError.requestId
+            idpIssuer,
+            message: error.message,
+            requestId
           },
           name: "spid.error.generic",
           type: "ERROR"
@@ -675,13 +666,24 @@ export const getPreValidateResponse = (
     TE.chain(returnRequestAndResponseStep),
     TE.chain(parseSAMLRequestStep),
     TE.chain(getIssueInstantFromRequestStep),
-    TE.chain(issueInstantValidationStep),
-    TE.chain(assertionIssueInstantValidationStep),
+    TE.chainFirst(issueInstantValidationStep),
+    TE.chainFirst(assertionIssueInstantValidationStep),
     TE.chain(authnContextClassRefValidationStep),
-    TE.chain(attributesValidationStep),
-    TE.chain(responseIssuerValidationStep),
-    TE.chain(assertionIssuerValidationStep),
-    TE.chainW(transformValidationStep),
+    TE.chainFirst(attributesValidationStep),
+    TE.chainFirst(responseIssuerValidationStep),
+    TE.chainFirst(assertionIssuerValidationStep),
+    TE.chainFirstW(transformValidationStep),
+    // log timings infos
+    TE.chainFirstW(
+      extractAndLogTimings(
+        startTime,
+        idpIssuer,
+        requestId,
+        samlConfig.acceptedClockSkewMs,
+        eventHandler,
+        hasClockSkewLoggingEvent
+      )
+    ),
     TE.bimap(validationFailure, validationSuccess)
   )().catch(callback);
 };
