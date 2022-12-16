@@ -209,8 +209,6 @@ export const getSpidStrategyOptionsUpdater = (
 
     T.map(A.reduce({}, (prev, current) => ({ ...prev, ...current }))),
     T.map(idpOptionsRecord => {
-      // eslint-disable-next-line no-console
-      console.log("IDP Options", idpOptionsRecord);
       logSamlCertExpiration(serviceProviderConfig.publicCert);
       return makeSpidStrategyOptions(
         samlConfig,
