@@ -137,8 +137,7 @@ export const getSamlResponse: (params?: IGetSAMLResponseParams) => string = (
 </saml:Issuer>
 ${
   hasResponseSignature !== false
-    ?
-      `<ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+    ? `<ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
     <ds:SignedInfo>
         <ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
         <ds:SignatureMethod Algorithm="${params.signatureMethod ||
@@ -177,8 +176,8 @@ ${customAssertion || getSamlAssertion(clockSkewMs)}
 </samlp:Response>`;
 };
 
-export const samlRequest = `<?xml version="1.0"?>
-<samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ID="_2d2a89e99c7583e221b4" Version="2.0" IssueInstant="2020-02-26T07:27:00Z" ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Destination="http://localhost:8080/samlsso" ForceAuthn="true" AssertionConsumerServiceURL="http://localhost:3000/acs" AttributeConsumingServiceIndex="0">
+export const samlRequestWithID = (id: string) => `<?xml version="1.0"?>
+<samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ID="${id}" Version="2.0" IssueInstant="2020-02-26T07:27:00Z" ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Destination="http://localhost:8080/samlsso" ForceAuthn="true" AssertionConsumerServiceURL="http://localhost:3000/acs" AttributeConsumingServiceIndex="0">
     <saml:Issuer xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" NameQualifier="https://spid.agid.gov.it/cd" Format="urn:oasis:names:tc:SAML:2.0:nameid-format:entity">
         https://spid.agid.gov.it/cd
     </saml:Issuer>
@@ -189,6 +188,8 @@ export const samlRequest = `<?xml version="1.0"?>
         </saml:AuthnContextClassRef>
     </samlp:RequestedAuthnContext>
 </samlp:AuthnRequest>`;
+export const defaultRequestID = "_2d2a89e99c7583e221b4";
+export const samlRequest = samlRequestWithID(defaultRequestID);
 
 export const samlResponseCIE = `<?xml version="1.0" encoding="UTF-8"?>
 <saml2p:Response Destination="https://app-backend.dev.io.italia.it/assertionConsumerService" ID="_36e7b2c177afab6db4302732a68403cb" InResponseTo="_61395d807fb9fe6a869b" IssueInstant="2020-02-27T13:40:57.746Z" Version="2.0" 

@@ -2,20 +2,23 @@ import * as express from "express";
 import { pipe } from "fp-ts/lib/function";
 import * as O from "fp-ts/lib/Option";
 import * as TE from "fp-ts/lib/TaskEither";
+import * as E from "fp-ts/lib/Either";
 import { SamlConfig } from "passport-saml";
 import * as PassportSaml from "passport-saml";
+import { NonEmptyString } from "@pagopa/ts-commons/lib/strings";
+import { LOLLIPOP_PUB_KEY_HEADER_NAME } from "../types/lollipop";
 import { IExtendedCacheProvider } from "./redis_cache_provider";
 import {
   PreValidateResponseDoneCallbackT,
   PreValidateResponseT,
-  XmlTamperer
+  XmlAuthorizeTamperer
 } from "./spid";
 
 export class CustomSamlClient extends PassportSaml.SAML {
   constructor(
     private readonly config: SamlConfig,
     private readonly extededCacheProvider: IExtendedCacheProvider,
-    private readonly tamperAuthorizeRequest?: XmlTamperer,
+    private readonly tamperAuthorizeRequest?: XmlAuthorizeTamperer,
     private readonly preValidateResponse?: PreValidateResponseT,
     private readonly doneCb?: PreValidateResponseDoneCallbackT
   ) {
@@ -81,7 +84,14 @@ export class CustomSamlClient extends PassportSaml.SAML {
         // eslint-disable-next-line @typescript-eslint/no-floating-promises, @typescript-eslint/no-unused-expressions
         xml
           ? pipe(
-              tamperAuthorizeRequest(xml),
+              req.headers[LOLLIPOP_PUB_KEY_HEADER_NAME],
+              NonEmptyString.decode,
+              E.map(pubKey => ({
+                pubKey,
+                userAgent: req.headers["User-Agent"]
+              })),
+              E.getOrElseW(() => undefined),
+              lollipopParams => tamperAuthorizeRequest(xml, lollipopParams),
               TE.chain(tamperedXml =>
                 this.extededCacheProvider.save(tamperedXml, this.config)
               ),

@@ -16,6 +16,7 @@ import { MultiSamlConfig } from "passport-saml/multiSamlStrategy";
 import { Second } from "@pagopa/ts-commons/lib/units";
 import { pipe } from "fp-ts/lib/function";
 import { DoneCallbackT } from "..";
+import { ILollipopParams } from "../types/lollipop";
 import {
   getExtendedRedisCacheProvider,
   IExtendedCacheProvider,
@@ -24,6 +25,10 @@ import {
 import { CustomSamlClient } from "./saml_client";
 
 export type XmlTamperer = (xml: string) => TaskEither<Error, string>;
+export type XmlAuthorizeTamperer = (
+  xml: string,
+  lollipopParams?: ILollipopParams
+) => TaskEither<Error, string>;
 
 export type PreValidateResponseDoneCallbackT = (
   request: string,
@@ -53,7 +58,7 @@ export class SpidStrategy extends SamlStrategy {
     private readonly getSamlOptions: MultiSamlConfig["getSamlOptions"],
     verify: VerifyWithRequest | VerifyWithoutRequest,
     private readonly redisClient: RedisClient,
-    private readonly tamperAuthorizeRequest?: XmlTamperer,
+    private readonly tamperAuthorizeRequest?: XmlAuthorizeTamperer,
     private readonly tamperMetadata?: XmlTamperer,
     private readonly preValidateResponse?: PreValidateResponseT,
     private readonly doneCb?: DoneCallbackT

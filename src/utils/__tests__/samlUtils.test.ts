@@ -1,0 +1,186 @@
+import { NonEmptyString } from "@pagopa/ts-commons/lib/strings";
+import { Builder, parseStringPromise } from "xml2js";
+import { ILollipopParams } from "../../types/lollipop";
+import { getAuthorizeRequestTamperer, ISSUER_FORMAT } from "../samlUtils";
+import { samlRequest, samlRequestWithID } from "../__mocks__/saml";
+import * as E from "fp-ts/lib/Either";
+import { ILollipopProviderConfig } from "../middleware";
+import * as nodeCrypto from "crypto";
+const builder = new Builder({
+  xmldec: { encoding: undefined, version: "1.0" }
+});
+
+const samlConfigMock = {
+  issuer: "ISSUER"
+} as any;
+
+const lollipopParamsMock: ILollipopParams = {
+  pubKey: "aPubKey" as NonEmptyString,
+  userAgent: "IO-APP-User-Agent"
+};
+
+const lollipopProvideConfigMock: ILollipopProviderConfig = {
+  allowedUserAgents: ["IO-APP-User-Agent"]
+};
+const aSamlRequestID = "aSamlRequestID";
+
+const getBase64Sha = (str: string) =>
+  nodeCrypto
+    .createHash("sha256")
+    .update(str)
+    .digest("base64");
+
+const fakeXml = `<?xml version="1.0"?>
+<samlp:Fake xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ID="ID" Version="2.0" IssueInstant="2020-02-26T07:27:00Z" ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Destination="http://localhost:8080/samlsso" ForceAuthn="true" AssertionConsumerServiceURL="http://localhost:3000/acs" AttributeConsumingServiceIndex="0">
+    <saml:Issuer xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" NameQualifier="https://spid.agid.gov.it/cd" Format="urn:oasis:names:tc:SAML:2.0:nameid-format:entity">
+        https://spid.agid.gov.it/cd
+    </saml:Issuer>
+    <samlp:NameIDPolicy xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" Format="urn:oasis:names:tc:SAML:2.0:nameid-format:transient"/>
+    <samlp:RequestedAuthnContext xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" Comparison="exact">
+        <saml:AuthnContextClassRef xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">
+            https://www.spid.gov.it/SpidL2
+        </saml:AuthnContextClassRef>
+    </samlp:RequestedAuthnContext>
+</samlp:Fake>`;
+describe("getAuthorizeRequestTamperer", () => {
+  it("should Tamper an AuthNRequest overriding properties to be compatible with SPID protocol", async () => {
+    const authRequestTamperer = getAuthorizeRequestTamperer(
+      builder,
+      {} as any,
+      samlConfigMock
+    );
+    const result = await authRequestTamperer(
+      samlRequestWithID(aSamlRequestID)
+    )();
+    expect(E.isRight(result)).toBeTruthy();
+    if (E.isRight(result)) {
+      const parsedXml = await parseStringPromise(result.right);
+      const authnRequest = parsedXml["samlp:AuthnRequest"];
+      expect(authnRequest.$.ID).toEqual(aSamlRequestID);
+      expect(
+        authnRequest["samlp:NameIDPolicy"][0].$.AllowCreate
+      ).toBeUndefined();
+      expect(authnRequest["saml:Issuer"][0].$.NameQualifier).toEqual(
+        samlConfigMock.issuer
+      );
+      expect(authnRequest["saml:Issuer"][0].$.Format).toEqual(ISSUER_FORMAT);
+    }
+  });
+
+  it("should Tamper an AuthNRequest overriding ID property for authorized lollipop users", async () => {
+    const authRequestTamperer = getAuthorizeRequestTamperer(
+      builder,
+      { lollipopProviderConfig: lollipopProvideConfigMock } as any,
+      samlConfigMock
+    );
+    const result = await authRequestTamperer(samlRequest, lollipopParamsMock)();
+    expect(E.isRight(result)).toBeTruthy();
+    if (E.isRight(result)) {
+      const parsedXml = await parseStringPromise(result.right);
+      const authnRequest = parsedXml["samlp:AuthnRequest"];
+      expect(authnRequest.$.ID).toEqual(
+        getBase64Sha(lollipopParamsMock.pubKey)
+      );
+      expect(
+        authnRequest["samlp:NameIDPolicy"][0].$.AllowCreate
+      ).toBeUndefined();
+      expect(authnRequest["saml:Issuer"][0].$.NameQualifier).toEqual(
+        samlConfigMock.issuer
+      );
+      expect(authnRequest["saml:Issuer"][0].$.Format).toEqual(ISSUER_FORMAT);
+    }
+  });
+
+  it("should Tamper an AuthNRequest without overriding ID property if lollipopProviderConfig is undefined", async () => {
+    const authRequestTamperer = getAuthorizeRequestTamperer(
+      builder,
+      {} as any,
+      samlConfigMock
+    );
+    const result = await authRequestTamperer(
+      samlRequestWithID(aSamlRequestID),
+      lollipopParamsMock
+    )();
+    expect(E.isRight(result)).toBeTruthy();
+    if (E.isRight(result)) {
+      const parsedXml = await parseStringPromise(result.right);
+      const authnRequest = parsedXml["samlp:AuthnRequest"];
+      expect(authnRequest.$.ID).toEqual(aSamlRequestID);
+      expect(
+        authnRequest["samlp:NameIDPolicy"][0].$.AllowCreate
+      ).toBeUndefined();
+      expect(authnRequest["saml:Issuer"][0].$.NameQualifier).toEqual(
+        samlConfigMock.issuer
+      );
+      expect(authnRequest["saml:Issuer"][0].$.Format).toEqual(ISSUER_FORMAT);
+    }
+  });
+
+  it("should Tamper an AuthNRequest without overriding ID property if lollipopParams are undefined", async () => {
+    const authRequestTamperer = getAuthorizeRequestTamperer(
+      builder,
+      { lollipopProviderConfig: lollipopProvideConfigMock } as any,
+      samlConfigMock
+    );
+    const result = await authRequestTamperer(
+      samlRequestWithID(aSamlRequestID)
+    )();
+    expect(E.isRight(result)).toBeTruthy();
+    if (E.isRight(result)) {
+      const parsedXml = await parseStringPromise(result.right);
+      const authnRequest = parsedXml["samlp:AuthnRequest"];
+      expect(authnRequest.$.ID).toEqual(aSamlRequestID);
+      expect(
+        authnRequest["samlp:NameIDPolicy"][0].$.AllowCreate
+      ).toBeUndefined();
+      expect(authnRequest["saml:Issuer"][0].$.NameQualifier).toEqual(
+        samlConfigMock.issuer
+      );
+      expect(authnRequest["saml:Issuer"][0].$.Format).toEqual(ISSUER_FORMAT);
+    }
+  });
+
+  it("should return an Error without overriding ID property if userAgent sent by the client is undefined", async () => {
+    const authRequestTamperer = getAuthorizeRequestTamperer(
+      builder,
+      { lollipopProviderConfig: lollipopProvideConfigMock } as any,
+      samlConfigMock
+    );
+    const result = await authRequestTamperer(
+      samlRequestWithID(aSamlRequestID),
+      { ...lollipopParamsMock, userAgent: undefined }
+    )();
+    expect(E.isLeft(result)).toBeTruthy();
+    if (E.isLeft(result)) {
+      expect(result.left).toEqual(Error("Wrong Lollipop UserAgent"));
+    }
+  });
+  it("should return an error if provided user agents are not allowed", async () => {
+    const authRequestTamperer = getAuthorizeRequestTamperer(
+      builder,
+      { lollipopProviderConfig: lollipopProvideConfigMock } as any,
+      samlConfigMock
+    );
+    const result = await authRequestTamperer(
+      samlRequestWithID(aSamlRequestID),
+      { ...lollipopParamsMock, userAgent: "fake" }
+    )();
+    expect(E.isLeft(result)).toBeTruthy();
+    if (E.isLeft(result)) {
+      expect(result.left).toEqual(Error("Wrong Lollipop UserAgent"));
+    }
+  });
+
+  it("should return an error if authNRequest XML is invalid", async () => {
+    const authRequestTamperer = getAuthorizeRequestTamperer(
+      builder,
+      {} as any,
+      samlConfigMock
+    );
+    const result = await authRequestTamperer(fakeXml)();
+    expect(E.isLeft(result)).toBeTruthy();
+    if (E.isLeft(result)) {
+      expect(result.left.name).toContain("TypeError");
+    }
+  });
+});

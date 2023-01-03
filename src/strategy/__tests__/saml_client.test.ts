@@ -9,7 +9,7 @@ import { getAuthorizeRequestTamperer } from "../../utils/saml";
 import { mockWrapCallback } from "../__mocks__/passport-saml";
 import { getExtendedRedisCacheProvider } from "../redis_cache_provider";
 import { CustomSamlClient } from "../saml_client";
-import { PreValidateResponseT } from "../spid";
+import { LOLLIPOP_PUB_KEY_HEADER_NAME } from "../../types/lollipop";
 
 const mockSet = jest.fn();
 const mockGet = jest.fn();
@@ -104,7 +104,7 @@ describe("CustomSamlClient#constructor", () => {
       redisCacheProvider
     );
     expect(customSamlClient).toBeTruthy();
-    
+
     expect(customSamlClient["options"]).toHaveProperty(
       "validateInResponseTo",
       false
@@ -297,7 +297,52 @@ describe("CustomSamlClient#generateAuthorizeRequest", () => {
       mockAuthReqTampener
     );
     customSamlClient.generateAuthorizeRequest(req, false, true, mockCallback);
-    expect(mockAuthReqTampener).toBeCalledWith(SAMLRequest);
+    expect(mockAuthReqTampener).toBeCalledWith(SAMLRequest, undefined);
+    // Before checking the execution of the callback we must await that the TaskEither execution is completed.
+    await new Promise(resolve => {
+      setTimeout(() => {
+        expect(mockSet).toBeCalled();
+        expect(mockCallback).toBeCalledWith(null, SAMLRequest);
+        resolve(undefined);
+      }, 100);
+    });
+  });
+
+  it("should call tamperAuthorizeRequest with lollipop params if client send lollipop headers", async () => {
+    const mockAuthReqTampener = jest.fn().mockImplementation(_ => {
+      return fromEither(right(SAMLRequest));
+    });
+    mockWrapCallback.mockImplementation(callback => {
+      callback(null, SAMLRequest);
+    });
+    const req = mockReq();
+    mockSet.mockImplementation((_, __, ___, ____, callback) => {
+      callback(null, "OK");
+    });
+    const customSamlClient = new CustomSamlClient(
+      {
+        entryPoint: "https://localhost:3000/acs",
+        idpIssuer: "https://localhost:8080",
+        issuer: "https://localhost:3000",
+        validateInResponseTo: true
+      },
+      redisCacheProvider,
+      mockAuthReqTampener
+    );
+
+    const request = mockReq();
+    request.headers[LOLLIPOP_PUB_KEY_HEADER_NAME] = "aPubKey";
+    request.headers["User-Agent"] = "aUserAgent";
+    customSamlClient.generateAuthorizeRequest(
+      request,
+      false,
+      true,
+      mockCallback
+    );
+    expect(mockAuthReqTampener).toBeCalledWith(SAMLRequest, {
+      userAgent: "aUserAgent",
+      pubKey: "aPubKey"
+    });
     // Before checking the execution of the callback we must await that the TaskEither execution is completed.
     await new Promise(resolve => {
       setTimeout(() => {
@@ -331,7 +376,7 @@ describe("CustomSamlClient#generateAuthorizeRequest", () => {
       mockAuthReqTampener
     );
     customSamlClient.generateAuthorizeRequest(req, false, true, mockCallback);
-    expect(mockAuthReqTampener).toBeCalledWith(SAMLRequest);
+    expect(mockAuthReqTampener).toBeCalledWith(SAMLRequest, undefined);
     // Before checking the execution of the callback we must await that the TaskEither execution is completed.
     await new Promise(resolve => {
       setTimeout(() => {
