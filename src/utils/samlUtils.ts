@@ -28,7 +28,10 @@ import { Builder, parseStringPromise } from "xml2js";
 import { DOMParser } from "xmldom";
 import { SPID_LEVELS, SPID_URLS, SPID_USER_ATTRIBUTES } from "../config";
 import { EventTracker } from "..";
-import { ILollipopParams } from "../types/lollipop";
+import {
+  DEFAULT_LOLLIPOP_HASH_ALGORITHM,
+  ILollipopParams
+} from "../types/lollipop";
 import { logger } from "./logger";
 import {
   ContactType,
@@ -714,11 +717,16 @@ export const getAuthorizeRequestTamperer = (
             ),
             TE.chain(({ lParams }) =>
               TE.tryCatch(async () => {
+                const hashingAlgo = pipe(
+                  lParams.hashAlgorithm,
+                  O.fromNullable,
+                  O.getOrElse(() => DEFAULT_LOLLIPOP_HASH_ALGORITHM)
+                );
                 // eslint-disable-next-line functional/immutable-data
-                o["samlp:AuthnRequest"].$.ID = nodeCrypto
-                  .createHash("sha256")
+                o["samlp:AuthnRequest"].$.ID = `${hashingAlgo}:${nodeCrypto
+                  .createHash(hashingAlgo)
                   .update(lParams.pubKey)
-                  .digest("base64");
+                  .digest("base64")}`;
                 return o;
               }, E.toError)
             )

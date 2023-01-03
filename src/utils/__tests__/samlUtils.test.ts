@@ -1,6 +1,10 @@
 import { NonEmptyString } from "@pagopa/ts-commons/lib/strings";
 import { Builder, parseStringPromise } from "xml2js";
-import { ILollipopParams } from "../../types/lollipop";
+import {
+  DEFAULT_LOLLIPOP_HASH_ALGORITHM,
+  ILollipopParams,
+  LollipopHashAlgorithm
+} from "../../types/lollipop";
 import { getAuthorizeRequestTamperer, ISSUER_FORMAT } from "../samlUtils";
 import { samlRequest, samlRequestWithID } from "../__mocks__/saml";
 import * as E from "fp-ts/lib/Either";
@@ -24,9 +28,12 @@ const lollipopProvideConfigMock: ILollipopProviderConfig = {
 };
 const aSamlRequestID = "aSamlRequestID";
 
-const getBase64Sha = (str: string) =>
+const getBase64Sha = (
+  str: string,
+  hashingAlgorithm: LollipopHashAlgorithm = DEFAULT_LOLLIPOP_HASH_ALGORITHM
+) =>
   nodeCrypto
-    .createHash("sha256")
+    .createHash(hashingAlgorithm)
     .update(str)
     .digest("base64");
 
@@ -79,7 +86,9 @@ describe("getAuthorizeRequestTamperer", () => {
       const parsedXml = await parseStringPromise(result.right);
       const authnRequest = parsedXml["samlp:AuthnRequest"];
       expect(authnRequest.$.ID).toEqual(
-        getBase64Sha(lollipopParamsMock.pubKey)
+        `${DEFAULT_LOLLIPOP_HASH_ALGORITHM}:${getBase64Sha(
+          lollipopParamsMock.pubKey
+        )}`
       );
       expect(
         authnRequest["samlp:NameIDPolicy"][0].$.AllowCreate
