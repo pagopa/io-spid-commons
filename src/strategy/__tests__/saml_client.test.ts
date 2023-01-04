@@ -343,7 +343,7 @@ describe("CustomSamlClient#generateAuthorizeRequest", () => {
     request.headers[LOLLIPOP_PUB_KEY_HEADER_NAME] = jose.base64url.encode(
       JSON.stringify(aJwkPubKey)
     );
-    request.headers["User-Agent"] = "aUserAgent";
+    request.headers["user-agent"] = "aUserAgent";
     customSamlClient.generateAuthorizeRequest(
       request,
       false,
