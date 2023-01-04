@@ -4,7 +4,7 @@
  * SPID protocol has some peculiarities that need to be addressed
  * to make request, metadata and responses compliant.
  */
-import * as nodeCrypto from "crypto";
+import * as jose from "jose";
 import { UTCISODateFromString } from "@pagopa/ts-commons/lib/dates";
 import { NonEmptyString } from "@pagopa/ts-commons/lib/strings";
 import { distanceInWordsToNow, isAfter, subDays } from "date-fns";
@@ -718,19 +718,31 @@ export const getAuthorizeRequestTamperer = (
               () => Error("Wrong Lollipop UserAgent")
             ),
             TE.chain(({ lParams }) =>
-              TE.tryCatch(async () => {
-                const hashingAlgo = pipe(
-                  lParams.hashAlgorithm,
-                  O.fromNullable,
-                  O.getOrElse(() => DEFAULT_LOLLIPOP_HASH_ALGORITHM)
-                );
-                // eslint-disable-next-line functional/immutable-data
-                o["samlp:AuthnRequest"].$.ID = `${hashingAlgo}:${nodeCrypto
-                  .createHash(hashingAlgo)
-                  .update(lParams.pubKey)
-                  .digest("base64")}`;
-                return o;
-              }, E.toError)
+              pipe(
+                lParams.hashAlgorithm,
+                O.fromNullable,
+                O.getOrElse(() => DEFAULT_LOLLIPOP_HASH_ALGORITHM),
+                TE.of,
+                TE.bindTo("hashingAlgo"),
+                TE.bind("jwkThumbprint", ({ hashingAlgo }) =>
+                  TE.tryCatch(
+                    () =>
+                      jose.calculateJwkThumbprint(lParams.pubKey, hashingAlgo),
+                    E.toError
+                  )
+                ),
+                TE.map(
+                  ({ hashingAlgo, jwkThumbprint }) =>
+                    `${hashingAlgo}:${jwkThumbprint}`
+                ),
+                TE.chain(requestId =>
+                  TE.tryCatch(async () => {
+                    // eslint-disable-next-line functional/immutable-data
+                    o["samlp:AuthnRequest"].$.ID = requestId;
+                    return o;
+                  }, E.toError)
+                )
+              )
             )
           )
         )

@@ -1,3 +1,4 @@
+import * as jose from "jose";
 import { left, right } from "fp-ts/lib/Either";
 import { fromEither } from "fp-ts/lib/TaskEither";
 import { createMockRedis } from "mock-redis-client";
@@ -9,7 +10,10 @@ import { getAuthorizeRequestTamperer } from "../../utils/saml";
 import { mockWrapCallback } from "../__mocks__/passport-saml";
 import { getExtendedRedisCacheProvider } from "../redis_cache_provider";
 import { CustomSamlClient } from "../saml_client";
-import { LOLLIPOP_PUB_KEY_HEADER_NAME } from "../../types/lollipop";
+import {
+  JwkPublicKey,
+  LOLLIPOP_PUB_KEY_HEADER_NAME
+} from "../../types/lollipop";
 
 const mockSet = jest.fn();
 const mockGet = jest.fn();
@@ -68,6 +72,13 @@ const authReqTampener = getAuthorizeRequestTamperer(
 );
 
 const mockedCallback = jest.fn();
+
+const aJwkPubKey: JwkPublicKey = {
+  kty: "EC",
+  crv: "secp256k1",
+  x: "Q8K81dZcC4DdKl52iW7bT0ubXXm2amN835M_v5AgpSE",
+  y: "lLsw82Q414zPWPluI5BmdKHK6XbFfinc8aRqbZCEv0A"
+};
 
 describe("SAML prototype arguments check", () => {
   let OriginalPassportSaml: any;
@@ -331,7 +342,9 @@ describe("CustomSamlClient#generateAuthorizeRequest", () => {
     );
 
     const request = mockReq();
-    request.headers[LOLLIPOP_PUB_KEY_HEADER_NAME] = "aPubKey";
+    request.headers[LOLLIPOP_PUB_KEY_HEADER_NAME] = jose.base64url.encode(
+      JSON.stringify(aJwkPubKey)
+    );
     request.headers["User-Agent"] = "aUserAgent";
     customSamlClient.generateAuthorizeRequest(
       request,
@@ -341,7 +354,7 @@ describe("CustomSamlClient#generateAuthorizeRequest", () => {
     );
     expect(mockAuthReqTampener).toBeCalledWith(SAMLRequest, {
       userAgent: "aUserAgent",
-      pubKey: "aPubKey"
+      pubKey: aJwkPubKey
     });
     // Before checking the execution of the callback we must await that the TaskEither execution is completed.
     await new Promise(resolve => {

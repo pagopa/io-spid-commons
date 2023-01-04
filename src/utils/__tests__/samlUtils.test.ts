@@ -1,15 +1,14 @@
-import { NonEmptyString } from "@pagopa/ts-commons/lib/strings";
+import * as jose from "jose";
 import { Builder, parseStringPromise } from "xml2js";
 import {
   DEFAULT_LOLLIPOP_HASH_ALGORITHM,
   ILollipopParams,
-  LollipopHashAlgorithm
+  JwkPublicKey
 } from "../../types/lollipop";
 import { getAuthorizeRequestTamperer, ISSUER_FORMAT } from "../samlUtils";
 import { samlRequest, samlRequestWithID } from "../__mocks__/saml";
 import * as E from "fp-ts/lib/Either";
 import { ILollipopProviderConfig } from "../middleware";
-import * as nodeCrypto from "crypto";
 const builder = new Builder({
   xmldec: { encoding: undefined, version: "1.0" }
 });
@@ -18,8 +17,15 @@ const samlConfigMock = {
   issuer: "ISSUER"
 } as any;
 
+const aJwkPubKey: JwkPublicKey = {
+  kty: "EC",
+  crv: "secp256k1",
+  x: "Q8K81dZcC4DdKl52iW7bT0ubXXm2amN835M_v5AgpSE",
+  y: "lLsw82Q414zPWPluI5BmdKHK6XbFfinc8aRqbZCEv0A"
+};
+
 const lollipopParamsMock: ILollipopParams = {
-  pubKey: "aPubKey" as NonEmptyString,
+  pubKey: aJwkPubKey,
   userAgent: "IO-APP-User-Agent"
 };
 
@@ -27,15 +33,6 @@ const lollipopProvideConfigMock: ILollipopProviderConfig = {
   allowedUserAgents: ["IO-APP-User-Agent"]
 };
 const aSamlRequestID = "aSamlRequestID";
-
-const getBase64Sha = (
-  str: string,
-  hashingAlgorithm: LollipopHashAlgorithm = DEFAULT_LOLLIPOP_HASH_ALGORITHM
-) =>
-  nodeCrypto
-    .createHash(hashingAlgorithm)
-    .update(str)
-    .digest("base64");
 
 const fakeXml = `<?xml version="1.0"?>
 <samlp:Fake xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ID="ID" Version="2.0" IssueInstant="2020-02-26T07:27:00Z" ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Destination="http://localhost:8080/samlsso" ForceAuthn="true" AssertionConsumerServiceURL="http://localhost:3000/acs" AttributeConsumingServiceIndex="0">
@@ -85,10 +82,12 @@ describe("getAuthorizeRequestTamperer", () => {
     if (E.isRight(result)) {
       const parsedXml = await parseStringPromise(result.right);
       const authnRequest = parsedXml["samlp:AuthnRequest"];
+      const thumbprint = await jose.calculateJwkThumbprint(
+        lollipopParamsMock.pubKey,
+        DEFAULT_LOLLIPOP_HASH_ALGORITHM
+      );
       expect(authnRequest.$.ID).toEqual(
-        `${DEFAULT_LOLLIPOP_HASH_ALGORITHM}:${getBase64Sha(
-          lollipopParamsMock.pubKey
-        )}`
+        `${DEFAULT_LOLLIPOP_HASH_ALGORITHM}:${thumbprint}`
       );
       expect(
         authnRequest["samlp:NameIDPolicy"][0].$.AllowCreate

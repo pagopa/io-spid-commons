@@ -4,8 +4,12 @@ import * as O from "fp-ts/lib/Option";
 import * as TE from "fp-ts/lib/TaskEither";
 import { SamlConfig } from "passport-saml";
 import * as PassportSaml from "passport-saml";
-import { NonEmptyString } from "@pagopa/ts-commons/lib/strings";
-import { LOLLIPOP_PUB_KEY_HEADER_NAME } from "../types/lollipop";
+import {
+  JwkPublicKeyFromToken,
+  LollipopHashAlgorithm,
+  LOLLIPOP_PUB_KEY_HASHING_ALGO_HEADER_NAME,
+  LOLLIPOP_PUB_KEY_HEADER_NAME
+} from "../types/lollipop";
 import { IExtendedCacheProvider } from "./redis_cache_provider";
 import {
   PreValidateResponseDoneCallbackT,
@@ -84,9 +88,15 @@ export class CustomSamlClient extends PassportSaml.SAML {
         xml
           ? pipe(
               req.headers[LOLLIPOP_PUB_KEY_HEADER_NAME],
-              NonEmptyString.decode,
+              JwkPublicKeyFromToken.decode,
               O.fromEither,
               O.map(pubKey => ({
+                hashAlgorithm: pipe(
+                  req.headers[LOLLIPOP_PUB_KEY_HASHING_ALGO_HEADER_NAME],
+                  // what if provided hashing algorithm is not included in defined LollipopHashAlgorithm?
+                  O.fromPredicate(LollipopHashAlgorithm.is),
+                  O.toUndefined
+                ),
                 pubKey,
                 userAgent: req.headers["User-Agent"]
               })),
