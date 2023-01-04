@@ -107,7 +107,10 @@ const serviceProviderConfig: IServiceProviderConfig = {
       },
       phone: "+393331234567"
     }
-  ]
+  ],
+  lollipopProviderConfig: {
+    allowedUserAgents: ["IO App/2.23"]
+  }
 };
 
 const redisClient = redis.createClient({

@@ -1,4 +1,4 @@
-FROM circleci/node:10.14.2 as builder
+FROM circleci/node:14.16.0 as builder
 
 WORKDIR /usr/src/app
 
@@ -11,7 +11,7 @@ RUN sudo chmod -R 777 /usr/src/app \
   && yarn install \
   && yarn build
 
-FROM node:10.14.2-alpine
+FROM node:14.16.0-alpine
 LABEL maintainer="https://pagopa.gov.it"
 
 WORKDIR /usr/src/app

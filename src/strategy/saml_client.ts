@@ -100,7 +100,7 @@ export class CustomSamlClient extends PassportSaml.SAML {
                   O.toUndefined
                 ),
                 pubKey,
-                userAgent: req.headers["User-Agent"]
+                userAgent: req.headers["user-agent"]
               })),
               O.toUndefined,
               lollipopParams => tamperAuthorizeRequest(xml, lollipopParams),
