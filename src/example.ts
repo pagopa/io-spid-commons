@@ -13,6 +13,7 @@ import * as t from "io-ts";
 import passport = require("passport");
 import { SamlConfig } from "passport-saml";
 import * as redis from "redis";
+import { ValidUrl } from "@pagopa/ts-commons/lib/url";
 import { logger } from "./utils/logger";
 import {
   AggregatorType,
@@ -26,7 +27,6 @@ import {
   LogoutT,
   withSpid
 } from ".";
-import { ValidUrl } from "@pagopa/ts-commons/lib/url";
 
 export const SpidUser = t.intersection([
   t.interface({
