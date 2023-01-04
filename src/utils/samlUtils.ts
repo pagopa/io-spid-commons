@@ -688,10 +688,12 @@ export const getAuthorizeRequestTamperer = (
     TE.tryCatch(() => parseStringPromise(generateXml), E.toError),
     TE.chain(o =>
       pipe(
-        O.fromNullable(serviceProviderConfig.lollipopProviderConfig),
+        serviceProviderConfig.lollipopProviderConfig,
+        O.fromNullable,
         O.chain(lConfig =>
           pipe(
-            O.fromNullable(lollipopParams),
+            lollipopParams,
+            O.fromNullable,
             O.map(lParams => ({ lConfig, lParams }))
           )
         ),
