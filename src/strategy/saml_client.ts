@@ -4,8 +4,8 @@ import * as O from "fp-ts/lib/Option";
 import * as TE from "fp-ts/lib/TaskEither";
 import { SamlConfig } from "passport-saml";
 import * as PassportSaml from "passport-saml";
+import { JwkPublicKeyFromToken } from "@pagopa/ts-commons/lib/jwk";
 import {
-  JwkPublicKeyFromToken,
   LollipopHashAlgorithm,
   LOLLIPOP_PUB_KEY_HASHING_ALGO_HEADER_NAME,
   LOLLIPOP_PUB_KEY_HEADER_NAME

@@ -10,10 +10,8 @@ import { getAuthorizeRequestTamperer } from "../../utils/saml";
 import { mockWrapCallback } from "../__mocks__/passport-saml";
 import { getExtendedRedisCacheProvider } from "../redis_cache_provider";
 import { CustomSamlClient } from "../saml_client";
-import {
-  JwkPublicKey,
-  LOLLIPOP_PUB_KEY_HEADER_NAME
-} from "../../types/lollipop";
+import { LOLLIPOP_PUB_KEY_HEADER_NAME } from "../../types/lollipop";
+import { JwkPublicKey } from "@pagopa/ts-commons/lib/jwk";
 
 const mockSet = jest.fn();
 const mockGet = jest.fn();

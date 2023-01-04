@@ -26,6 +26,7 @@ import {
   LogoutT,
   withSpid
 } from ".";
+import { ValidUrl } from "@pagopa/ts-commons/lib/url";
 
 export const SpidUser = t.intersection([
   t.interface({
@@ -129,11 +130,11 @@ const samlConfig: SamlConfig = {
 
 const acs: AssertionConsumerServiceT = async payload => {
   logger.info("acs:%s", JSON.stringify(payload));
-  return ResponsePermanentRedirect({ href: "/success?acs" });
+  return ResponsePermanentRedirect({ href: "/success?acs" } as ValidUrl);
 };
 
 const logout: LogoutT = async () =>
-  ResponsePermanentRedirect({ href: "/success?logout" });
+  ResponsePermanentRedirect({ href: "/success?logout" } as ValidUrl);
 
 const app = express();
 
