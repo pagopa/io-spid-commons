@@ -2,7 +2,6 @@ import * as express from "express";
 import { pipe } from "fp-ts/lib/function";
 import * as O from "fp-ts/lib/Option";
 import * as TE from "fp-ts/lib/TaskEither";
-import * as E from "fp-ts/lib/Either";
 import { SamlConfig } from "passport-saml";
 import * as PassportSaml from "passport-saml";
 import { NonEmptyString } from "@pagopa/ts-commons/lib/strings";
@@ -86,11 +85,12 @@ export class CustomSamlClient extends PassportSaml.SAML {
           ? pipe(
               req.headers[LOLLIPOP_PUB_KEY_HEADER_NAME],
               NonEmptyString.decode,
-              E.map(pubKey => ({
+              O.fromEither,
+              O.map(pubKey => ({
                 pubKey,
                 userAgent: req.headers["User-Agent"]
               })),
-              E.getOrElseW(() => undefined),
+              O.toUndefined,
               lollipopParams => tamperAuthorizeRequest(xml, lollipopParams),
               TE.chain(tamperedXml =>
                 this.extededCacheProvider.save(tamperedXml, this.config)
