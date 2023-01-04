@@ -21,6 +21,17 @@ export interface ILollipopParams {
   readonly hashAlgorithm?: LollipopHashAlgorithm;
 }
 
+export const LOLLIPOP_PUB_KEY_HEADER_NAME = "x-pagopa-lollipop-pub-key";
+export const LOLLIPOP_PUB_KEY_HASHING_ALGO_HEADER_NAME =
+  "x-pagopa-lollipop-pub-key-hash-algo";
+
+/**
+ * -----------------------------------------------------------------
+ * Consider to move the following types to `ts-commons` to share it
+ * across clients and server implementations.
+ * -----------------------------------------------------------------
+ */
+
 /**
  * This is the JWK JSON type for the EC keys.
  */
@@ -51,7 +62,7 @@ export type RSAKey = t.TypeOf<typeof RSAKey>;
 export const JwkPublicKey = t.union([RSAKey, ECKey], "JwkPublicKey");
 export type JwkPublicKey = t.TypeOf<typeof JwkPublicKey>;
 
-export const parseJwk = (token: unknown): E.Either<Error, J.Json> =>
+export const parseJwkOrError = (token: unknown): E.Either<Error, J.Json> =>
   pipe(
     token,
     NonEmptyString.decode,
@@ -83,11 +94,12 @@ export const parseJwk = (token: unknown): E.Either<Error, J.Json> =>
 
 export const JwkPublicKeyFromToken = new t.Type<JwkPublicKey, string>(
   "JwkPublicKeyFromToken",
-  (s): s is JwkPublicKey => pipe(s, parseJwk, E.toUnion, JwkPublicKey.is),
+  (s): s is JwkPublicKey =>
+    pipe(s, parseJwkOrError, E.toUnion, JwkPublicKey.is),
   (s, ctx) =>
     pipe(
       s,
-      parseJwk,
+      parseJwkOrError,
       E.chainW(
         flow(
           JwkPublicKey.decode,
@@ -105,7 +117,3 @@ export const JwkPublicKeyFromToken = new t.Type<JwkPublicKey, string>(
   )
 );
 export type JwkPublicKeyFromToken = t.TypeOf<typeof JwkPublicKeyFromToken>;
-
-export const LOLLIPOP_PUB_KEY_HEADER_NAME = "x-pagopa-lollipop-pub-key";
-export const LOLLIPOP_PUB_KEY_HASHING_ALGO_HEADER_NAME =
-  "x-pagopa-lollipop-pub-key-hash-algo";

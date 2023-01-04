@@ -93,7 +93,9 @@ export class CustomSamlClient extends PassportSaml.SAML {
               O.map(pubKey => ({
                 hashAlgorithm: pipe(
                   req.headers[LOLLIPOP_PUB_KEY_HASHING_ALGO_HEADER_NAME],
-                  // what if provided hashing algorithm is not included in defined LollipopHashAlgorithm?
+                  // The headers validation should happen into the Application layer.
+                  // If a unsupported value is provided, the application can return a validation error.
+                  // If the value is missing or unsupported the default value will be used (sha256).
                   O.fromPredicate(LollipopHashAlgorithm.is),
                   O.toUndefined
                 ),

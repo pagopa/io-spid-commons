@@ -1,4 +1,8 @@
-import { JwkPublicKey, JwkPublicKeyFromToken, parseJwk } from "../lollipop";
+import {
+  JwkPublicKey,
+  JwkPublicKeyFromToken,
+  parseJwkOrError
+} from "../lollipop";
 import * as jose from "jose";
 import * as E from "fp-ts/lib/Either";
 
@@ -9,11 +13,11 @@ MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEQ8K81dZcC4DdKl52iW7bT0ubXXm2amN8
 -----END PUBLIC KEY-----`;
 
 const getJwkToken = () => jose.importSPKI(spki, algorithm);
-describe("parseJwk", () => {
+describe("parseJwkOrError", () => {
   it("should parse a valid jwk token", async () => {
     const jwkToken = await getJwkToken();
     const jwk = await jose.exportJWK(jwkToken);
-    const result = parseJwk(jose.base64url.encode(JSON.stringify(jwk)));
+    const result = parseJwkOrError(jose.base64url.encode(JSON.stringify(jwk)));
     expect(E.isRight(result)).toBeTruthy();
     if (E.isRight(result)) {
       expect(result.right).toStrictEqual(jwk);
@@ -21,7 +25,7 @@ describe("parseJwk", () => {
   });
 
   it("should return an error if jwk is empty", async () => {
-    const result = parseJwk("");
+    const result = parseJwkOrError("");
     expect(E.isLeft(result)).toBeTruthy();
     if (E.isLeft(result)) {
       expect(result.left.name).toContain("Error");
@@ -29,7 +33,7 @@ describe("parseJwk", () => {
   });
 
   it("should return an error if token contains non base64 chars", async () => {
-    const result = parseJwk(" # ");
+    const result = parseJwkOrError(" # ");
     expect(E.isLeft(result)).toBeTruthy();
     if (E.isLeft(result)) {
       expect(result.left.name).toContain("Error");
@@ -38,7 +42,7 @@ describe("parseJwk", () => {
   });
 
   it("should return an error if token is not well formed", async () => {
-    const result = parseJwk("e2E6ICJCIn0=");
+    const result = parseJwkOrError("e2E6ICJCIn0=");
     expect(E.isLeft(result)).toBeTruthy();
     if (E.isLeft(result)) {
       expect(result.left.name).toContain("Error");
