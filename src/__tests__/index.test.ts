@@ -18,6 +18,7 @@ import { getSpidStrategyOption } from "../utils/middleware";
 
 import {
   mockCIEIdpMetadata,
+  mockCIETestIdpMetadata,
   mockIdpMetadata,
   mockTestenvIdpMetadata
 } from "../__mocks__/metadata";
@@ -85,6 +86,8 @@ const IDPMetadataUrl =
   "https://registry.spid.gov.it/metadata/idp/spid-entities-idps.xml";
 const spidCieUrl =
   "https://idserver.servizicie.interno.gov.it:8443/idp/shibboleth";
+const spidCieTestUrl =
+  "https://collaudo.idserver.servizicie.interno.gov.it/idp/shibboleth";
 
 const expectedLoginPath = "/login";
 const expectedSloPath = "/logout";
@@ -135,6 +138,7 @@ const serviceProviderConfig: IServiceProviderConfig = {
     name: "Required attrs"
   },
   spidCieUrl,
+  spidCieTestUrl,
   spidTestEnvUrl,
   strictResponseValidation: {
     "http://localhost:8080": true
@@ -152,6 +156,11 @@ function initMockFetchIDPMetadata(): void {
   mockFetchIdpsMetadata.mockImplementationOnce(() => {
     return fromEither(
       right<Error, Record<string, IDPEntityDescriptor>>(mockCIEIdpMetadata)
+    );
+  });
+  mockFetchIdpsMetadata.mockImplementationOnce(() => {
+    return fromEither(
+      right<Error, Record<string, IDPEntityDescriptor>>(mockCIETestIdpMetadata)
     );
   });
   mockFetchIdpsMetadata.mockImplementationOnce(() => {
@@ -180,7 +189,7 @@ describe("io-spid-commons withSpid", () => {
       logout: async () =>
         ResponsePermanentRedirect({ href: "/success?logout" } as ValidUrl)
     })();
-    expect(mockFetchIdpsMetadata).toBeCalledTimes(3);
+    expect(mockFetchIdpsMetadata).toBeCalledTimes(4);
     const emptySpidStrategyOption = getSpidStrategyOption(spid.app);
     expect(emptySpidStrategyOption).toHaveProperty("idp", {});
 
@@ -200,6 +209,11 @@ describe("io-spid-commons withSpid", () => {
     );
     expect(mockFetchIdpsMetadata).toHaveBeenNthCalledWith(
       3,
+      spidCieTestUrl,
+      expect.any(Object)
+    );
+    expect(mockFetchIdpsMetadata).toHaveBeenNthCalledWith(
+      4,
       `${spidTestEnvUrl}/metadata`,
       expect.any(Object)
     );
@@ -207,6 +221,7 @@ describe("io-spid-commons withSpid", () => {
     expect(spidStrategyOption).toHaveProperty("idp", {
       ...mockIdpMetadata,
       ...mockCIEIdpMetadata,
+      ...mockCIETestIdpMetadata,
       ...mockTestenvIdpMetadata
     });
   });

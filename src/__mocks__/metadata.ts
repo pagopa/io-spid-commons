@@ -24,6 +24,17 @@ export const mockCIEIdpMetadata: Record<string, IDPEntityDescriptor> = {
   }
 };
 
+export const mockCIETestIdpMetadata: Record<string, IDPEntityDescriptor> = {
+  xx_servizicie_coll: {
+    cert: (["CERT"] as unknown) as NonEmptyArray<NonEmptyString>,
+    entityID:
+      "https://collaudo.idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SSO",
+    entryPoint:
+      "https://collaudo.idserver.servizicie.interno.gov.it/idp/profile/SAML2/Redirect/SLO",
+    logoutUrl: ""
+  }
+};
+
 export const mockTestenvIdpMetadata: Record<string, IDPEntityDescriptor> = {
   xx_testenv2: {
     cert: (["CERT"] as unknown) as NonEmptyArray<NonEmptyString>,

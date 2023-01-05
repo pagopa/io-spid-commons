@@ -77,6 +77,7 @@ export interface IServiceProviderConfig {
     readonly name: string;
   };
   readonly spidCieUrl?: string;
+  readonly spidCieTestUrl?: string;
   readonly spidTestEnvUrl?: string;
   readonly spidValidatorUrl?: string;
   readonly IDPMetadataUrl: string;
@@ -173,6 +174,19 @@ export const getSpidStrategyOptionsUpdater = (
             pipe(
               fetchIdpsMetadata(
                 serviceProviderConfig.spidCieUrl,
+                CIE_IDP_IDENTIFIERS
+              ),
+              TE.getOrElseW(() => T.of({}))
+            )
+          ]
+        : []
+    )
+    .concat(
+      NonEmptyString.is(serviceProviderConfig.spidCieTestUrl)
+        ? [
+            pipe(
+              fetchIdpsMetadata(
+                serviceProviderConfig.spidCieTestUrl,
                 CIE_IDP_IDENTIFIERS
               ),
               TE.getOrElseW(() => T.of({}))

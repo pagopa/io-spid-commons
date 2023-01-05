@@ -80,6 +80,8 @@ const serviceProviderConfig: IServiceProviderConfig = {
     ],
     name: "Required attrs"
   },
+  spidCieTestUrl:
+    "https://collaudo.idserver.servizicie.interno.gov.it/idp/shibboleth",
   spidCieUrl:
     "https://preproduzione.idserver.servizicie.interno.gov.it/idp/shibboleth?Metadata",
   spidTestEnvUrl: "https://spid-testenv2:8088",

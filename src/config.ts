@@ -13,6 +13,8 @@ export const SPID_IDP_IDENTIFIERS = {
 };
 
 export const CIE_IDP_IDENTIFIERS = {
+  "https://collaudo.idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SSO":
+    "xx_servizicie_coll",
   "https://idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SSO":
     "xx_servizicie",
   "https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SSO":
