@@ -733,7 +733,7 @@ export const getAuthorizeRequestTamperer = (
                 ),
                 TE.map(
                   ({ hashingAlgo, jwkThumbprint }) =>
-                    `${hashingAlgo}:${jwkThumbprint}`
+                    `${hashingAlgo}-${jwkThumbprint}`
                 ),
                 TE.chain(requestId =>
                   TE.tryCatch(async () => {

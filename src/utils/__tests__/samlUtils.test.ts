@@ -87,7 +87,7 @@ describe("getAuthorizeRequestTamperer", () => {
         DEFAULT_LOLLIPOP_HASH_ALGORITHM
       );
       expect(authnRequest.$.ID).toEqual(
-        `${DEFAULT_LOLLIPOP_HASH_ALGORITHM}:${thumbprint}`
+        `${DEFAULT_LOLLIPOP_HASH_ALGORITHM}-${thumbprint}`
       );
       expect(
         authnRequest["samlp:NameIDPolicy"][0].$.AllowCreate

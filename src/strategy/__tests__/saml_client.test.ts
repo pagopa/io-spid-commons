@@ -394,7 +394,7 @@ describe("CustomSamlClient#generateAuthorizeRequest", () => {
     );
     const jwkThumbprint = await jose.calculateJwkThumbprint(aJwkPubKey);
     const lollipopSamlRequest = samlRequestWithID(
-      `${DEFAULT_LOLLIPOP_HASH_ALGORITHM}:${jwkThumbprint}`
+      `${DEFAULT_LOLLIPOP_HASH_ALGORITHM}-${jwkThumbprint}`
     );
     mockWrapCallback.mockImplementation(callback => {
       callback(null, samlRequest);
@@ -443,7 +443,7 @@ describe("CustomSamlClient#generateAuthorizeRequest", () => {
       setTimeout(() => {
         expect(mockSet).toBeCalled();
         expect(mockCallback).toBeCalledWith(null, expectedSamlRequest);
-        expect(`${DEFAULT_LOLLIPOP_HASH_ALGORITHM}:${jwkThumbprint}`).toEqual(
+        expect(`${DEFAULT_LOLLIPOP_HASH_ALGORITHM}-${jwkThumbprint}`).toEqual(
           expectedSamlRequestXML["samlp:AuthnRequest"].$.ID
         );
         resolve(undefined);
