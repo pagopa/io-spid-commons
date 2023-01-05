@@ -43,6 +43,8 @@ const serviceProviderConfig: IServiceProviderConfig = {
     name: "Required attrs"
   },
   spidCieUrl: "https://idserver.servizicie.interno.gov.it:8443/idp/shibboleth",
+  spidCieTestUrl:
+    "https://collaudo.idserver.servizicie.interno.gov.it/idp/shibboleth",
   spidTestEnvUrl: "https://spid-testenv2:8088",
   spidValidatorUrl: "http://localhost:8080"
 };
@@ -104,7 +106,7 @@ describe("CustomSamlClient#constructor", () => {
       redisCacheProvider
     );
     expect(customSamlClient).toBeTruthy();
-    
+
     expect(customSamlClient["options"]).toHaveProperty(
       "validateInResponseTo",
       false
