@@ -192,3 +192,19 @@ describe("getAuthorizeRequestTamperer", () => {
     }
   });
 });
+
+describe("calculateJwkThumbprint", () => {
+  it("should calculate the same thumbprint on same jwk with different properties order", async () => {
+    const aJwkPubKeyThumbprint = await jose.calculateJwkThumbprint(aJwkPubKey);
+    const sameJwkPubKeyWithDifferentPropertiesOrder: JwkPublicKey = {
+      crv: "secp256k1",
+      x: "Q8K81dZcC4DdKl52iW7bT0ubXXm2amN835M_v5AgpSE",
+      y: "lLsw82Q414zPWPluI5BmdKHK6XbFfinc8aRqbZCEv0A",
+      kty: "EC"
+    };
+    const sameJwkWithDifferentOrderThumbprint = await jose.calculateJwkThumbprint(
+      sameJwkPubKeyWithDifferentPropertiesOrder
+    );
+    expect(aJwkPubKeyThumbprint).toEqual(sameJwkWithDifferentOrderThumbprint);
+  });
+});
