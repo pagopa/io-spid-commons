@@ -586,10 +586,10 @@
     eslint-plugin-sonarjs "^0.5.0"
     prettier "^2.1.2"
 
-"@pagopa/ts-commons@^10.11.0":
-  version "10.11.0"
-  resolved "https://registry.yarnpkg.com/@pagopa/ts-commons/-/ts-commons-10.11.0.tgz#c967e8b3eda7f1cc7ad752215be0054b044ca919"
-  integrity sha512-aUrNut7dTimjWFS9XIl0wvw2xRFwpC5EzJJbTp6gMKG+ovDm7uD7BfXhfH1yfjkg5rS6xBPBkRKYMk17Nk8oiQ==
+"@pagopa/ts-commons@^10.11.1":
+  version "10.11.1"
+  resolved "https://registry.yarnpkg.com/@pagopa/ts-commons/-/ts-commons-10.11.1.tgz#7cdee9c2219365ecffca7467747df9d82b7a3dc3"
+  integrity sha512-/quFGyq9dHexIzu200nMFhYlcMbmypMUhwTsvkTV2U5xhkxh3cz+kYv7AWWEwScbE6eziQibOSkgTTid/pZG7g==
   dependencies:
     abort-controller "^3.0.0"
     agentkeepalive "^4.1.4"
