@@ -145,6 +145,11 @@ const withSpidAuthMiddleware = (
   })(req, res, next);
 };
 
+type ExpressMiddleware = (
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) => void;
 interface IWithSpidT {
   readonly appConfig: IApplicationConfig;
   readonly samlConfig: SamlConfig;
@@ -154,6 +159,7 @@ interface IWithSpidT {
   readonly acs: AssertionConsumerServiceT;
   readonly logout: LogoutT;
   readonly doneCb?: DoneCallbackT;
+  readonly lollipopMiddleware?: ExpressMiddleware;
 }
 
 /**
@@ -169,7 +175,8 @@ export const withSpid = ({
   logout,
   redisClient,
   samlConfig,
-  serviceProviderConfig
+  serviceProviderConfig,
+  lollipopMiddleware = (_, __, next): void => next()
 }: IWithSpidT): T.Task<{
   readonly app: express.Express;
   readonly idpMetadataRefresher: () => T.Task<void>;
@@ -280,6 +287,7 @@ export const withSpid = ({
             )
           );
         }),
+        middlewareCatchAsInternalError(lollipopMiddleware),
         middlewareCatchAsInternalError(spidAuth)
       );
 

@@ -4,18 +4,24 @@ import * as O from "fp-ts/lib/Option";
 import * as TE from "fp-ts/lib/TaskEither";
 import { SamlConfig } from "passport-saml";
 import * as PassportSaml from "passport-saml";
+import { JwkPublicKeyFromToken } from "@pagopa/ts-commons/lib/jwk";
+import {
+  LollipopHashAlgorithm,
+  LOLLIPOP_PUB_KEY_HASHING_ALGO_HEADER_NAME,
+  LOLLIPOP_PUB_KEY_HEADER_NAME
+} from "../types/lollipop";
 import { IExtendedCacheProvider } from "./redis_cache_provider";
 import {
   PreValidateResponseDoneCallbackT,
   PreValidateResponseT,
-  XmlTamperer
+  XmlAuthorizeTamperer
 } from "./spid";
 
 export class CustomSamlClient extends PassportSaml.SAML {
   constructor(
     private readonly config: SamlConfig,
     private readonly extededCacheProvider: IExtendedCacheProvider,
-    private readonly tamperAuthorizeRequest?: XmlTamperer,
+    private readonly tamperAuthorizeRequest?: XmlAuthorizeTamperer,
     private readonly preValidateResponse?: PreValidateResponseT,
     private readonly doneCb?: PreValidateResponseDoneCallbackT
   ) {
@@ -81,7 +87,23 @@ export class CustomSamlClient extends PassportSaml.SAML {
         // eslint-disable-next-line @typescript-eslint/no-floating-promises, @typescript-eslint/no-unused-expressions
         xml
           ? pipe(
-              tamperAuthorizeRequest(xml),
+              req.headers[LOLLIPOP_PUB_KEY_HEADER_NAME],
+              JwkPublicKeyFromToken.decode,
+              O.fromEither,
+              O.map(pubKey => ({
+                hashAlgorithm: pipe(
+                  req.headers[LOLLIPOP_PUB_KEY_HASHING_ALGO_HEADER_NAME],
+                  // The headers validation should happen into the Application layer.
+                  // If a unsupported value is provided, the application can return a validation error.
+                  // If the value is missing or unsupported the default value will be used (sha256).
+                  O.fromPredicate(LollipopHashAlgorithm.is),
+                  O.toUndefined
+                ),
+                pubKey,
+                userAgent: req.headers["user-agent"]
+              })),
+              O.toUndefined,
+              lollipopParams => tamperAuthorizeRequest(xml, lollipopParams),
               TE.chain(tamperedXml =>
                 this.extededCacheProvider.save(tamperedXml, this.config)
               ),

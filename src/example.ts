@@ -13,6 +13,7 @@ import * as t from "io-ts";
 import passport = require("passport");
 import { SamlConfig } from "passport-saml";
 import * as redis from "redis";
+import { ValidUrl } from "@pagopa/ts-commons/lib/url";
 import { logger } from "./utils/logger";
 import {
   AggregatorType,
@@ -108,7 +109,10 @@ const serviceProviderConfig: IServiceProviderConfig = {
       },
       phone: "+393331234567"
     }
-  ]
+  ],
+  lollipopProviderConfig: {
+    allowedUserAgents: ["IO App/2.23"]
+  }
 };
 
 const redisClient = redis.createClient({
@@ -131,11 +135,11 @@ const samlConfig: SamlConfig = {
 
 const acs: AssertionConsumerServiceT = async payload => {
   logger.info("acs:%s", JSON.stringify(payload));
-  return ResponsePermanentRedirect({ href: "/success?acs" });
+  return ResponsePermanentRedirect({ href: "/success?acs" } as ValidUrl);
 };
 
 const logout: LogoutT = async () =>
-  ResponsePermanentRedirect({ href: "/success?logout" });
+  ResponsePermanentRedirect({ href: "/success?logout" } as ValidUrl);
 
 const app = express();
 

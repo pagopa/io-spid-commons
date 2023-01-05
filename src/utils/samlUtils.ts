@@ -4,6 +4,7 @@
  * SPID protocol has some peculiarities that need to be addressed
  * to make request, metadata and responses compliant.
  */
+import * as jose from "jose";
 import { UTCISODateFromString } from "@pagopa/ts-commons/lib/dates";
 import { NonEmptyString } from "@pagopa/ts-commons/lib/strings";
 import { distanceInWordsToNow, isAfter, subDays } from "date-fns";
@@ -11,7 +12,9 @@ import { Request as ExpressRequest } from "express";
 import { predicate as PR } from "fp-ts";
 import { flatten } from "fp-ts/lib/Array";
 import * as E from "fp-ts/lib/Either";
-import { pipe } from "fp-ts/lib/function";
+import * as RA from "fp-ts/lib/ReadonlyArray";
+import * as S from "fp-ts/lib/string";
+import { flow, pipe } from "fp-ts/lib/function";
 import * as O from "fp-ts/lib/Option";
 import { collect, lookup } from "fp-ts/lib/Record";
 import { Ord } from "fp-ts/lib/string";
@@ -25,6 +28,10 @@ import { Builder, parseStringPromise } from "xml2js";
 import { DOMParser } from "xmldom";
 import { SPID_LEVELS, SPID_URLS, SPID_USER_ATTRIBUTES } from "../config";
 import { EventTracker } from "..";
+import {
+  DEFAULT_LOLLIPOP_HASH_ALGORITHM,
+  ILollipopParams
+} from "../types/lollipop";
 import { logger } from "./logger";
 import {
   ContactType,
@@ -468,7 +475,7 @@ export const getSamlOptions: MultiSamlConfig["getSamlOptions"] = (
     };
     return done(null, options);
   } catch (e) {
-    return done(e);
+    return done(e as Error);
   }
 };
 
@@ -671,11 +678,76 @@ export const getMetadataTamperer = (
 
 export const getAuthorizeRequestTamperer = (
   xmlBuilder: Builder,
-  _: IServiceProviderConfig,
+  serviceProviderConfig: IServiceProviderConfig,
   samlConfig: SamlConfig
-) => (generateXml: string): TE.TaskEither<Error, string> =>
+) => (
+  generateXml: string,
+  lollipopParams?: ILollipopParams
+): TE.TaskEither<Error, string> =>
   pipe(
     TE.tryCatch(() => parseStringPromise(generateXml), E.toError),
+    TE.chain(o =>
+      pipe(
+        serviceProviderConfig.lollipopProviderConfig,
+        O.fromNullable,
+        O.chain(lConfig =>
+          pipe(
+            lollipopParams,
+            O.fromNullable,
+            O.map(lParams => ({ lConfig, lParams }))
+          )
+        ),
+        E.fromOption(() => o),
+        E.fold(
+          TE.right,
+          flow(
+            TE.fromPredicate(
+              ({ lConfig, lParams }) =>
+                pipe(
+                  lParams.userAgent,
+                  O.fromNullable,
+                  O.map(userAgent =>
+                    Array.isArray(userAgent)
+                      ? RA.fromArray(userAgent)
+                      : RA.of(userAgent)
+                  ),
+                  O.getOrElse(() => RA.zero<string>()),
+                  arr => RA.intersection(S.Eq)(arr)(lConfig.allowedUserAgents),
+                  RA.isNonEmpty
+                ),
+              () => Error("Wrong Lollipop UserAgent")
+            ),
+            TE.chain(({ lParams }) =>
+              pipe(
+                lParams.hashAlgorithm,
+                O.fromNullable,
+                O.getOrElse(() => DEFAULT_LOLLIPOP_HASH_ALGORITHM),
+                TE.of,
+                TE.bindTo("hashingAlgo"),
+                TE.bind("jwkThumbprint", ({ hashingAlgo }) =>
+                  TE.tryCatch(
+                    () =>
+                      jose.calculateJwkThumbprint(lParams.pubKey, hashingAlgo),
+                    E.toError
+                  )
+                ),
+                TE.map(
+                  ({ hashingAlgo, jwkThumbprint }) =>
+                    `${hashingAlgo}:${jwkThumbprint}`
+                ),
+                TE.chain(requestId =>
+                  TE.tryCatch(async () => {
+                    // eslint-disable-next-line functional/immutable-data
+                    o["samlp:AuthnRequest"].$.ID = requestId;
+                    return o;
+                  }, E.toError)
+                )
+              )
+            )
+          )
+        )
+      )
+    ),
     TE.chain(o =>
       TE.tryCatch(async () => {
         // it is safe to mutate object here since it is

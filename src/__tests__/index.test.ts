@@ -1,4 +1,5 @@
 import { ResponsePermanentRedirect } from "@pagopa/ts-commons/lib/responses";
+import { ValidUrl } from "@pagopa/ts-commons/lib/url";
 import * as express from "express";
 import { left, right } from "fp-ts/lib/Either";
 import { fromEither } from "fp-ts/lib/TaskEither";
@@ -183,8 +184,10 @@ describe("io-spid-commons withSpid", () => {
       serviceProviderConfig,
       redisClient: mockRedisClient,
       app,
-      acs: async () => ResponsePermanentRedirect({ href: "/success?acs" }),
-      logout: async () => ResponsePermanentRedirect({ href: "/success?logout" })
+      acs: async () =>
+        ResponsePermanentRedirect({ href: "/success?acs" } as ValidUrl),
+      logout: async () =>
+        ResponsePermanentRedirect({ href: "/success?logout" } as ValidUrl)
     })();
     expect(mockFetchIdpsMetadata).toBeCalledTimes(4);
     const emptySpidStrategyOption = getSpidStrategyOption(spid.app);
@@ -231,8 +234,10 @@ describe("io-spid-commons withSpid", () => {
       serviceProviderConfig,
       redisClient: mockRedisClient,
       app,
-      acs: async () => ResponsePermanentRedirect({ href: "/success?acs" }),
-      logout: async () => ResponsePermanentRedirect({ href: "/success?logout" })
+      acs: async () =>
+        ResponsePermanentRedirect({ href: "/success?acs" } as ValidUrl),
+      logout: async () =>
+        ResponsePermanentRedirect({ href: "/success?logout" } as ValidUrl)
     })();
     return request(spid.app)
       .get(`${appConfig.loginPath}?authLevel=SpidL1`)

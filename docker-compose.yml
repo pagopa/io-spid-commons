@@ -13,7 +13,7 @@ services:
       - "3000"
     ports:
       - "3000:3000"
-    image: node:10.14.2-alpine
+    image: node:14.16.0-alpine
     working_dir: /usr/src/app
     volumes:
       - "./certs:/usr/src/app/certs:delegated"

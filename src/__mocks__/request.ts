@@ -13,6 +13,7 @@ export default function mockReq(): any {
     acceptsLanguage: jest.fn(),
     acceptsLanguages: jest.fn(),
     header: jest.fn(),
+    headers: {},
     is: jest.fn(),
     param: jest.fn(),
     query: {},

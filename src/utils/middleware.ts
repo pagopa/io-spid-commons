@@ -15,6 +15,7 @@ import { CIE_IDP_IDENTIFIERS, SPID_IDP_IDENTIFIERS } from "../config";
 import {
   PreValidateResponseT,
   SpidStrategy,
+  XmlAuthorizeTamperer,
   XmlTamperer
 } from "../strategy/spid";
 import { IDPEntityDescriptor } from "../types/IDPEntityDescriptor";
@@ -67,6 +68,9 @@ const ContactPerson = t.intersection([
   })
 ]);
 type ContactPerson = t.TypeOf<typeof ContactPerson>;
+export interface ILollipopProviderConfig {
+  readonly allowedUserAgents: ReadonlyArray<string>;
+}
 export interface IServiceProviderConfig {
   readonly requiredAttributes: {
     readonly attributes: ReadonlyArray<SamlAttributeT>;
@@ -81,6 +85,7 @@ export interface IServiceProviderConfig {
   readonly contacts?: ReadonlyArray<ContactPerson>;
   readonly publicCert: string;
   readonly strictResponseValidation?: StrictResponseValidationOptions;
+  readonly lollipopProviderConfig?: ILollipopProviderConfig;
 }
 
 export type StrictResponseValidationOptions = Record<
@@ -261,7 +266,7 @@ export const makeSpidStrategy = (
   options: ISpidStrategyOptions,
   getSamlOptions: SpidStrategy["getSamlOptions"],
   redisClient: RedisClient,
-  tamperAuthorizeRequest?: XmlTamperer,
+  tamperAuthorizeRequest?: XmlAuthorizeTamperer,
   tamperMetadata?: XmlTamperer,
   preValidateResponse?: PreValidateResponseT,
   doneCb?: DoneCallbackT
