@@ -25,13 +25,15 @@ import { MultiSamlConfig } from "passport-saml/multiSamlStrategy";
 import * as xmlCrypto from "xml-crypto";
 import { Builder, parseStringPromise } from "xml2js";
 import { DOMParser } from "xmldom";
+import {
+  SemverFromFromUserAgentString,
+  UserAgentSemverValid
+} from "@pagopa/ts-commons/lib/http-user-agent";
 import { SPID_LEVELS, SPID_URLS, SPID_USER_ATTRIBUTES } from "../config";
 import { EventTracker } from "..";
 import {
   DEFAULT_LOLLIPOP_HASH_ALGORITHM,
-  ILollipopParams,
-  SemverFromFromUserAgentString,
-  UserAgentSemverValid
+  ILollipopParams
 } from "../types/lollipop";
 import { logger } from "./logger";
 import {

@@ -15,13 +15,13 @@ import { getExtendedRedisCacheProvider } from "../redis_cache_provider";
 import { CustomSamlClient } from "../saml_client";
 import {
   DEFAULT_LOLLIPOP_HASH_ALGORITHM,
-  LOLLIPOP_PUB_KEY_HEADER_NAME,
-  UserAgentSemver
+  LOLLIPOP_PUB_KEY_HEADER_NAME
 } from "../../types/lollipop";
 import { JwkPublicKey } from "@pagopa/ts-commons/lib/jwk";
 import { samlRequest, samlRequestWithID } from "../../utils/__mocks__/saml";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/lib/TaskEither";
+import { UserAgentSemver } from "@pagopa/ts-commons/lib/http-user-agent";
 
 const mockSet = jest.fn();
 const mockGet = jest.fn();
