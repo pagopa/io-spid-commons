@@ -14,6 +14,7 @@ import passport = require("passport");
 import { SamlConfig } from "passport-saml";
 import * as redis from "redis";
 import { ValidUrl } from "@pagopa/ts-commons/lib/url";
+import { UserAgentSemver } from "@pagopa/ts-commons/lib/http-user-agent";
 import { logger } from "./utils/logger";
 import {
   AggregatorType,
@@ -21,7 +22,6 @@ import {
   EntityType,
   IServiceProviderConfig
 } from "./utils/middleware";
-import { UserAgentSemver } from "./types/lollipop";
 import {
   AssertionConsumerServiceT,
   IApplicationConfig,

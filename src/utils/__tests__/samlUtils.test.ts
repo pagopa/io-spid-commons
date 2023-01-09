@@ -2,14 +2,14 @@ import * as jose from "jose";
 import { Builder, parseStringPromise } from "xml2js";
 import {
   DEFAULT_LOLLIPOP_HASH_ALGORITHM,
-  ILollipopParams,
-  UserAgentSemver
+  ILollipopParams
 } from "../../types/lollipop";
 import { getAuthorizeRequestTamperer, ISSUER_FORMAT } from "../samlUtils";
 import { samlRequest, samlRequestWithID } from "../__mocks__/saml";
 import * as E from "fp-ts/lib/Either";
 import { ILollipopProviderConfig } from "../middleware";
 import { JwkPublicKey } from "@pagopa/ts-commons/lib/jwk";
+import { UserAgentSemver } from "@pagopa/ts-commons/lib/http-user-agent";
 const builder = new Builder({
   xmldec: { encoding: undefined, version: "1.0" }
 });
