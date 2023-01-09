@@ -13,7 +13,6 @@ import { predicate as PR } from "fp-ts";
 import { flatten } from "fp-ts/lib/Array";
 import * as E from "fp-ts/lib/Either";
 import * as RA from "fp-ts/lib/ReadonlyArray";
-import * as S from "fp-ts/lib/string";
 import { flow, pipe } from "fp-ts/lib/function";
 import * as O from "fp-ts/lib/Option";
 import { collect, lookup } from "fp-ts/lib/Record";
@@ -30,7 +29,9 @@ import { SPID_LEVELS, SPID_URLS, SPID_USER_ATTRIBUTES } from "../config";
 import { EventTracker } from "..";
 import {
   DEFAULT_LOLLIPOP_HASH_ALGORITHM,
-  ILollipopParams
+  ILollipopParams,
+  SemverFromFromUserAgentString,
+  UserAgentSemverValid
 } from "../types/lollipop";
 import { logger } from "./logger";
 import {
@@ -711,8 +712,17 @@ export const getAuthorizeRequestTamperer = (
                       ? RA.fromArray(userAgent)
                       : RA.of(userAgent)
                   ),
-                  O.getOrElse(() => RA.zero<string>()),
-                  arr => RA.intersection(S.Eq)(arr)(lConfig.allowedUserAgents),
+                  O.map(
+                    flow(
+                      RA.map(SemverFromFromUserAgentString.decode),
+                      RA.rights
+                    )
+                  ),
+                  O.getOrElseW(() => RA.zero<SemverFromFromUserAgentString>()),
+                  arr =>
+                    RA.intersection(UserAgentSemverValid)(arr)(
+                      lConfig.allowedUserAgents
+                    ),
                   RA.isNonEmpty
                 ),
               () => Error("Wrong Lollipop UserAgent")

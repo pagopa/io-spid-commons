@@ -19,6 +19,7 @@ import {
   XmlTamperer
 } from "../strategy/spid";
 import { IDPEntityDescriptor } from "../types/IDPEntityDescriptor";
+import { UserAgentSemver } from "../types/lollipop";
 import { fetchIdpsMetadata } from "./metadata";
 import { logSamlCertExpiration, SamlAttributeT } from "./saml";
 
@@ -69,7 +70,7 @@ const ContactPerson = t.intersection([
 ]);
 type ContactPerson = t.TypeOf<typeof ContactPerson>;
 export interface ILollipopProviderConfig {
-  readonly allowedUserAgents: ReadonlyArray<string>;
+  readonly allowedUserAgents: ReadonlyArray<UserAgentSemver>;
 }
 export interface IServiceProviderConfig {
   readonly requiredAttributes: {

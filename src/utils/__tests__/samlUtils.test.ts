@@ -2,7 +2,8 @@ import * as jose from "jose";
 import { Builder, parseStringPromise } from "xml2js";
 import {
   DEFAULT_LOLLIPOP_HASH_ALGORITHM,
-  ILollipopParams
+  ILollipopParams,
+  UserAgentSemver
 } from "../../types/lollipop";
 import { getAuthorizeRequestTamperer, ISSUER_FORMAT } from "../samlUtils";
 import { samlRequest, samlRequestWithID } from "../__mocks__/saml";
@@ -26,11 +27,16 @@ const aJwkPubKey: JwkPublicKey = {
 
 const lollipopParamsMock: ILollipopParams = {
   pubKey: aJwkPubKey,
-  userAgent: "IO-APP-User-Agent"
+  userAgent: "IO-APP-User-Agent/0.2.0"
 };
 
 const lollipopProvideConfigMock: ILollipopProviderConfig = {
-  allowedUserAgents: ["IO-APP-User-Agent"]
+  allowedUserAgents: [
+    {
+      clientName: "IO-APP-User-Agent",
+      clientVersion: "0.1.0"
+    } as UserAgentSemver
+  ]
 };
 const aSamlRequestID = "aSamlRequestID";
 

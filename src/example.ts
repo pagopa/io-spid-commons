@@ -21,6 +21,7 @@ import {
   EntityType,
   IServiceProviderConfig
 } from "./utils/middleware";
+import { UserAgentSemver } from "./types/lollipop";
 import {
   AssertionConsumerServiceT,
   IApplicationConfig,
@@ -111,7 +112,9 @@ const serviceProviderConfig: IServiceProviderConfig = {
     }
   ],
   lollipopProviderConfig: {
-    allowedUserAgents: ["IO App/2.23"]
+    allowedUserAgents: [
+      { clientName: "IO App", clientVersion: "2.23" } as UserAgentSemver
+    ]
   }
 };
 
