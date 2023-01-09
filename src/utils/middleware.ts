@@ -10,6 +10,7 @@ import * as TE from "fp-ts/lib/TaskEither";
 import * as t from "io-ts";
 import { Profile, SamlConfig, VerifiedCallback } from "passport-saml";
 import { RedisClient } from "redis";
+import { UserAgentSemver } from "@pagopa/ts-commons/lib/http-user-agent";
 import { DoneCallbackT } from "..";
 import { CIE_IDP_IDENTIFIERS, SPID_IDP_IDENTIFIERS } from "../config";
 import {
@@ -69,7 +70,7 @@ const ContactPerson = t.intersection([
 ]);
 type ContactPerson = t.TypeOf<typeof ContactPerson>;
 export interface ILollipopProviderConfig {
-  readonly allowedUserAgents: ReadonlyArray<string>;
+  readonly allowedUserAgents: ReadonlyArray<UserAgentSemver>;
 }
 export interface IServiceProviderConfig {
   readonly requiredAttributes: {

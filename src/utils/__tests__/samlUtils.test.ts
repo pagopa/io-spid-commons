@@ -9,6 +9,7 @@ import { samlRequest, samlRequestWithID } from "../__mocks__/saml";
 import * as E from "fp-ts/lib/Either";
 import { ILollipopProviderConfig } from "../middleware";
 import { JwkPublicKey } from "@pagopa/ts-commons/lib/jwk";
+import { UserAgentSemver } from "@pagopa/ts-commons/lib/http-user-agent";
 const builder = new Builder({
   xmldec: { encoding: undefined, version: "1.0" }
 });
@@ -26,11 +27,16 @@ const aJwkPubKey: JwkPublicKey = {
 
 const lollipopParamsMock: ILollipopParams = {
   pubKey: aJwkPubKey,
-  userAgent: "IO-APP-User-Agent"
+  userAgent: "IO-APP-User-Agent/0.2.0"
 };
 
 const lollipopProvideConfigMock: ILollipopProviderConfig = {
-  allowedUserAgents: ["IO-APP-User-Agent"]
+  allowedUserAgents: [
+    {
+      clientName: "IO-APP-User-Agent",
+      clientVersion: "0.1.0"
+    } as UserAgentSemver
+  ]
 };
 const aSamlRequestID = "aSamlRequestID";
 
