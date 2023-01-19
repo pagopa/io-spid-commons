@@ -23,7 +23,7 @@ import * as T from "fp-ts/lib/Task";
 import * as t from "io-ts";
 import * as passport from "passport";
 import { SamlConfig } from "passport-saml";
-import { RedisClient } from "redis";
+import { RedisClientType, RedisClusterType } from "redis";
 import { Builder } from "xml2js";
 import { SPID_LEVELS } from "./config";
 import { noopCacheProvider } from "./strategy/redis_cache_provider";
@@ -156,7 +156,7 @@ interface IWithSpidT {
   readonly appConfig: IApplicationConfig;
   readonly samlConfig: SamlConfig;
   readonly serviceProviderConfig: IServiceProviderConfig;
-  readonly redisClient: RedisClient;
+  readonly redisClient: RedisClientType | RedisClusterType;
   readonly app: express.Express;
   readonly acs: AssertionConsumerServiceT;
   readonly logout: LogoutT;

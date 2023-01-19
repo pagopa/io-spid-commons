@@ -9,7 +9,7 @@ import {
   VerifyWithRequest,
 } from "passport-saml";
 import { Strategy as SamlStrategy } from "passport-saml";
-import { RedisClient } from "redis";
+import { RedisClientType, RedisClusterType } from "redis";
 
 import { MultiSamlConfig } from "passport-saml/multiSamlStrategy";
 
@@ -57,7 +57,7 @@ export class SpidStrategy extends SamlStrategy {
     private readonly options: SamlConfig,
     private readonly getSamlOptions: MultiSamlConfig["getSamlOptions"],
     verify: VerifyWithRequest | VerifyWithoutRequest,
-    private readonly redisClient: RedisClient,
+    private readonly redisClient: RedisClientType | RedisClusterType,
     private readonly tamperAuthorizeRequest?: XmlAuthorizeTamperer,
     private readonly tamperMetadata?: XmlTamperer,
     private readonly preValidateResponse?: PreValidateResponseT,

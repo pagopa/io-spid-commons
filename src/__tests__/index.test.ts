@@ -1,9 +1,9 @@
 import { ResponsePermanentRedirect } from "@pagopa/ts-commons/lib/responses";
 import { ValidUrl } from "@pagopa/ts-commons/lib/url";
+import { RedisClientType } from "@redis/client";
 import * as express from "express";
 import { left, right } from "fp-ts/lib/Either";
 import { fromEither } from "fp-ts/lib/TaskEither";
-import { RedisClient } from "redis";
 import * as request from "supertest";
 import {
   IApplicationConfig,
@@ -144,7 +144,7 @@ const serviceProviderConfig: IServiceProviderConfig = {
   }
 };
 
-const mockRedisClient: RedisClient = {} as RedisClient;
+const mockRedisClient = {} as RedisClientType;
 
 function initMockFetchIDPMetadata(): void {
   mockFetchIdpsMetadata.mockImplementationOnce(() => {
@@ -181,7 +181,7 @@ describe("io-spid-commons withSpid", () => {
       appConfig,
       samlConfig,
       serviceProviderConfig,
-      redisClient: mockRedisClient,
+      redisClient: mockRedisClient as any,
       app,
       acs: async () =>
         ResponsePermanentRedirect({ href: "/success?acs" } as ValidUrl),
@@ -231,7 +231,7 @@ describe("io-spid-commons withSpid", () => {
       appConfig,
       samlConfig,
       serviceProviderConfig,
-      redisClient: mockRedisClient,
+      redisClient: mockRedisClient as any,
       app,
       acs: async () =>
         ResponsePermanentRedirect({ href: "/success?acs" } as ValidUrl),

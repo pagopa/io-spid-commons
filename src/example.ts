@@ -112,8 +112,9 @@ const serviceProviderConfig: IServiceProviderConfig = {
   ],
 };
 
-const redisClient = redis.createClient({
-  host: "redis",
+
+const redisClient: redis.RedisClientType = redis.createClient({
+  url: "redis://redis"
 });
 
 const samlConfig: SamlConfig = {
