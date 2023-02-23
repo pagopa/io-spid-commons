@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 export const SPID_IDP_IDENTIFIERS = {
+  "https://id.eht.eu": "ehtid",
   "https://id.lepida.it/idp/shibboleth": "lepidaid",
   "https://identity.infocert.it": "infocertid",
   "https://identity.sieltecloud.it": "sielteid",
@@ -9,8 +10,7 @@ export const SPID_IDP_IDENTIFIERS = {
   "https://posteid.poste.it": "posteid",
   "https://spid.intesa.it": "intesaid",
   "https://spid.register.it": "spiditalia",
-  "https://spid.teamsystem.com/idp": "teamsystemid",
-  "https://id.eht.eu": "ehtid"
+  "https://spid.teamsystem.com/idp": "teamsystemid"
 };
 
 export const CIE_IDP_IDENTIFIERS = {
