@@ -19,3 +19,5 @@ export interface ILollipopParams {
 export const LOLLIPOP_PUB_KEY_HEADER_NAME = "x-pagopa-lollipop-pub-key";
 export const LOLLIPOP_PUB_KEY_HASHING_ALGO_HEADER_NAME =
   "x-pagopa-lollipop-pub-key-hash-algo";
+
+export const LOLLIPOP_USER_AGENT_HEADER_NAME = "x-pagopa-lollipop-user-agent";
