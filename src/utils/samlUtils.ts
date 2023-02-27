@@ -676,7 +676,6 @@ export const getMetadataTamperer = (
 
 export const getAuthorizeRequestTamperer = (
   xmlBuilder: Builder,
-  serviceProviderConfig: IServiceProviderConfig,
   samlConfig: SamlConfig
 ) => (
   generateXml: string,
@@ -686,17 +685,10 @@ export const getAuthorizeRequestTamperer = (
     TE.tryCatch(() => parseStringPromise(generateXml), E.toError),
     TE.chain(o =>
       pipe(
-        serviceProviderConfig.lollipopProviderConfig,
+        lollipopParams,
         O.fromNullable,
-        O.chain(lConfig =>
-          pipe(
-            lollipopParams,
-            O.fromNullable,
-            O.map(lParams => ({ lConfig, lParams }))
-          )
-        ),
         E.fromOption(() => o),
-        E.fold(TE.right, ({ lParams }) =>
+        E.fold(TE.right, lParams =>
           pipe(
             lParams.hashAlgorithm,
             O.fromNullable,

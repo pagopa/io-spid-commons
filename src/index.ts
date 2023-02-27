@@ -194,7 +194,6 @@ export const withSpid = ({
   const authorizeRequestTamperer = getAuthorizeRequestTamperer(
     // spid-testenv does not accept an xml header with utf8 encoding
     new Builder({ xmldec: { encoding: undefined, version: "1.0" } }),
-    serviceProviderConfig,
     samlConfig
   );
 

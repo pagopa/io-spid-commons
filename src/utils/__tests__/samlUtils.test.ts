@@ -7,9 +7,7 @@ import {
 import { getAuthorizeRequestTamperer, ISSUER_FORMAT } from "../samlUtils";
 import { samlRequest, samlRequestWithID } from "../__mocks__/saml";
 import * as E from "fp-ts/lib/Either";
-import { ILollipopProviderConfig } from "../middleware";
 import { JwkPublicKey } from "@pagopa/ts-commons/lib/jwk";
-import { UserAgentSemver } from "@pagopa/ts-commons/lib/http-user-agent";
 const builder = new Builder({
   xmldec: { encoding: undefined, version: "1.0" }
 });
@@ -29,14 +27,6 @@ const lollipopParamsMock: ILollipopParams = {
   pubKey: aJwkPubKey
 };
 
-const lollipopProvideConfigMock: ILollipopProviderConfig = {
-  allowedUserAgents: [
-    {
-      clientName: "IO-APP-User-Agent",
-      clientVersion: "0.1.0"
-    } as UserAgentSemver
-  ]
-};
 const aSamlRequestID = "aSamlRequestID";
 
 const fakeXml = `<?xml version="1.0"?>
@@ -55,7 +45,6 @@ describe("getAuthorizeRequestTamperer", () => {
   it("should Tamper an AuthNRequest overriding properties to be compatible with SPID protocol", async () => {
     const authRequestTamperer = getAuthorizeRequestTamperer(
       builder,
-      {} as any,
       samlConfigMock
     );
     const result = await authRequestTamperer(
@@ -79,7 +68,6 @@ describe("getAuthorizeRequestTamperer", () => {
   it("should Tamper an AuthNRequest overriding ID property for authorized lollipop users", async () => {
     const authRequestTamperer = getAuthorizeRequestTamperer(
       builder,
-      { lollipopProviderConfig: lollipopProvideConfigMock } as any,
       samlConfigMock
     );
     const result = await authRequestTamperer(samlRequest, lollipopParamsMock)();
@@ -104,35 +92,9 @@ describe("getAuthorizeRequestTamperer", () => {
     }
   });
 
-  it("should Tamper an AuthNRequest without overriding ID property if lollipopProviderConfig is undefined", async () => {
-    const authRequestTamperer = getAuthorizeRequestTamperer(
-      builder,
-      {} as any,
-      samlConfigMock
-    );
-    const result = await authRequestTamperer(
-      samlRequestWithID(aSamlRequestID),
-      lollipopParamsMock
-    )();
-    expect(E.isRight(result)).toBeTruthy();
-    if (E.isRight(result)) {
-      const parsedXml = await parseStringPromise(result.right);
-      const authnRequest = parsedXml["samlp:AuthnRequest"];
-      expect(authnRequest.$.ID).toEqual(aSamlRequestID);
-      expect(
-        authnRequest["samlp:NameIDPolicy"][0].$.AllowCreate
-      ).toBeUndefined();
-      expect(authnRequest["saml:Issuer"][0].$.NameQualifier).toEqual(
-        samlConfigMock.issuer
-      );
-      expect(authnRequest["saml:Issuer"][0].$.Format).toEqual(ISSUER_FORMAT);
-    }
-  });
-
   it("should Tamper an AuthNRequest without overriding ID property if lollipopParams are undefined", async () => {
     const authRequestTamperer = getAuthorizeRequestTamperer(
       builder,
-      { lollipopProviderConfig: lollipopProvideConfigMock } as any,
       samlConfigMock
     );
     const result = await authRequestTamperer(
@@ -156,7 +118,6 @@ describe("getAuthorizeRequestTamperer", () => {
   it("should return an error if authNRequest XML is invalid", async () => {
     const authRequestTamperer = getAuthorizeRequestTamperer(
       builder,
-      {} as any,
       samlConfigMock
     );
     const result = await authRequestTamperer(fakeXml)();

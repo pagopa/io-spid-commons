@@ -5,10 +5,7 @@ import { createMockRedis } from "mock-redis-client";
 import { RedisClient } from "redis";
 import { Builder, parseStringPromise } from "xml2js";
 import mockReq from "../../__mocks__/request";
-import {
-  ILollipopProviderConfig,
-  IServiceProviderConfig
-} from "../../utils/middleware";
+import { IServiceProviderConfig } from "../../utils/middleware";
 import { getAuthorizeRequestTamperer } from "../../utils/saml";
 import { mockWrapCallback } from "../__mocks__/passport-saml";
 import { getExtendedRedisCacheProvider } from "../redis_cache_provider";
@@ -77,7 +74,6 @@ const SAMLRequest = `<?xml version="1.0"?>
 const authReqTampener = getAuthorizeRequestTamperer(
   // spid-testenv does not accept an xml header with utf8 encoding
   new Builder({ xmldec: { encoding: undefined, version: "1.0" } }),
-  serviceProviderConfig,
   {}
 );
 
@@ -282,12 +278,6 @@ describe("CustomSamlClient#generateAuthorizeRequest", () => {
     jest.resetAllMocks();
   });
 
-  const lollipopProvideConfigMock: ILollipopProviderConfig = {
-    allowedUserAgents: [
-      { clientName: "aUserAgent", clientVersion: "0.1.0" } as UserAgentSemver
-    ]
-  };
-
   const samlConfigMock = {
     issuer: "ISSUER"
   } as any;
@@ -390,7 +380,6 @@ describe("CustomSamlClient#generateAuthorizeRequest", () => {
   it("should not change JWK properties order while generating authorizeRequest if client send lollipop headers", async () => {
     const authReqTamperer = getAuthorizeRequestTamperer(
       builder,
-      { lollipopProviderConfig: lollipopProvideConfigMock } as any,
       samlConfigMock
     );
     const jwkThumbprint = await jose.calculateJwkThumbprint(aJwkPubKey);
