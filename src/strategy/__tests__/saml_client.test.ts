@@ -15,8 +15,7 @@ import { getExtendedRedisCacheProvider } from "../redis_cache_provider";
 import { CustomSamlClient } from "../saml_client";
 import {
   DEFAULT_LOLLIPOP_HASH_ALGORITHM,
-  LOLLIPOP_PUB_KEY_HEADER_NAME,
-  LOLLIPOP_USER_AGENT_HEADER_NAME
+  LOLLIPOP_PUB_KEY_HEADER_NAME
 } from "../../types/lollipop";
 import { JwkPublicKey } from "@pagopa/ts-commons/lib/jwk";
 import { samlRequest, samlRequestWithID } from "../../utils/__mocks__/saml";
@@ -369,7 +368,6 @@ describe("CustomSamlClient#generateAuthorizeRequest", () => {
     request.headers[LOLLIPOP_PUB_KEY_HEADER_NAME] = jose.base64url.encode(
       JSON.stringify(aJwkPubKey)
     );
-    request.headers[LOLLIPOP_USER_AGENT_HEADER_NAME] = "aUserAgent/0.1.0";
     customSamlClient.generateAuthorizeRequest(
       request,
       false,
@@ -377,7 +375,6 @@ describe("CustomSamlClient#generateAuthorizeRequest", () => {
       mockCallback
     );
     expect(mockAuthReqTampener).toBeCalledWith(SAMLRequest, {
-      userAgent: "aUserAgent/0.1.0",
       pubKey: aJwkPubKey
     });
     // Before checking the execution of the callback we must await that the TaskEither execution is completed.
@@ -421,7 +418,6 @@ describe("CustomSamlClient#generateAuthorizeRequest", () => {
     request.headers[LOLLIPOP_PUB_KEY_HEADER_NAME] = jose.base64url.encode(
       JSON.stringify(aJwkPubKey)
     );
-    request.headers[LOLLIPOP_USER_AGENT_HEADER_NAME] = "aUserAgent/0.1.0";
     customSamlClient.generateAuthorizeRequest(
       request,
       false,
@@ -431,8 +427,7 @@ describe("CustomSamlClient#generateAuthorizeRequest", () => {
 
     const expectedSamlRequest = await pipe(
       authReqTamperer(lollipopSamlRequest, {
-        pubKey: aJwkPubKey,
-        userAgent: "aUserAgent/0.1.0"
+        pubKey: aJwkPubKey
       }),
       TE.mapLeft(() => fail("Cannot tamper saml request")),
       TE.toUnion

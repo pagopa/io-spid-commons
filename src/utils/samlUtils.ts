@@ -12,8 +12,7 @@ import { Request as ExpressRequest } from "express";
 import { predicate as PR } from "fp-ts";
 import { flatten } from "fp-ts/lib/Array";
 import * as E from "fp-ts/lib/Either";
-import * as RA from "fp-ts/lib/ReadonlyArray";
-import { flow, pipe } from "fp-ts/lib/function";
+import { pipe } from "fp-ts/lib/function";
 import * as O from "fp-ts/lib/Option";
 import { collect, lookup } from "fp-ts/lib/Record";
 import { Ord } from "fp-ts/lib/string";
@@ -25,10 +24,6 @@ import { MultiSamlConfig } from "passport-saml/multiSamlStrategy";
 import * as xmlCrypto from "xml-crypto";
 import { Builder, parseStringPromise } from "xml2js";
 import { DOMParser } from "xmldom";
-import {
-  SemverFromFromUserAgentString,
-  UserAgentSemverValid
-} from "@pagopa/ts-commons/lib/http-user-agent";
 import { SPID_LEVELS, SPID_URLS, SPID_USER_ATTRIBUTES } from "../config";
 import { EventTracker } from "..";
 import {
@@ -701,60 +696,29 @@ export const getAuthorizeRequestTamperer = (
           )
         ),
         E.fromOption(() => o),
-        E.fold(
-          TE.right,
-          flow(
-            TE.fromPredicate(
-              ({ lConfig, lParams }) =>
-                pipe(
-                  lParams.userAgent,
-                  O.fromNullable,
-                  O.map(userAgent =>
-                    Array.isArray(userAgent)
-                      ? RA.fromArray(userAgent)
-                      : RA.of(userAgent)
-                  ),
-                  O.map(
-                    flow(
-                      RA.map(SemverFromFromUserAgentString.decode),
-                      RA.rights
-                    )
-                  ),
-                  O.getOrElseW(() => RA.zero<SemverFromFromUserAgentString>()),
-                  arr =>
-                    RA.intersection(UserAgentSemverValid)(arr)(
-                      lConfig.allowedUserAgents
-                    ),
-                  RA.isNonEmpty
-                ),
-              () => Error("Wrong Lollipop UserAgent")
-            ),
-            TE.chain(({ lParams }) =>
-              pipe(
-                lParams.hashAlgorithm,
-                O.fromNullable,
-                O.getOrElse(() => DEFAULT_LOLLIPOP_HASH_ALGORITHM),
-                TE.of,
-                TE.bindTo("hashingAlgo"),
-                TE.bind("jwkThumbprint", ({ hashingAlgo }) =>
-                  TE.tryCatch(
-                    () =>
-                      jose.calculateJwkThumbprint(lParams.pubKey, hashingAlgo),
-                    E.toError
-                  )
-                ),
-                TE.map(
-                  ({ hashingAlgo, jwkThumbprint }) =>
-                    `${hashingAlgo}-${jwkThumbprint}`
-                ),
-                TE.chain(requestId =>
-                  TE.tryCatch(async () => {
-                    // eslint-disable-next-line functional/immutable-data
-                    o["samlp:AuthnRequest"].$.ID = requestId;
-                    return o;
-                  }, E.toError)
-                )
+        E.fold(TE.right, ({ lParams }) =>
+          pipe(
+            lParams.hashAlgorithm,
+            O.fromNullable,
+            O.getOrElse(() => DEFAULT_LOLLIPOP_HASH_ALGORITHM),
+            TE.of,
+            TE.bindTo("hashingAlgo"),
+            TE.bind("jwkThumbprint", ({ hashingAlgo }) =>
+              TE.tryCatch(
+                () => jose.calculateJwkThumbprint(lParams.pubKey, hashingAlgo),
+                E.toError
               )
+            ),
+            TE.map(
+              ({ hashingAlgo, jwkThumbprint }) =>
+                `${hashingAlgo}-${jwkThumbprint}`
+            ),
+            TE.chain(requestId =>
+              TE.tryCatch(async () => {
+                // eslint-disable-next-line functional/immutable-data
+                o["samlp:AuthnRequest"].$.ID = requestId;
+                return o;
+              }, E.toError)
             )
           )
         )

@@ -26,8 +26,7 @@ const aJwkPubKey: JwkPublicKey = {
 };
 
 const lollipopParamsMock: ILollipopParams = {
-  pubKey: aJwkPubKey,
-  userAgent: "IO-APP-User-Agent/0.2.0"
+  pubKey: aJwkPubKey
 };
 
 const lollipopProvideConfigMock: ILollipopProviderConfig = {
@@ -151,37 +150,6 @@ describe("getAuthorizeRequestTamperer", () => {
         samlConfigMock.issuer
       );
       expect(authnRequest["saml:Issuer"][0].$.Format).toEqual(ISSUER_FORMAT);
-    }
-  });
-
-  it("should return an Error without overriding ID property if userAgent sent by the client is undefined", async () => {
-    const authRequestTamperer = getAuthorizeRequestTamperer(
-      builder,
-      { lollipopProviderConfig: lollipopProvideConfigMock } as any,
-      samlConfigMock
-    );
-    const result = await authRequestTamperer(
-      samlRequestWithID(aSamlRequestID),
-      { ...lollipopParamsMock, userAgent: undefined }
-    )();
-    expect(E.isLeft(result)).toBeTruthy();
-    if (E.isLeft(result)) {
-      expect(result.left).toEqual(Error("Wrong Lollipop UserAgent"));
-    }
-  });
-  it("should return an error if provided user agents are not allowed", async () => {
-    const authRequestTamperer = getAuthorizeRequestTamperer(
-      builder,
-      { lollipopProviderConfig: lollipopProvideConfigMock } as any,
-      samlConfigMock
-    );
-    const result = await authRequestTamperer(
-      samlRequestWithID(aSamlRequestID),
-      { ...lollipopParamsMock, userAgent: "fake" }
-    )();
-    expect(E.isLeft(result)).toBeTruthy();
-    if (E.isLeft(result)) {
-      expect(result.left).toEqual(Error("Wrong Lollipop UserAgent"));
     }
   });
 

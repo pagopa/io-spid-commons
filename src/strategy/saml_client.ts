@@ -7,7 +7,6 @@ import * as PassportSaml from "passport-saml";
 import { JwkPublicKeyFromToken } from "@pagopa/ts-commons/lib/jwk";
 import {
   LollipopHashAlgorithm,
-  LOLLIPOP_USER_AGENT_HEADER_NAME,
   LOLLIPOP_PUB_KEY_HASHING_ALGO_HEADER_NAME,
   LOLLIPOP_PUB_KEY_HEADER_NAME
 } from "../types/lollipop";
@@ -100,8 +99,7 @@ export class CustomSamlClient extends PassportSaml.SAML {
                   O.fromPredicate(LollipopHashAlgorithm.is),
                   O.toUndefined
                 ),
-                pubKey,
-                userAgent: req.headers[LOLLIPOP_USER_AGENT_HEADER_NAME]
+                pubKey
               })),
               O.toUndefined,
               lollipopParams => tamperAuthorizeRequest(xml, lollipopParams),

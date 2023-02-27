@@ -10,8 +10,6 @@ export type LollipopHashAlgorithm = t.TypeOf<typeof LollipopHashAlgorithm>;
 
 export const DEFAULT_LOLLIPOP_HASH_ALGORITHM: LollipopHashAlgorithm = "sha256";
 export interface ILollipopParams {
-  // eslint-disable-next-line functional/prefer-readonly-type
-  readonly userAgent?: string | string[];
   readonly pubKey: JwkPublicKey;
   readonly hashAlgorithm?: LollipopHashAlgorithm;
 }
@@ -19,5 +17,3 @@ export interface ILollipopParams {
 export const LOLLIPOP_PUB_KEY_HEADER_NAME = "x-pagopa-lollipop-pub-key";
 export const LOLLIPOP_PUB_KEY_HASHING_ALGO_HEADER_NAME =
   "x-pagopa-lollipop-pub-key-hash-algo";
-
-export const LOLLIPOP_USER_AGENT_HEADER_NAME = "x-pagopa-lollipop-user-agent";
