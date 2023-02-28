@@ -10,8 +10,6 @@ export type LollipopHashAlgorithm = t.TypeOf<typeof LollipopHashAlgorithm>;
 
 export const DEFAULT_LOLLIPOP_HASH_ALGORITHM: LollipopHashAlgorithm = "sha256";
 export interface ILollipopParams {
-  // eslint-disable-next-line functional/prefer-readonly-type
-  readonly userAgent?: string | string[];
   readonly pubKey: JwkPublicKey;
   readonly hashAlgorithm?: LollipopHashAlgorithm;
 }

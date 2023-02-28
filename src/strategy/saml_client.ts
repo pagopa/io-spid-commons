@@ -99,8 +99,7 @@ export class CustomSamlClient extends PassportSaml.SAML {
                   O.fromPredicate(LollipopHashAlgorithm.is),
                   O.toUndefined
                 ),
-                pubKey,
-                userAgent: req.headers["user-agent"]
+                pubKey
               })),
               O.toUndefined,
               lollipopParams => tamperAuthorizeRequest(xml, lollipopParams),
