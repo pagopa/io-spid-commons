@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 export const SPID_IDP_IDENTIFIERS = {
+  "https://id.eht.eu": "ehtid",
   "https://id.lepida.it/idp/shibboleth": "lepidaid",
   "https://identity.infocert.it": "infocertid",
   "https://identity.sieltecloud.it": "sielteid",
