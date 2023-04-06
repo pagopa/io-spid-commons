@@ -7,6 +7,7 @@ export const SPID_IDP_IDENTIFIERS = {
   "https://idp.namirialtsp.com/idp": "namirialid",
   "https://login.id.tim.it/affwebservices/public/saml2sso": "timid",
   "https://loginspid.aruba.it": "arubaid",
+  "https://loginspid.infocamere.it": "infocamereid",
   "https://posteid.poste.it": "posteid",
   "https://spid.intesa.it": "intesaid",
   "https://spid.register.it": "spiditalia",
