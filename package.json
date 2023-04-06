@@ -41,8 +41,6 @@
     "@types/xmldom": "^0.1.29",
     "@types/yargs": "^15.0.4",
     "auto-changelog": "^2.2.1",
-    "danger": "^7.0.0",
-    "danger-plugin-digitalcitizenship": "*",
     "eslint-plugin-prettier": "^3.0.0",
     "express": "4.17.0",
     "jest": "^24.8.0",
