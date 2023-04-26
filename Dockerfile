@@ -11,7 +11,7 @@ RUN chmod -R 777 /usr/src/app \
   && yarn install \
   && yarn build
 
-FROM node:14.16.0-alpine
+FROM node:18.13.0-alpine
 LABEL maintainer="https://pagopa.gov.it"
 
 WORKDIR /usr/src/app
