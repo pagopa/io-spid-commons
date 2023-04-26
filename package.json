@@ -1,6 +1,6 @@
 {
   "name": "@pagopa/io-spid-commons",
-  "version": "10.1.0",
+  "version": "10.1.1",
   "description": "Common code for integrating SPID authentication",
   "repository": {
     "type": "git",
@@ -41,8 +41,6 @@
     "@types/xmldom": "^0.1.29",
     "@types/yargs": "^15.0.4",
     "auto-changelog": "^2.2.1",
-    "danger": "^7.0.0",
-    "danger-plugin-digitalcitizenship": "*",
     "eslint-plugin-prettier": "^3.0.0",
     "express": "4.17.0",
     "jest": "^24.8.0",
