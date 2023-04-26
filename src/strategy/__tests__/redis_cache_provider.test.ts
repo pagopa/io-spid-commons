@@ -1,5 +1,4 @@
 import { isLeft, isRight } from "fp-ts/lib/Either";
-import { createMockRedis } from "mock-redis-client";
 import { SamlConfig } from "passport-saml";
 import { RedisClient } from "redis";
 import {
@@ -12,7 +11,7 @@ const mockSet = jest.fn();
 const mockGet = jest.fn();
 const mockDel = jest.fn();
 
-const mockRedisClient: RedisClient = (createMockRedis() as any).createClient();
+const mockRedisClient: RedisClient = {} as RedisClient;
 mockRedisClient.set = mockSet;
 mockRedisClient.get = mockGet;
 mockRedisClient.del = mockDel;

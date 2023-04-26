@@ -3,7 +3,6 @@ import { ValidUrl } from "@pagopa/ts-commons/lib/url";
 import * as express from "express";
 import { left, right } from "fp-ts/lib/Either";
 import { fromEither } from "fp-ts/lib/TaskEither";
-import { createMockRedis } from "mock-redis-client";
 import { RedisClient } from "redis";
 import * as request from "supertest";
 import {
@@ -145,7 +144,7 @@ const serviceProviderConfig: IServiceProviderConfig = {
   }
 };
 
-const mockRedisClient: RedisClient = (createMockRedis() as any).createClient();
+const mockRedisClient: RedisClient = {} as RedisClient;
 
 function initMockFetchIDPMetadata(): void {
   mockFetchIdpsMetadata.mockImplementationOnce(() => {

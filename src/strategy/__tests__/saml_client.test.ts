@@ -1,7 +1,6 @@
 import * as jose from "jose";
 import { left, right } from "fp-ts/lib/Either";
 import { fromEither } from "fp-ts/lib/TaskEither";
-import { createMockRedis } from "mock-redis-client";
 import { RedisClient } from "redis";
 import { Builder, parseStringPromise } from "xml2js";
 import mockReq from "../../__mocks__/request";
@@ -24,7 +23,7 @@ const mockSet = jest.fn();
 const mockGet = jest.fn();
 const mockDel = jest.fn();
 
-const mockRedisClient: RedisClient = (createMockRedis() as any).createClient();
+const mockRedisClient = {} as RedisClient;
 mockRedisClient.set = mockSet;
 mockRedisClient.get = mockGet;
 mockRedisClient.del = mockDel;
