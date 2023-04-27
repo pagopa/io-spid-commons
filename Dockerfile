@@ -1,4 +1,4 @@
-FROM circleci/node:14.16.0 as builder
+FROM node:18.13.0 as builder
 
 WORKDIR /usr/src/app
 
@@ -7,11 +7,11 @@ COPY /package.json /usr/src/app/package.json
 COPY /tsconfig.json /usr/src/app/tsconfig.json
 COPY /yarn.lock /usr/src/app/yarn.lock
 
-RUN sudo chmod -R 777 /usr/src/app \
+RUN chmod -R 777 /usr/src/app \
   && yarn install \
   && yarn build
 
-FROM node:14.16.0-alpine
+FROM node:18.13.0-alpine
 LABEL maintainer="https://pagopa.gov.it"
 
 WORKDIR /usr/src/app

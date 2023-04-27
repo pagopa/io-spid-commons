@@ -109,7 +109,7 @@ const withSpidAuthMiddleware = (
   res: express.Response,
   next: express.NextFunction
 ): void => {
-  passport.authenticate("spid", async (err, user) => {
+  passport.authenticate("spid", async (err: unknown, user: unknown) => {
     const maybeDoc = getXmlFromSamlResponse(req.body);
     const issuer = pipe(
       maybeDoc,
