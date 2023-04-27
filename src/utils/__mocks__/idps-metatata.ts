@@ -168,68 +168,6 @@ lMDbdL6Ec/0xAljQSOFpozFduGoYTKF6Ig2Z5NleHPuYVyWLmBhw0lGfyvKGyk9Ev55WxTwHapQB
     </md:EntityDescriptor>
     <!-- INFOCERT ID *end* -->
 
-    <!-- INTESA ID *start* -->
-    <md:EntityDescriptor ID="_a04faedb3e1198b61905928ad32d2a79" cacheDuration="P0Y0M30DT0H0M0.000S" entityID="https://spid.intesa.it">
-        <md:IDPSSODescriptor WantAuthnRequestsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
-            <md:KeyDescriptor use="signing">
-                <ds:KeyInfo>
-                    <ds:X509Data>
-                        <ds:X509Certificate>MIIEDjCCAvagAwIBAgIIIT1A+ywbIQAwDQYJKoZIhvcNAQELBQAwXjEzMDEGA1UE
-                            AwwqSU4uVEUuUy5BLiBTLnAuQSAtIENlcnRpZmljYXRpb24gQXV0aG9yaXR5MRow
-                            GAYDVQQKDBFJTi5URS5TLkEuIFMucC5BLjELMAkGA1UEBhMCSVQwHhcNMTcwOTE1
-                            MTMyMzQ1WhcNMzYwNzAxMTk1OTAwWjBQMSUwDwYDVQQuEwgyMDA3OTc5NzASBgNV
-                            BAMMC1NBTUwgU2lnbmVyMRowGAYDVQQKDBFJTi5URS5TLkEuIFMucC5BLjELMAkG
-                            A1UEBhMCSVQwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDhYXkP+eQB
-                            URgmslDXBjG0ad+DkSAkWt7hUoaTyiK0e34QiyArq043plqTrt+6FzTGeX7960Qr
-                            3tCLGCiVOi47QuE09IKfJmKGEaUQnJQehHYZs/XV0OYQl18WrCxUX6ALOcqPs+4y
-                            pCbJV1WzSosfBcPBzivJER8kvrynMXI3or18e9XPTGBn8qNFyNF1E3BJ5UhrDvk5
-                            W2gKyYKz0M/CIu9PiHuO/ne6HbeNrCS/xzXtjsTusk41AOxIQoFbEzS08xcRY+QD
-                            E8oLcAmecSjT3xv3r9dWke6KTTAahS3K+5mOYRcBXj2FFegiUp+xh4OAWdH1+gGD
-                            Ym+3aAmMpaLtAgMBAAGjgd0wgdowHQYDVR0OBBYEFEw9xWg4qvQGdlGMCqmJcVDg
-                            dE8aMAwGA1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAUySnWJ2sw0ljDpJVrtrxCCP0b
-                            1CYwGgYDVR0QBBMwEYAPMjAxNzA5MTUxMzIzNDVaMD8GA1UdHwQ4MDYwNKAyoDCG
-                            Lmh0dHA6Ly9lLXRydXN0Y29tLmludGVzYS5pdC9DUkwvSU5URVNBX25DQS5jcmww
-                            DgYDVR0PAQH/BAQDAgSwMB0GA1UdJQQWMBQGCCsGAQUFBwMCBggrBgEFBQcDBDAN
-                            BgkqhkiG9w0BAQsFAAOCAQEAVRHyFRZZFpW/qjJpKftd86h3wOdUqOhc2W8ZHv0s
-                            t8ptG+mZk3l1iWAsEPqKMIBhksgTvalnHC1lHUt11xsZ2mzUjVpiG8XiWXYXQnY2
-                            D+q7Dc4n20kJ717qf4SDN8wX1A6XvT3Wrsfh87vg3ZFD56/eyur2snWu4OilsFqA
-                            yLhnExG4puJ4JKBWnlwAGXD9SFgkSZ8FC66KQs6CAwVkvCIom3IwJeU/VrYQF6XH
-                            kVCQgr5mojXgCkrlRNl53WAKfQHCT4QH+oQVP97PCEL/wQ1zi0UzWauKT6u2wDym
-                            9rcpch+WLa0GUtYNhuoLU2SregPKwTWg2DfINJObyWRpww== </ds:X509Certificate>
-                    </ds:X509Data>
-                </ds:KeyInfo>
-            </md:KeyDescriptor>
-            <md:SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://spid.intesa.it/Time4UserServices/services/idp/SingleLogout" ResponseLocation="https://spid.intesa.it/Time4UserServices/services/idp/SingleLogout"/>
-            <md:SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://spid.intesa.it/Time4UserServices/services/idp/SingleLogout" ResponseLocation="https://spid.intesa.it/Time4UserServices/services/idp/SingleLogout"/>
-            <md:NameIDFormat>urn:oasis:names:tc:SAML:2.0:nameid-format:transient </md:NameIDFormat>
-            <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://spid.intesa.it/Time4UserServices/services/idp/AuthnRequest/"/>
-            <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://spid.intesa.it/Time4UserServices/services/idp/AuthnRequest/"/>
-            <saml2:Attribute xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" FriendlyName="Domicilio fisico" Name="address"/>
-            <saml2:Attribute xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" FriendlyName="Ragione o denominazione sociale" Name="companyName"/>
-            <saml2:Attribute xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" FriendlyName="Provincia di nascita" Name="countyOfBirth"/>
-            <saml2:Attribute xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" FriendlyName="Data di nascita" Name="dateOfBirth"/>
-            <saml2:Attribute xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" FriendlyName="Domicilio digitale" Name="digitalAddress"/>
-            <saml2:Attribute xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" FriendlyName="Indirizzo di posta elettronica" Name="email"/>
-            <saml2:Attribute xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" FriendlyName="Data di scadenza identita" Name="expirationDate"/>
-            <saml2:Attribute xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" FriendlyName="Cognome" Name="familyName"/>
-            <saml2:Attribute xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" FriendlyName="Codice fiscale" Name="fiscalNumber"/>
-            <saml2:Attribute xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" FriendlyName="Sesso" Name="gender"/>
-            <saml2:Attribute xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" FriendlyName="Documento d'identita" Name="idCard"/>
-            <saml2:Attribute xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" FriendlyName="Partita IVA" Name="ivaCode"/>
-            <saml2:Attribute xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" FriendlyName="Numero di telefono mobile" Name="mobilePhone"/>
-            <saml2:Attribute xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" FriendlyName="Nome" Name="name"/>
-            <saml2:Attribute xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" FriendlyName="Luogo di nascita" Name="placeOfBirth"/>
-            <saml2:Attribute xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" FriendlyName="Sede legale" Name="registeredOffice"/>
-            <saml2:Attribute xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" FriendlyName="Codice identificativo SPID" Name="spidCode"/>
-        </md:IDPSSODescriptor>
-        <md:Organization>
-            <md:OrganizationName xml:lang="it">IN.TE.S.A. S.p.A.</md:OrganizationName>
-            <md:OrganizationDisplayName xml:lang="it"> Intesa S.p.A.</md:OrganizationDisplayName>
-            <md:OrganizationURL xml:lang="it">https://www.intesa.it/ </md:OrganizationURL>
-        </md:Organization>
-    </md:EntityDescriptor>
-    <!-- INTESA ID *end* -->
-
     <!-- LEPIDA *start* -->
     <md:EntityDescriptor xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" xmlns:xs="http://www.w3.org/2001/XMLSchemainstance" entityID="https://id.lepida.it/idp/shibboleth">
         <md:IDPSSODescriptor WantAuthnRequestsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
