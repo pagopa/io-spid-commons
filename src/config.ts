@@ -9,7 +9,6 @@ export const SPID_IDP_IDENTIFIERS = {
   "https://loginspid.aruba.it": "arubaid",
   "https://loginspid.infocamere.it": "infocamereid",
   "https://posteid.poste.it": "posteid",
-  "https://spid.intesa.it": "intesaid",
   "https://spid.register.it": "spiditalia",
   "https://spid.teamsystem.com/idp": "teamsystemid"
 };

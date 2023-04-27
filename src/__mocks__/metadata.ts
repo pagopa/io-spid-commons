@@ -5,11 +5,11 @@ import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
 import { NonEmptyString } from "@pagopa/ts-commons/lib/strings";
 
 export const mockIdpMetadata: Record<string, IDPEntityDescriptor> = {
-  intesaid: {
+  posteid: {
     cert: (["CERT"] as unknown) as NonEmptyArray<NonEmptyString>,
-    entityID: "https://spid.intesa.it",
-    entryPoint: "https://spid.intesa.it/acs",
-    logoutUrl: "https://spid.intesa.it/logout"
+    entityID: "https://posteid.poste.it",
+    entryPoint: "https://posteid.poste.it/acs",
+    logoutUrl: "https://posteid.poste.it/logout"
   }
 };
 
