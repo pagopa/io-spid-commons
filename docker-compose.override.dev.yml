@@ -2,7 +2,7 @@ version: "2.2"
 
 services:
   io-spid-commons:
-    image: node:10.14.2-alpine
+    image: node:18.13.0-alpine
     working_dir: /usr/src/app
     volumes:
       - ".:/usr/src/app"
