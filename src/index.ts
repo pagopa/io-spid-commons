@@ -109,8 +109,7 @@ const withSpidAuthMiddleware = (
   res: express.Response,
   next: express.NextFunction
 ): void => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  passport.authenticate("spid", async (err: any, user: any) => {
+  passport.authenticate("spid", async (err: unknown, user: unknown) => {
     const maybeDoc = getXmlFromSamlResponse(req.body);
     const issuer = pipe(
       maybeDoc,
