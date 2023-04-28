@@ -95,5 +95,8 @@
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
     "access": "public"
+  },
+  "resolutions": {
+    "@types/express-serve-static-core": "4.17.34"
   }
 }
