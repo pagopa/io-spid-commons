@@ -22,7 +22,7 @@ const SingleLogoutServiceTAG = "SingleLogoutService";
 
 const METADATA_NAMESPACES = {
   METADATA: "urn:oasis:names:tc:SAML:2.0:metadata",
-  XMLDSIG: "http://www.w3.org/2000/09/xmldsig#"
+  XMLDSIG: "http://www.w3.org/2000/09/xmldsig#",
 };
 
 /**
@@ -41,12 +41,12 @@ export const parseIdpMetadata = (
     E.right<Error, Document>(new DOMParser().parseFromString(ipdMetadataPage)),
     E.chain(
       E.fromPredicate(
-        domParser =>
+        (domParser) =>
           domParser && !domParser.getElementsByTagName("parsererror").item(0),
         () => new Error("XML parser error")
       )
     ),
-    E.chain(domParser => {
+    E.chain((domParser) => {
       const entityDescriptors = domParser.getElementsByTagNameNS(
         METADATA_NAMESPACES.METADATA,
         EntityDescriptorTAG
@@ -59,7 +59,7 @@ export const parseIdpMetadata = (
                 METADATA_NAMESPACES.XMLDSIG,
                 X509CertificateTAG
               )
-            ).map(_ =>
+            ).map((_) =>
               _.textContent ? _.textContent.replace(/[\n\s]/g, "") : ""
             );
             return pipe(
@@ -73,7 +73,7 @@ export const parseIdpMetadata = (
                   )
                 )
                   .filter(
-                    _ =>
+                    (_) =>
                       _.getAttribute("Binding") ===
                       "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
                   )[0]
@@ -86,23 +86,23 @@ export const parseIdpMetadata = (
                     )
                   )
                     .filter(
-                      _ =>
+                      (_) =>
                         _.getAttribute("Binding") ===
                         "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
                     )[0]
                     // If SingleLogoutService is missing will be return an empty string
                     // Needed for CIE Metadata
-                    ?.getAttribute("Location") || ""
+                    ?.getAttribute("Location") || "",
               }),
               E.fold(
-                errs => {
+                (errs) => {
                   logger.warn(
                     "Invalid md:EntityDescriptor. %s",
                     errorsToReadableMessages(errs).join(" / ")
                   );
                   return idps;
                 },
-                elementInfo => [...idps, elementInfo]
+                (elementInfo) => [...idps, elementInfo]
               )
             );
           },
@@ -134,9 +134,12 @@ export const mapIpdMetadata = (
 /**
  * Lazy version of mapIpdMetadata()
  */
-export const mapIpdMetadataL = (idpIds: Record<string, string>) => (
-  idpMetadata: ReadonlyArray<IDPEntityDescriptor>
-): Record<string, IDPEntityDescriptor> => mapIpdMetadata(idpMetadata, idpIds);
+export const mapIpdMetadataL =
+  (idpIds: Record<string, string>) =>
+  (
+    idpMetadata: ReadonlyArray<IDPEntityDescriptor>
+  ): Record<string, IDPEntityDescriptor> =>
+    mapIpdMetadata(idpMetadata, idpIds);
 
 /**
  * Fetch an XML from a remote URL
@@ -151,14 +154,14 @@ export const fetchMetadataXML = (
     }, E.toError),
     TE.chain(
       TE.fromPredicate(
-        p => p.status >= 200 && p.status < 300,
+        (p) => p.status >= 200 && p.status < 300,
         () => {
           logger.warn("Error fetching remote metadata for %s", idpMetadataUrl);
           return new Error("Error fetching remote metadata");
         }
       )
     ),
-    TE.chain(p => TE.tryCatch(() => p.text(), E.toError))
+    TE.chain((p) => TE.tryCatch(() => p.text(), E.toError))
   );
 
 /**
@@ -171,20 +174,20 @@ export const fetchIdpsMetadata = (
 ): TaskEither<Error, Record<string, IDPEntityDescriptor>> =>
   pipe(
     fetchMetadataXML(idpMetadataUrl),
-    TE.chain(idpMetadataXML => {
+    TE.chain((idpMetadataXML) => {
       logger.info("Parsing SPID metadata for %s", idpMetadataUrl);
       return TE.fromEither(parseIdpMetadata(idpMetadataXML));
     }),
     TE.chain(
       TE.fromPredicate(
-        idpMetadata => idpMetadata.length > 0,
+        (idpMetadata) => idpMetadata.length > 0,
         () => {
           logger.error("No SPID metadata found for %s", idpMetadataUrl);
           return new Error("No SPID metadata found");
         }
       )
     ),
-    TE.map(idpMetadata => {
+    TE.map((idpMetadata) => {
       if (!idpMetadata.length) {
         logger.warn("Missing SPID metadata on %s", idpMetadataUrl);
       }
@@ -210,7 +213,7 @@ export const parseStartupIdpsMetadata = (
         ...pipe(
           parseIdpMetadata(metadataXML),
           E.getOrElseW(() => [])
-        )
+        ),
       ]
     ),
     mapIpdMetadataL({ ...SPID_IDP_IDENTIFIERS, ...CIE_IDP_IDENTIFIERS })

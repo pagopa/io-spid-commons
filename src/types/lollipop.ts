@@ -4,7 +4,7 @@ import * as t from "io-ts";
 export const LollipopHashAlgorithm = t.union([
   t.literal("sha256"),
   t.literal("sha384"),
-  t.literal("sha512")
+  t.literal("sha512"),
 ]);
 export type LollipopHashAlgorithm = t.TypeOf<typeof LollipopHashAlgorithm>;
 

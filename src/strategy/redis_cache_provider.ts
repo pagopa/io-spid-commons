@@ -15,7 +15,7 @@ export type SAMLRequestCacheItem = t.TypeOf<typeof SAMLRequestCacheItem>;
 const SAMLRequestCacheItem = t.interface({
   RequestXML: t.string,
   createdAt: UTCISODateFromString,
-  idpIssuer: t.string
+  idpIssuer: t.string,
 });
 
 export interface IExtendedCacheProvider {
@@ -49,10 +49,10 @@ export const noopCacheProvider = (): CacheProvider => ({
   save: (_, value, callback): void => {
     const v = {
       createdAt: new Date(),
-      value
+      value,
     };
     callback(null, v);
-  }
+  },
 });
 
 export const getExtendedRedisCacheProvider = (
@@ -73,17 +73,18 @@ export const getExtendedRedisCacheProvider = (
         }
       )(`${keyPrefix}${AuthnRequestID}`),
       TE.mapLeft(
-        err => new Error(`SAML#ExtendedRedisCacheProvider: get() error ${err}`)
+        (err) =>
+          new Error(`SAML#ExtendedRedisCacheProvider: get() error ${err}`)
       ),
-      TE.chain(value =>
+      TE.chain((value) =>
         TE.fromEither(
           pipe(
             E.parseJSON(value, E.toError),
-            E.chain(_ =>
+            E.chain((_) =>
               pipe(
                 SAMLRequestCacheItem.decode(_),
                 E.mapLeft(
-                  __ =>
+                  (__) =>
                     new Error(
                       `SAML#ExtendedRedisCacheProvider: get() error ${readableReport(
                         __
@@ -103,7 +104,7 @@ export const getExtendedRedisCacheProvider = (
           redisClient.del(key, callback)
       )(`${keyPrefix}${AuthnRequestID}`),
       TE.mapLeft(
-        err =>
+        (err) =>
           new Error(`SAML#ExtendedRedisCacheProvider: remove() error ${err}`)
       ),
       TE.map(() => AuthnRequestID)
@@ -121,21 +122,21 @@ export const getExtendedRedisCacheProvider = (
             )
         )(getIDFromRequest(RequestXML))
       ),
-      TE.chain(AuthnRequestID =>
+      TE.chain((AuthnRequestID) =>
         pipe(
           TE.fromEither(
             E.fromOption(
               () => new Error("Missing idpIssuer inside configuration")
             )(O.fromNullable(samlConfig.idpIssuer))
           ),
-          TE.map(idpIssuer => ({ AuthnRequestID, idpIssuer }))
+          TE.map((idpIssuer) => ({ AuthnRequestID, idpIssuer }))
         )
       ),
-      TE.chain(_ => {
+      TE.chain((_) => {
         const v: SAMLRequestCacheItem = {
           RequestXML,
           createdAt: new Date(),
-          idpIssuer: _.idpIssuer
+          idpIssuer: _.idpIssuer,
         };
         return pipe(
           TE.taskify(
@@ -153,11 +154,11 @@ export const getExtendedRedisCacheProvider = (
             keyExpirationPeriodSeconds
           ),
           TE.mapLeft(
-            err =>
+            (err) =>
               new Error(`SAML#ExtendedRedisCacheProvider: set() error ${err}`)
           ),
           TE.map(() => v)
         );
       })
-    )
+    ),
 });

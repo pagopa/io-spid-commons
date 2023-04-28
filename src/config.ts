@@ -10,7 +10,7 @@ export const SPID_IDP_IDENTIFIERS = {
   "https://loginspid.infocamere.it": "infocamereid",
   "https://posteid.poste.it": "posteid",
   "https://spid.register.it": "spiditalia",
-  "https://spid.teamsystem.com/idp": "teamsystemid"
+  "https://spid.teamsystem.com/idp": "teamsystemid",
 };
 
 export const CIE_IDP_IDENTIFIERS = {
@@ -19,7 +19,7 @@ export const CIE_IDP_IDENTIFIERS = {
   "https://idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SSO":
     "xx_servizicie",
   "https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SSO":
-    "xx_servizicie_test"
+    "xx_servizicie_test",
 };
 
 /*
@@ -40,18 +40,18 @@ export const SPID_USER_ATTRIBUTES = {
   name: "Nome",
   placeOfBirth: "Luogo di nascita",
   registeredOffice: "Ufficio",
-  spidCode: "Codice SPID"
+  spidCode: "Codice SPID",
 };
 
 export const SPID_LEVELS = {
   SpidL1: "https://www.spid.gov.it/SpidL1",
   SpidL2: "https://www.spid.gov.it/SpidL2",
-  SpidL3: "https://www.spid.gov.it/SpidL3"
+  SpidL3: "https://www.spid.gov.it/SpidL3",
 };
 export type SPID_LEVELS = typeof SPID_LEVELS;
 
 export const SPID_URLS = {
   "https://www.spid.gov.it/SpidL1": "SpidL1",
   "https://www.spid.gov.it/SpidL2": "SpidL2",
-  "https://www.spid.gov.it/SpidL3": "SpidL3"
+  "https://www.spid.gov.it/SpidL3": "SpidL3",
 };

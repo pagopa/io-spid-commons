@@ -8,13 +8,13 @@ import { JwkPublicKeyFromToken } from "@pagopa/ts-commons/lib/jwk";
 import {
   LollipopHashAlgorithm,
   LOLLIPOP_PUB_KEY_HASHING_ALGO_HEADER_NAME,
-  LOLLIPOP_PUB_KEY_HEADER_NAME
+  LOLLIPOP_PUB_KEY_HEADER_NAME,
 } from "../types/lollipop";
 import { IExtendedCacheProvider } from "./redis_cache_provider";
 import {
   PreValidateResponseDoneCallbackT,
   PreValidateResponseT,
-  XmlAuthorizeTamperer
+  XmlAuthorizeTamperer,
 } from "./spid";
 
 export class CustomSamlClient extends PassportSaml.SAML {
@@ -29,7 +29,7 @@ export class CustomSamlClient extends PassportSaml.SAML {
     // internal cacheProvider of passport-saml
     super({
       ...config,
-      validateInResponseTo: false
+      validateInResponseTo: false,
     });
   }
 
@@ -58,7 +58,7 @@ export class CustomSamlClient extends PassportSaml.SAML {
               // eslint-disable-next-line @typescript-eslint/no-floating-promises
               pipe(
                 this.extededCacheProvider.remove(AuthnRequestID),
-                TE.map(_ => callback(error, __, ___)),
+                TE.map((_) => callback(error, __, ___)),
                 TE.mapLeft(callback)
               )();
             } else {
@@ -83,14 +83,14 @@ export class CustomSamlClient extends PassportSaml.SAML {
   ): void {
     const newCallback = pipe(
       O.fromNullable(this.tamperAuthorizeRequest),
-      O.map(tamperAuthorizeRequest => (e: Error, xml?: string): void => {
+      O.map((tamperAuthorizeRequest) => (e: Error, xml?: string): void => {
         // eslint-disable-next-line @typescript-eslint/no-floating-promises, @typescript-eslint/no-unused-expressions
         xml
           ? pipe(
               req.headers[LOLLIPOP_PUB_KEY_HEADER_NAME],
               JwkPublicKeyFromToken.decode,
               O.fromEither,
-              O.map(pubKey => ({
+              O.map((pubKey) => ({
                 hashAlgorithm: pipe(
                   req.headers[LOLLIPOP_PUB_KEY_HASHING_ALGO_HEADER_NAME],
                   // The headers validation should happen into the Application layer.
@@ -99,16 +99,16 @@ export class CustomSamlClient extends PassportSaml.SAML {
                   O.fromPredicate(LollipopHashAlgorithm.is),
                   O.toUndefined
                 ),
-                pubKey
+                pubKey,
               })),
               O.toUndefined,
-              lollipopParams => tamperAuthorizeRequest(xml, lollipopParams),
-              TE.chain(tamperedXml =>
+              (lollipopParams) => tamperAuthorizeRequest(xml, lollipopParams),
+              TE.chain((tamperedXml) =>
                 this.extededCacheProvider.save(tamperedXml, this.config)
               ),
-              TE.mapLeft(error => callback(error)),
-              TE.map(cache =>
-                callback((null as unknown) as Error, cache.RequestXML)
+              TE.mapLeft((error) => callback(error)),
+              TE.map((cache) =>
+                callback(null as unknown as Error, cache.RequestXML)
               )
             )()
           : callback(e);

@@ -7,9 +7,10 @@ export const logger = createLogger({
     timestamp(),
     format.splat(),
     printf(
-      info => `${info.timestamp} [${info.label}] ${info.level}: ${info.message}`
+      (info) =>
+        `${info.timestamp} [${info.label}] ${info.level}: ${info.message}`
     )
   ),
   level: process.env.NODE_ENV !== "production" ? "debug" : "info",
-  transports: [new transports.Console()]
+  transports: [new transports.Console()],
 });

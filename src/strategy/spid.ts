@@ -6,7 +6,7 @@ import {
   AuthorizeOptions,
   SamlConfig,
   VerifyWithoutRequest,
-  VerifyWithRequest
+  VerifyWithRequest,
 } from "passport-saml";
 import { Strategy as SamlStrategy } from "passport-saml";
 import { RedisClient } from "redis";
@@ -20,7 +20,7 @@ import { ILollipopParams } from "../types/lollipop";
 import {
   getExtendedRedisCacheProvider,
   IExtendedCacheProvider,
-  noopCacheProvider
+  noopCacheProvider,
 } from "./redis_cache_provider";
 import { CustomSamlClient } from "./saml_client";
 
@@ -90,7 +90,7 @@ export class SpidStrategy extends SamlStrategy {
       const samlService = new CustomSamlClient(
         {
           ...this.options,
-          ...samlOptions
+          ...samlOptions,
         },
         this.extendedRedisCacheProvider,
         this.tamperAuthorizeRequest,
@@ -102,7 +102,7 @@ export class SpidStrategy extends SamlStrategy {
       const strategy = Object.setPrototypeOf(
         {
           ...this,
-          _saml: samlService
+          _saml: samlService,
         },
         this
       );
@@ -121,7 +121,7 @@ export class SpidStrategy extends SamlStrategy {
       const samlService = new CustomSamlClient(
         {
           ...this.options,
-          ...samlOptions
+          ...samlOptions,
         },
         this.extendedRedisCacheProvider
       );
@@ -130,7 +130,7 @@ export class SpidStrategy extends SamlStrategy {
       const strategy = Object.setPrototypeOf(
         {
           ...this,
-          _saml: samlService
+          _saml: samlService,
         },
         this
       );
@@ -151,7 +151,7 @@ export class SpidStrategy extends SamlStrategy {
       const samlService = new CustomSamlClient(
         {
           ...this.options,
-          ...samlOptions
+          ...samlOptions,
         },
         this.extendedRedisCacheProvider
       );
@@ -161,7 +161,7 @@ export class SpidStrategy extends SamlStrategy {
       const strategy = Object.setPrototypeOf(
         {
           ...this,
-          _saml: samlService
+          _saml: samlService,
         },
         this
       );
@@ -176,7 +176,7 @@ export class SpidStrategy extends SamlStrategy {
         ? // Tamper the generated XML for service provider metadata
           pipe(
             this.tamperMetadata(originalXml),
-            TE.map(tamperedXml => callback(null, tamperedXml)),
+            TE.map((tamperedXml) => callback(null, tamperedXml)),
             TE.mapLeft(callback),
             TE.toUnion
           )()
