@@ -16,7 +16,7 @@ import {
   PreValidateResponseT,
   SpidStrategy,
   XmlAuthorizeTamperer,
-  XmlTamperer
+  XmlTamperer,
 } from "../strategy/spid";
 import { IDPEntityDescriptor } from "../types/IDPEntityDescriptor";
 import { fetchIdpsMetadata } from "./metadata";
@@ -29,29 +29,29 @@ interface IServiceProviderOrganization {
 }
 
 export enum ContactType {
-  OTHER = "other"
+  OTHER = "other",
 }
 
 export enum EntityType {
-  AGGREGATOR = "spid:aggregator"
+  AGGREGATOR = "spid:aggregator",
 }
 
 export enum AggregatorType {
-  PublicServicesFullOperator = "PublicServicesFullOperator"
+  PublicServicesFullOperator = "PublicServicesFullOperator",
 }
 
 const CommonExtension = t.interface({
   FiscalCode: t.string,
   IPACode: t.string,
-  VATNumber: t.string
+  VATNumber: t.string,
 });
 type CommonExtension = t.TypeOf<typeof CommonExtension>;
 
 const AggregatorExtension = t.intersection([
   t.interface({
-    aggregatorType: t.literal(AggregatorType.PublicServicesFullOperator)
+    aggregatorType: t.literal(AggregatorType.PublicServicesFullOperator),
   }),
-  CommonExtension
+  CommonExtension,
 ]);
 type AggregatorExtension = t.TypeOf<typeof AggregatorExtension>;
 
@@ -61,11 +61,11 @@ const ContactPerson = t.intersection([
     contactType: t.literal(ContactType.OTHER),
     email: EmailString,
     entityType: t.literal(EntityType.AGGREGATOR),
-    extensions: AggregatorExtension
+    extensions: AggregatorExtension,
   }),
   t.partial({
-    phone: t.string
-  })
+    phone: t.string,
+  }),
 ]);
 type ContactPerson = t.TypeOf<typeof ContactPerson>;
 export interface IServiceProviderConfig {
@@ -119,12 +119,12 @@ export const makeSpidStrategyOptions = (
     ...samlConfig,
     attributes: {
       attributes: serviceProviderConfig.requiredAttributes,
-      name: serviceProviderConfig.requiredAttributes.name
+      name: serviceProviderConfig.requiredAttributes.name,
     },
     identifierFormat: "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
     organization: serviceProviderConfig.organization,
-    signatureAlgorithm: "sha256"
-  }
+    signatureAlgorithm: "sha256",
+  },
 });
 
 /**
@@ -133,92 +133,91 @@ export const makeSpidStrategyOptions = (
  * This is used to pass options to the SAML client
  * so it can discriminate between the IDP certificates.
  */
-export const getSpidStrategyOptionsUpdater = (
-  samlConfig: SamlConfig,
-  serviceProviderConfig: IServiceProviderConfig
-) => (): T.Task<ISpidStrategyOptions> => {
-  const idpOptionsTasks = [
-    pipe(
-      fetchIdpsMetadata(
-        serviceProviderConfig.IDPMetadataUrl,
-        SPID_IDP_IDENTIFIERS
-      ),
-      TE.getOrElseW(() => T.of({}))
-    )
-  ]
-    .concat(
+export const getSpidStrategyOptionsUpdater =
+  (samlConfig: SamlConfig, serviceProviderConfig: IServiceProviderConfig) =>
+  (): T.Task<ISpidStrategyOptions> => {
+    const idpOptionsTasks = [
       pipe(
-        NonEmptyString.is(serviceProviderConfig.spidValidatorUrl)
+        fetchIdpsMetadata(
+          serviceProviderConfig.IDPMetadataUrl,
+          SPID_IDP_IDENTIFIERS
+        ),
+        TE.getOrElseW(() => T.of({}))
+      ),
+    ]
+      .concat(
+        pipe(
+          NonEmptyString.is(serviceProviderConfig.spidValidatorUrl)
+            ? [
+                pipe(
+                  fetchIdpsMetadata(
+                    `${serviceProviderConfig.spidValidatorUrl}/metadata.xml`,
+                    {
+                      // "https://validator.spid.gov.it" or "http://localhost:8080"
+                      [serviceProviderConfig.spidValidatorUrl]: "xx_validator",
+                    }
+                  ),
+                  TE.getOrElseW(() => T.of({}))
+                ),
+              ]
+            : []
+        )
+      )
+      .concat(
+        NonEmptyString.is(serviceProviderConfig.spidCieUrl)
           ? [
               pipe(
                 fetchIdpsMetadata(
-                  `${serviceProviderConfig.spidValidatorUrl}/metadata.xml`,
-                  {
-                    // "https://validator.spid.gov.it" or "http://localhost:8080"
-                    [serviceProviderConfig.spidValidatorUrl]: "xx_validator"
-                  }
+                  serviceProviderConfig.spidCieUrl,
+                  CIE_IDP_IDENTIFIERS
                 ),
                 TE.getOrElseW(() => T.of({}))
-              )
+              ),
             ]
           : []
       )
-    )
-    .concat(
-      NonEmptyString.is(serviceProviderConfig.spidCieUrl)
-        ? [
-            pipe(
-              fetchIdpsMetadata(
-                serviceProviderConfig.spidCieUrl,
-                CIE_IDP_IDENTIFIERS
+      .concat(
+        NonEmptyString.is(serviceProviderConfig.spidCieTestUrl)
+          ? [
+              pipe(
+                fetchIdpsMetadata(
+                  serviceProviderConfig.spidCieTestUrl,
+                  CIE_IDP_IDENTIFIERS
+                ),
+                TE.getOrElseW(() => T.of({}))
               ),
-              TE.getOrElseW(() => T.of({}))
-            )
-          ]
-        : []
-    )
-    .concat(
-      NonEmptyString.is(serviceProviderConfig.spidCieTestUrl)
-        ? [
-            pipe(
-              fetchIdpsMetadata(
-                serviceProviderConfig.spidCieTestUrl,
-                CIE_IDP_IDENTIFIERS
+            ]
+          : []
+      )
+      .concat(
+        NonEmptyString.is(serviceProviderConfig.spidTestEnvUrl)
+          ? [
+              pipe(
+                fetchIdpsMetadata(
+                  `${serviceProviderConfig.spidTestEnvUrl}/metadata`,
+                  {
+                    [serviceProviderConfig.spidTestEnvUrl]: "xx_testenv2",
+                  }
+                ),
+                TE.getOrElseW(() => T.of({}))
               ),
-              TE.getOrElseW(() => T.of({}))
-            )
-          ]
-        : []
-    )
-    .concat(
-      NonEmptyString.is(serviceProviderConfig.spidTestEnvUrl)
-        ? [
-            pipe(
-              fetchIdpsMetadata(
-                `${serviceProviderConfig.spidTestEnvUrl}/metadata`,
-                {
-                  [serviceProviderConfig.spidTestEnvUrl]: "xx_testenv2"
-                }
-              ),
-              TE.getOrElseW(() => T.of({}))
-            )
-          ]
-        : []
-    );
-  return pipe(
-    A.sequence(T.ApplicativePar)(idpOptionsTasks),
-
-    T.map(A.reduce({}, (prev, current) => ({ ...prev, ...current }))),
-    T.map(idpOptionsRecord => {
-      logSamlCertExpiration(serviceProviderConfig.publicCert);
-      return makeSpidStrategyOptions(
-        samlConfig,
-        serviceProviderConfig,
-        idpOptionsRecord
+            ]
+          : []
       );
-    })
-  );
-};
+    return pipe(
+      A.sequence(T.ApplicativePar)(idpOptionsTasks),
+
+      T.map(A.reduce({}, (prev, current) => ({ ...prev, ...current }))),
+      T.map((idpOptionsRecord) => {
+        logSamlCertExpiration(serviceProviderConfig.publicCert);
+        return makeSpidStrategyOptions(
+          samlConfig,
+          serviceProviderConfig,
+          idpOptionsRecord
+        );
+      })
+    );
+  };
 
 const SPID_STRATEGY_OPTIONS_KEY = "spidStrategyOptions";
 
@@ -247,9 +246,9 @@ export const upsertSpidStrategyOption = (
       ? {
           idp: {
             ...spidStrategyOptions.idp,
-            ...newSpidStrategyOpts.idp
+            ...newSpidStrategyOpts.idp,
           },
-          sp: newSpidStrategyOpts.sp
+          sp: newSpidStrategyOpts.sp,
         }
       : newSpidStrategyOpts
   );

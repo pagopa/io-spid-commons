@@ -19,21 +19,21 @@ const argv = yargs
     description: "ENV var name containing IDP Metadata URL",
     normalize: true,
     // eslint-disable-next-line id-blacklist
-    string: true
+    string: true,
   })
   .option("testenv-metadata-url-env", {
     demandOption: false,
     description: "ENV var name containing TestEnv2 Metadata URL",
     normalize: true,
     // eslint-disable-next-line id-blacklist
-    string: true
+    string: true,
   })
   .option("cie-metadata-url-env", {
     demandOption: false,
     description: "ENV var name containing CIE Metadata URL",
     normalize: true,
     // eslint-disable-next-line id-blacklist
-    string: true
+    string: true,
   })
   .help().argv;
 
@@ -52,7 +52,7 @@ const printIdpsMetadata = (
   logger.info = (): any => {};
   const maybeIdpsMetadataURL = pipe(
     O.fromNullable(idpsMetadataENV),
-    O.chainNullableK(_ => process.env[_]),
+    O.chainNullableK((_) => process.env[_]),
     O.map((_: string) =>
       pipe(
         TE.Do,
@@ -64,7 +64,7 @@ const printIdpsMetadata = (
   );
   const maybeTestEnvMetadataURL = pipe(
     O.fromNullable(testEnv2MetadataENV),
-    O.chainNullableK(_ => process.env[_]),
+    O.chainNullableK((_) => process.env[_]),
     O.map((_: string) =>
       pipe(
         TE.Do,
@@ -76,7 +76,7 @@ const printIdpsMetadata = (
   );
   const maybeCIEMetadataURL = pipe(
     O.fromNullable(cieMetadataENV),
-    O.chainNullableK(_ => process.env[_]),
+    O.chainNullableK((_) => process.env[_]),
     O.map((_: string) =>
       pipe(
         TE.Do,
@@ -103,5 +103,5 @@ printIdpsMetadata(
   argv["cie-metadata-url-env"]
 )
   // eslint-disable-next-line no-console
-  .then(metadata => console.log(JSON.stringify(metadata, null, 2)))
+  .then((metadata) => console.log(JSON.stringify(metadata, null, 2)))
   .catch(() => logger.error("Error fetching IDP metadata"));

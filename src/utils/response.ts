@@ -16,10 +16,10 @@ import { SAML_NAMESPACE } from "./saml";
 export const getAuthnContextFromResponse = (xml: string): Option<string> =>
   pipe(
     O.fromNullable(xml),
-    O.chain(xmlStr =>
+    O.chain((xmlStr) =>
       O.tryCatch(() => new DOMParser().parseFromString(xmlStr))
     ),
-    O.chain(xmlResponse =>
+    O.chain((xmlResponse) =>
       xmlResponse
         ? O.some(
             xmlResponse.getElementsByTagNameNS(
@@ -29,23 +29,25 @@ export const getAuthnContextFromResponse = (xml: string): Option<string> =>
           )
         : O.none
     ),
-    O.chain(responseAuthLevelEl =>
+    O.chain((responseAuthLevelEl) =>
       responseAuthLevelEl?.[0]?.textContent
         ? O.some(responseAuthLevelEl[0].textContent.trim())
         : O.none
     )
   );
 
-export const middlewareCatchAsInternalError = (
-  f: (req: Request, res: Response, next: NextFunction) => unknown,
-  message: string = "Exception while calling express middleware"
-) => (req: Request, res: Response, next: NextFunction): void => {
-  try {
-    f(req, res, next);
-  } catch (_) {
-    // Send a ResponseErrorInternal only if a response was not already sent to the client
-    if (!res.headersSent) {
-      return ResponseErrorInternal(`${message} [${_}]`).apply(res);
+export const middlewareCatchAsInternalError =
+  (
+    f: (req: Request, res: Response, next: NextFunction) => unknown,
+    message: string = "Exception while calling express middleware"
+  ) =>
+  (req: Request, res: Response, next: NextFunction): void => {
+    try {
+      f(req, res, next);
+    } catch (_) {
+      // Send a ResponseErrorInternal only if a response was not already sent to the client
+      if (!res.headersSent) {
+        return ResponseErrorInternal(`${message} [${_}]`).apply(res);
+      }
     }
-  }
-};
+  };

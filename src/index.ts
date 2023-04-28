@@ -14,7 +14,7 @@ import {
   IResponseSuccessXml,
   ResponseErrorInternal,
   ResponseErrorValidation,
-  ResponseSuccessXml
+  ResponseSuccessXml,
 } from "@pagopa/ts-commons/lib/responses";
 import * as express from "express";
 import { constVoid, pipe } from "fp-ts/lib/function";
@@ -34,7 +34,7 @@ import {
   IServiceProviderConfig,
   makeSpidStrategy,
   makeSpidStrategyOptions,
-  upsertSpidStrategyOption
+  upsertSpidStrategyOption,
 } from "./utils/middleware";
 import { middlewareCatchAsInternalError } from "./utils/response";
 import {
@@ -43,7 +43,7 @@ import {
   getPreValidateResponse,
   getSamlIssuer,
   getSamlOptions,
-  getXmlFromSamlResponse
+  getXmlFromSamlResponse,
 } from "./utils/saml";
 import { getMetadataTamperer } from "./utils/saml";
 
@@ -100,50 +100,52 @@ export { noopCacheProvider, IServiceProviderConfig, SamlConfig };
  * Wraps assertion consumer service handler
  * with SPID authentication and redirects.
  */
-const withSpidAuthMiddleware = (
-  acs: AssertionConsumerServiceT,
-  clientLoginRedirectionUrl: string,
-  clientErrorRedirectionUrl: string
-) => (
-  req: express.Request,
-  res: express.Response,
-  next: express.NextFunction
-): void => {
-  passport.authenticate("spid", async (err: unknown, user: unknown) => {
-    const maybeDoc = getXmlFromSamlResponse(req.body);
-    const issuer = pipe(
-      maybeDoc,
-      O.chain(getSamlIssuer),
-      O.getOrElse(() => "UNKNOWN")
-    );
-    if (err) {
-      const redirectionUrl =
-        clientErrorRedirectionUrl +
-        pipe(
-          maybeDoc,
-          O.chain(getErrorCodeFromResponse),
-          O.map(errorCode => `?errorCode=${errorCode}`),
-          O.getOrElse(() => `?errorMessage=${err}`)
+const withSpidAuthMiddleware =
+  (
+    acs: AssertionConsumerServiceT,
+    clientLoginRedirectionUrl: string,
+    clientErrorRedirectionUrl: string
+  ) =>
+  (
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ): void => {
+    passport.authenticate("spid", async (err: unknown, user: unknown) => {
+      const maybeDoc = getXmlFromSamlResponse(req.body);
+      const issuer = pipe(
+        maybeDoc,
+        O.chain(getSamlIssuer),
+        O.getOrElse(() => "UNKNOWN")
+      );
+      if (err) {
+        const redirectionUrl =
+          clientErrorRedirectionUrl +
+          pipe(
+            maybeDoc,
+            O.chain(getErrorCodeFromResponse),
+            O.map((errorCode) => `?errorCode=${errorCode}`),
+            O.getOrElse(() => `?errorMessage=${err}`)
+          );
+        logger.error(
+          "Spid Authentication|Authentication Error|ERROR=%s|ISSUER=%s|REDIRECT_TO=%s",
+          err,
+          issuer,
+          redirectionUrl
         );
-      logger.error(
-        "Spid Authentication|Authentication Error|ERROR=%s|ISSUER=%s|REDIRECT_TO=%s",
-        err,
-        issuer,
-        redirectionUrl
-      );
-      return res.redirect(redirectionUrl);
-    }
-    if (!user) {
-      logger.error(
-        "Spid Authentication|Authentication Error|ERROR=user_not_found|ISSUER=%s",
-        issuer
-      );
-      return res.redirect(clientLoginRedirectionUrl);
-    }
-    const response = await acs(user);
-    response.apply(res);
-  })(req, res, next);
-};
+        return res.redirect(redirectionUrl);
+      }
+      if (!user) {
+        logger.error(
+          "Spid Authentication|Authentication Error|ERROR=user_not_found|ISSUER=%s",
+          issuer
+        );
+        return res.redirect(clientLoginRedirectionUrl);
+      }
+      const response = await acs(user);
+      response.apply(res);
+    })(req, res, next);
+  };
 
 type ExpressMiddleware = (
   req: express.Request,
@@ -176,7 +178,7 @@ export const withSpid = ({
   redisClient,
   samlConfig,
   serviceProviderConfig,
-  lollipopMiddleware = (_, __, next): void => next()
+  lollipopMiddleware = (_, __, next): void => next(),
 }: IWithSpidT): T.Task<{
   readonly app: express.Express;
   readonly idpMetadataRefresher: () => T.Task<void>;
@@ -205,7 +207,7 @@ export const withSpid = ({
   return pipe(
     maybeStartupIdpsMetadata,
     O.map(parseStartupIdpsMetadata),
-    O.map(idpOptionsRecord =>
+    O.map((idpOptionsRecord) =>
       T.of(
         makeSpidStrategyOptions(
           samlConfig,
@@ -215,7 +217,7 @@ export const withSpid = ({
       )
     ),
     O.getOrElse(loadSpidStrategyOptions),
-    T.map(spidStrategyOptions => {
+    T.map((spidStrategyOptions) => {
       upsertSpidStrategyOption(app, spidStrategyOptions);
       return makeSpidStrategy(
         spidStrategyOptions,
@@ -231,7 +233,7 @@ export const withSpid = ({
         doneCb
       );
     }),
-    T.map(spidStrategy => {
+    T.map((spidStrategy) => {
       // Even when `startupIdpsMetadata` is provided, we try to load
       // IDP metadata from the remote registries
       pipe(
@@ -239,8 +241,8 @@ export const withSpid = ({
         O.map(() => {
           pipe(
             loadSpidStrategyOptions(),
-            T.map(opts => upsertSpidStrategyOption(app, opts))
-          )().catch(e => {
+            T.map((opts) => upsertSpidStrategyOption(app, opts))
+          )().catch((e) => {
             logger.error("loadSpidStrategyOptions|error:%s", e);
           });
         })
@@ -249,14 +251,14 @@ export const withSpid = ({
       const idpMetadataRefresher = (): T.Task<void> =>
         pipe(
           loadSpidStrategyOptions(),
-          T.map(opts => upsertSpidStrategyOption(app, opts))
+          T.map((opts) => upsertSpidStrategyOption(app, opts))
         );
 
       // Initializes SpidStrategy for passport
       passport.use("spid", spidStrategy);
 
       const spidAuth = passport.authenticate("spid", {
-        session: false
+        session: false,
       });
 
       // Setup SPID login handler
@@ -265,10 +267,10 @@ export const withSpid = ({
         middlewareCatchAsInternalError((req, res, next) => {
           pipe(
             O.fromNullable(req.query),
-            O.chainNullableK(q => q.authLevel),
+            O.chainNullableK((q) => q.authLevel),
             O.filter(t.keyof(SPID_LEVELS).is),
             O.chain(
-              O.fromPredicate(authLevel =>
+              O.fromPredicate((authLevel) =>
                 appConfig.spidLevelsWhitelist.includes(authLevel)
               )
             ),
@@ -282,7 +284,7 @@ export const withSpid = ({
                   "Missing or invalid authLevel"
                 ).apply(res);
               },
-              _ => next()
+              (_) => next()
             )
           );
         }),
@@ -297,7 +299,7 @@ export const withSpid = ({
           async (
             req
           ): Promise<IResponseErrorInternal | IResponseSuccessXml<string>> =>
-            new Promise(resolve =>
+            new Promise((resolve) =>
               spidStrategy.generateServiceProviderMetadataAsync(
                 req,
                 null, // certificate used for encryption / decryption
