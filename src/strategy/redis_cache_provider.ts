@@ -83,7 +83,7 @@ export const getExtendedRedisCacheProvider = (
             new Error("SAML#ExtendedRedisCacheProvider: get() value not found")
         )
       ),
-      TE.chain(value =>
+      TE.chain((value) =>
         TE.fromEither(
           pipe(
             E.parseJSON(value, E.toError),
