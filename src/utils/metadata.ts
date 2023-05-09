@@ -8,6 +8,7 @@ import { pipe } from "fp-ts/lib/function";
 import * as R from "fp-ts/lib/Record";
 import { Ord } from "fp-ts/lib/string";
 import * as TE from "fp-ts/lib/TaskEither";
+import * as O from "fp-ts/Option";
 import { TaskEither } from "fp-ts/lib/TaskEither";
 import nodeFetch from "node-fetch";
 import { DOMParser } from "xmldom";
@@ -38,7 +39,8 @@ export const parseIdpMetadata = (
   ipdMetadataPage: string
 ): Either<Error, ReadonlyArray<IDPEntityDescriptor>> =>
   pipe(
-    E.right<Error, Document>(new DOMParser().parseFromString(ipdMetadataPage)),
+    O.fromNullable(new DOMParser().parseFromString(ipdMetadataPage)),
+    E.fromOption(() => new Error("Empty XML file content")),
     E.chain(
       E.fromPredicate(
         (domParser) =>
