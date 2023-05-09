@@ -10,10 +10,10 @@ import { Ord } from "fp-ts/lib/string";
 import * as TE from "fp-ts/lib/TaskEither";
 import { TaskEither } from "fp-ts/lib/TaskEither";
 import nodeFetch from "node-fetch";
-import { DOMParser } from "xmldom";
 import { CIE_IDP_IDENTIFIERS, SPID_IDP_IDENTIFIERS } from "../config";
 import { IDPEntityDescriptor } from "../types/IDPEntityDescriptor";
 import { logger } from "./logger";
+import { safeXMLParseFromString } from "./samlUtils";
 
 const EntityDescriptorTAG = "EntityDescriptor";
 const X509CertificateTAG = "X509Certificate";
@@ -35,10 +35,11 @@ const METADATA_NAMESPACES = {
  * An example file is provided in /test_idps/spid-entities-idps.xml of this project.
  */
 export const parseIdpMetadata = (
-  ipdMetadataPage: string
+  idpMetadataPage: string
 ): Either<Error, ReadonlyArray<IDPEntityDescriptor>> =>
   pipe(
-    E.right<Error, Document>(new DOMParser().parseFromString(ipdMetadataPage)),
+    safeXMLParseFromString(idpMetadataPage),
+    E.fromOption(() => new Error("Empty XML file content")),
     E.chain(
       E.fromPredicate(
         (domParser) =>

@@ -14,7 +14,7 @@ import * as O from "fp-ts/lib/Option";
 import { Eq } from "fp-ts/lib/string";
 import * as TE from "fp-ts/lib/TaskEither";
 import { TaskEither } from "fp-ts/lib/TaskEither";
-import { DOMParser, XMLSerializer } from "xmldom";
+import { XMLSerializer } from "xmldom";
 import { SPID_LEVELS, SPID_USER_ATTRIBUTES } from "../config";
 import { EventTracker } from "../index";
 import { PreValidateResponseT } from "../strategy/spid";
@@ -27,6 +27,7 @@ import {
   transformsValidation,
   validateIssuer,
   extractAndLogTimings,
+  safeXMLParseFromString,
 } from "./samlUtils";
 import {
   getAuthorizeRequestTamperer,
@@ -104,7 +105,7 @@ const ISSUER_FORMAT_ERROR = new Error(
 
 export const getPreValidateResponse =
   // eslint-disable-next-line max-lines-per-function, prettier/prettier
-  (
+    (
       strictValidationOptions?: StrictResponseValidationOptions,
       eventHandler?: EventTracker,
       hasClockSkewLoggingEvent?: boolean
@@ -362,11 +363,12 @@ export const getPreValidateResponse =
       ): TaskEither<Error, ISAMLRequest> =>
         pipe(
           TE.fromEither(
-            E.fromOption(
-              () => new Error("An error occurs parsing the cached SAML Request")
-            )(
-              O.tryCatch(() =>
-                new DOMParser().parseFromString(_.SAMLRequestCache.RequestXML)
+            pipe(
+              _.SAMLRequestCache.RequestXML,
+              safeXMLParseFromString,
+              E.fromOption(
+                () =>
+                  new Error("An error occurs parsing the cached SAML Request")
               )
             )
           ),

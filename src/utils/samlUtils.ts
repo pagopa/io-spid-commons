@@ -12,7 +12,7 @@ import { Request as ExpressRequest } from "express";
 import { predicate as PR } from "fp-ts";
 import { flatten } from "fp-ts/lib/Array";
 import * as E from "fp-ts/lib/Either";
-import { pipe } from "fp-ts/lib/function";
+import { flow, pipe } from "fp-ts/lib/function";
 import * as O from "fp-ts/lib/Option";
 import { collect, lookup } from "fp-ts/lib/Record";
 import { Ord } from "fp-ts/lib/string";
@@ -210,11 +210,17 @@ export const notSignedWithHmacPredicate = E.fromPredicate(
   (_) => new Error("HMAC Signature is forbidden")
 );
 
+export const safeXMLParseFromString = (doc: string): O.Option<Document> =>
+  pipe(
+    O.tryCatch(() => new DOMParser().parseFromString(doc, "text/xml")),
+    O.chain(O.fromNullable)
+  );
+
 export const getXmlFromSamlResponse = (body: unknown): O.Option<Document> =>
   pipe(
     O.fromEither(SAMLResponse.decode(body)),
     O.map((_) => decodeBase64(_.SAMLResponse)),
-    O.chain((_) => O.tryCatch(() => new DOMParser().parseFromString(_)))
+    O.chain(safeXMLParseFromString)
   );
 
 /**
@@ -301,33 +307,40 @@ const getEntrypointCerts = (
     )
   );
 
-export const getIDFromRequest = (requestXML: string): O.Option<string> => {
-  const xmlRequest = new DOMParser().parseFromString(requestXML, "text/xml");
-  return pipe(
-    O.fromNullable(
-      xmlRequest
-        .getElementsByTagNameNS(SAML_NAMESPACE.PROTOCOL, "AuthnRequest")
-        .item(0)
+export const getIDFromRequest = (requestXML: string): O.Option<string> =>
+  pipe(
+    safeXMLParseFromString(requestXML),
+    O.chain((xmlRequest) =>
+      O.fromNullable(
+        xmlRequest
+          .getElementsByTagNameNS(SAML_NAMESPACE.PROTOCOL, "AuthnRequest")
+          .item(0)
+      )
     ),
     O.chain((AuthnRequest) =>
       O.fromEither(NonEmptyString.decode(AuthnRequest.getAttribute("ID")))
     )
   );
-};
 
-const getAuthnContextValueFromResponse = (
-  response: string
-): O.Option<string> => {
-  const xmlResponse = new DOMParser().parseFromString(response, "text/xml");
-  // ie. <saml2:AuthnContextClassRef>https://www.spid.gov.it/SpidL2</saml2:AuthnContextClassRef>
-  const responseAuthLevelEl = xmlResponse.getElementsByTagNameNS(
-    SAML_NAMESPACE.ASSERTION,
-    "AuthnContextClassRef"
+const getAuthnContextValueFromResponse = (response: string): O.Option<string> =>
+  pipe(
+    response,
+    safeXMLParseFromString,
+    // ie. <saml2:AuthnContextClassRef>https://www.spid.gov.it/SpidL2</saml2:AuthnContextClassRef>
+    O.map((XmlResponse) =>
+      XmlResponse.getElementsByTagNameNS(
+        SAML_NAMESPACE.ASSERTION,
+        "AuthnContextClassRef"
+      )
+    ),
+    O.chain(
+      flow(
+        (responseAuthLevelEl) => responseAuthLevelEl[0]?.textContent,
+        O.fromNullable,
+        O.map((textContent) => textContent.trim())
+      )
+    )
   );
-  return responseAuthLevelEl[0]?.textContent
-    ? O.some(responseAuthLevelEl[0].textContent.trim())
-    : O.none;
-};
 
 /**
  * Extracts the correct SPID level from response.
@@ -904,7 +917,7 @@ const notOnOrAfterValidation =
 
 export const assertionValidation =
   // eslint-disable-next-line max-lines-per-function, prettier/prettier
-  (validationTimestamp: number) =>
+    (validationTimestamp: number) =>
     // eslint-disable-next-line max-lines-per-function
     (
       Assertion: Element,
