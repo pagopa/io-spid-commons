@@ -117,12 +117,7 @@ describe("preValidateResponse", () => {
     });
     mockGetXmlFromSamlResponse = jest
       .spyOn(saml, "getXmlFromSamlResponse")
-      .mockImplementation(() =>
-        pipe(
-          tryCatch(() => new DOMParser().parseFromString(getSamlResponse())),
-          O.chain(O.fromNullable)
-        )
-      );
+      .mockImplementation(() => saml.safeXMLParseFromString(getSamlResponse()));
   });
 
   afterAll(() => {
@@ -131,13 +126,8 @@ describe("preValidateResponse", () => {
 
   it("should preValidate fail when saml Response has multiple Assertion elements", async () => {
     mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
-      pipe(
-        tryCatch(() =>
-          new DOMParser().parseFromString(
-            getSamlResponse({ customAssertion: getSamlAssertion().repeat(2) })
-          )
-        ),
-        O.chain(O.fromNullable)
+      saml.safeXMLParseFromString(
+        getSamlResponse({ customAssertion: getSamlAssertion().repeat(2) })
       )
     );
     const strictValidationOption: StrictResponseValidationOptions = {
@@ -168,13 +158,8 @@ describe("preValidateResponse", () => {
 
   it("should preValidate fail when saml Response has EncryptedAssertion element", async () => {
     mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
-      pipe(
-        tryCatch(() =>
-          new DOMParser().parseFromString(
-            getSamlResponse({ customAssertion: samlEncryptedAssertion })
-          )
-        ),
-        O.chain(O.fromNullable)
+      saml.safeXMLParseFromString(
+        getSamlResponse({ customAssertion: samlEncryptedAssertion })
       )
     );
     const strictValidationOption: StrictResponseValidationOptions = {
@@ -203,12 +188,7 @@ describe("preValidateResponse", () => {
 
   it("should preValidate fail when saml Response has multiple Response elements", async () => {
     mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
-      pipe(
-        tryCatch(() =>
-          new DOMParser().parseFromString(getSamlResponse().repeat(2))
-        ),
-        O.chain(O.fromNullable)
-      )
+      saml.safeXMLParseFromString(getSamlResponse().repeat(2))
     );
     const strictValidationOption: StrictResponseValidationOptions = {
       mockTestIdpIssuer: true,
@@ -238,19 +218,14 @@ describe("preValidateResponse", () => {
 
   it("should preValidate fail when saml response has more than 4 Transform (4 Assertion + 2 Response) elements in SignedInfo", async () => {
     mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
-      pipe(
-        tryCatch(() =>
-          new DOMParser().parseFromString(
-            getSamlResponse({
-              customAssertion: getSamlAssertion(
-                0,
-                "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256",
-                2
-              ),
-            })
-          )
-        ),
-        O.chain(O.fromNullable)
+      saml.safeXMLParseFromString(
+        getSamlResponse({
+          customAssertion: getSamlAssertion(
+            0,
+            "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256",
+            2
+          ),
+        })
       )
     );
     const strictValidationOption: StrictResponseValidationOptions = {
@@ -283,14 +258,7 @@ describe("preValidateResponse", () => {
   });
   it("should preValidate fail when saml response has more than 4 Transform elements (4 Response + 2 Assertion) in SignedInfo", async () => {
     mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
-      pipe(
-        tryCatch(() =>
-          new DOMParser().parseFromString(
-            getSamlResponse({ repeatTransforms: 2 })
-          )
-        ),
-        O.chain(O.fromNullable)
-      )
+      saml.safeXMLParseFromString(getSamlResponse({ repeatTransforms: 2 }))
     );
     const strictValidationOption: StrictResponseValidationOptions = {
       mockTestIdpIssuer: true,
@@ -323,10 +291,7 @@ describe("preValidateResponse", () => {
 
   it("should preValidate succeded with a valid saml Response", async () => {
     mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
-      pipe(
-        tryCatch(() => new DOMParser().parseFromString(getSamlResponse())),
-        O.chain(O.fromNullable)
-      )
+      saml.safeXMLParseFromString(getSamlResponse())
     );
     const strictValidationOption: StrictResponseValidationOptions = {
       mockTestIdpIssuer: true,
@@ -344,13 +309,8 @@ describe("preValidateResponse", () => {
 
   it("should preValidate succeded and send an Event on valid Response with missing Signature", async () => {
     mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
-      pipe(
-        tryCatch(() =>
-          new DOMParser().parseFromString(
-            getSamlResponse({ hasResponseSignature: false })
-          )
-        ),
-        O.chain(O.fromNullable)
+      saml.safeXMLParseFromString(
+        getSamlResponse({ hasResponseSignature: false })
       )
     );
     const strictValidationOption: StrictResponseValidationOptions = {
@@ -378,13 +338,8 @@ describe("preValidateResponse", () => {
 
   it("should preValidate succeed if timers are desynchronized and acceptedClockSkewMs is disabled", async () => {
     mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
-      pipe(
-        tryCatch(() =>
-          new DOMParser().parseFromString(
-            getSamlResponse({ clockSkewMs: expectedDesynResponseValueMs })
-          )
-        ),
-        O.chain(O.fromNullable)
+      saml.safeXMLParseFromString(
+        getSamlResponse({ clockSkewMs: expectedDesynResponseValueMs })
       )
     );
     const strictValidationOption: StrictResponseValidationOptions = {
@@ -403,13 +358,8 @@ describe("preValidateResponse", () => {
 
   it("should preValidate succeed if timers desync is less than acceptedClockSkewMs", async () => {
     mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
-      pipe(
-        tryCatch(() =>
-          new DOMParser().parseFromString(
-            getSamlResponse({ clockSkewMs: expectedDesynResponseValueMs })
-          )
-        ),
-        O.chain(O.fromNullable)
+      saml.safeXMLParseFromString(
+        getSamlResponse({ clockSkewMs: expectedDesynResponseValueMs })
       )
     );
     const strictValidationOption: StrictResponseValidationOptions = {
@@ -428,10 +378,7 @@ describe("preValidateResponse", () => {
 
   it("should preValidate succeed and log the timing deltas when hasClockSkewLoggingEvent is provided", async () => {
     mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
-      pipe(
-        tryCatch(() => new DOMParser().parseFromString(getSamlResponse())),
-        O.chain(O.fromNullable)
-      )
+      saml.safeXMLParseFromString(getSamlResponse())
     );
     const strictValidationOption: StrictResponseValidationOptions = {
       mockTestIdpIssuer: true,
@@ -467,13 +414,8 @@ describe("preValidateResponse", () => {
 
   it("should preValidate fail if timer desync exceeds acceptedClockSkewMs", async () => {
     mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
-      pipe(
-        tryCatch(() =>
-          new DOMParser().parseFromString(
-            getSamlResponse({ clockSkewMs: expectedDesynResponseValueMs })
-          )
-        ),
-        O.chain(O.fromNullable)
+      saml.safeXMLParseFromString(
+        getSamlResponse({ clockSkewMs: expectedDesynResponseValueMs })
       )
     );
     const strictValidationOption: StrictResponseValidationOptions = {
@@ -505,10 +447,7 @@ describe("preValidateResponse", () => {
     "should preValidate fail when saml Response $title",
     async ({ response }) => {
       mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
-        pipe(
-          tryCatch(() => new DOMParser().parseFromString(response)),
-          O.chain(O.fromNullable)
-        )
+        saml.safeXMLParseFromString(response)
       );
       const strictValidationOption: StrictResponseValidationOptions = {
         mockTestIdpIssuer: true,
@@ -542,10 +481,7 @@ describe("preValidateResponse", () => {
 
     it("should preValidate succeded with a valid CIE saml Response", async () => {
       mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
-        pipe(
-          tryCatch(() => new DOMParser().parseFromString(samlResponseCIE)),
-          O.chain(O.fromNullable)
-        )
+        saml.safeXMLParseFromString(samlResponseCIE)
       );
       mockGet.mockImplementation(() => {
         return fromEither(
@@ -571,15 +507,10 @@ describe("preValidateResponse", () => {
 
   it("should preValidate fail when saml Response uses HMAC as signature algorithm", async () => {
     mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
-      pipe(
-        tryCatch(() =>
-          new DOMParser().parseFromString(
-            getSamlResponse({
-              signatureMethod: hMacSignatureMethod,
-            })
-          )
-        ),
-        O.chain(O.fromNullable)
+      saml.safeXMLParseFromString(
+        getSamlResponse({
+          signatureMethod: hMacSignatureMethod,
+        })
       )
     );
     const strictValidationOption: StrictResponseValidationOptions = {
