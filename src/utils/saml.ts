@@ -27,6 +27,7 @@ import {
   transformsValidation,
   validateIssuer,
   extractAndLogTimings,
+  safeXMLParseFromString,
 } from "./samlUtils";
 import {
   getAuthorizeRequestTamperer,
@@ -104,7 +105,9 @@ const ISSUER_FORMAT_ERROR = new Error(
 
 export const getPreValidateResponse =
   // eslint-disable-next-line max-lines-per-function, prettier/prettier
-  (
+
+
+    (
       strictValidationOptions?: StrictResponseValidationOptions,
       eventHandler?: EventTracker,
       hasClockSkewLoggingEvent?: boolean
@@ -362,14 +365,12 @@ export const getPreValidateResponse =
       ): TaskEither<Error, ISAMLRequest> =>
         pipe(
           TE.fromEither(
-            E.fromOption(
-              () => new Error("An error occurs parsing the cached SAML Request")
-            )(
-              pipe(
-                O.tryCatch(() =>
-                  new DOMParser().parseFromString(_.SAMLRequestCache.RequestXML)
-                ),
-                O.chain(O.fromNullable)
+            pipe(
+              _.SAMLRequestCache.RequestXML,
+              safeXMLParseFromString,
+              E.fromOption(
+                () =>
+                  new Error("An error occurs parsing the cached SAML Request")
               )
             )
           ),
