@@ -214,7 +214,8 @@ export const getXmlFromSamlResponse = (body: unknown): O.Option<Document> =>
   pipe(
     O.fromEither(SAMLResponse.decode(body)),
     O.map((_) => decodeBase64(_.SAMLResponse)),
-    O.chain((_) => O.tryCatch(() => new DOMParser().parseFromString(_)))
+    O.chain((_) => O.tryCatch(() => new DOMParser().parseFromString(_))),
+    O.chain(O.fromNullable)
   );
 
 /**
@@ -302,12 +303,18 @@ const getEntrypointCerts = (
   );
 
 export const getIDFromRequest = (requestXML: string): O.Option<string> => {
-  const xmlRequest = new DOMParser().parseFromString(requestXML, "text/xml");
+  const maybeXmlRequest = new DOMParser().parseFromString(
+    requestXML,
+    "text/xml"
+  );
   return pipe(
-    O.fromNullable(
-      xmlRequest
-        .getElementsByTagNameNS(SAML_NAMESPACE.PROTOCOL, "AuthnRequest")
-        .item(0)
+    O.fromNullable(maybeXmlRequest),
+    O.chain((xmlRequest) =>
+      O.fromNullable(
+        xmlRequest
+          .getElementsByTagNameNS(SAML_NAMESPACE.PROTOCOL, "AuthnRequest")
+          .item(0)
+      )
     ),
     O.chain((AuthnRequest) =>
       O.fromEither(NonEmptyString.decode(AuthnRequest.getAttribute("ID")))
@@ -318,9 +325,15 @@ export const getIDFromRequest = (requestXML: string): O.Option<string> => {
 const getAuthnContextValueFromResponse = (
   response: string
 ): O.Option<string> => {
-  const xmlResponse = new DOMParser().parseFromString(response, "text/xml");
+  const maybeXmlResponse = new DOMParser().parseFromString(
+    response,
+    "text/xml"
+  );
+  if (maybeXmlResponse === undefined) {
+    return O.none;
+  }
   // ie. <saml2:AuthnContextClassRef>https://www.spid.gov.it/SpidL2</saml2:AuthnContextClassRef>
-  const responseAuthLevelEl = xmlResponse.getElementsByTagNameNS(
+  const responseAuthLevelEl = maybeXmlResponse.getElementsByTagNameNS(
     SAML_NAMESPACE.ASSERTION,
     "AuthnContextClassRef"
   );
@@ -904,7 +917,7 @@ const notOnOrAfterValidation =
 
 export const assertionValidation =
   // eslint-disable-next-line max-lines-per-function, prettier/prettier
-  (validationTimestamp: number) =>
+    (validationTimestamp: number) =>
     // eslint-disable-next-line max-lines-per-function
     (
       Assertion: Element,

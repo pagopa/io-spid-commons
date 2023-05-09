@@ -365,8 +365,11 @@ export const getPreValidateResponse =
             E.fromOption(
               () => new Error("An error occurs parsing the cached SAML Request")
             )(
-              O.tryCatch(() =>
-                new DOMParser().parseFromString(_.SAMLRequestCache.RequestXML)
+              pipe(
+                O.tryCatch(() =>
+                  new DOMParser().parseFromString(_.SAMLRequestCache.RequestXML)
+                ),
+                O.chain(O.fromNullable)
               )
             )
           ),
