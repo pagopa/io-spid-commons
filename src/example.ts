@@ -14,6 +14,8 @@ import passport = require("passport");
 import { SamlConfig } from "passport-saml";
 import * as redis from "redis";
 import { ValidUrl } from "@pagopa/ts-commons/lib/url";
+import * as TE from "fp-ts/lib/TaskEither";
+import { toError } from "fp-ts/lib/Either";
 import { logger } from "./utils/logger";
 import {
   AggregatorType,
@@ -112,8 +114,12 @@ const serviceProviderConfig: IServiceProviderConfig = {
   ],
 };
 
-const redisClient = redis.createClient({
-  host: "redis",
+const redisClient = redis.createClient<
+  Record<string, never>,
+  Record<string, never>,
+  Record<string, never>
+>({
+  url: "redis://redis",
 });
 
 const samlConfig: SamlConfig = {
@@ -162,16 +168,23 @@ const doneCb = (ip: string | null, request: string, response: string) => {
 };
 
 pipe(
-  withSpid({
-    acs,
-    app,
-    appConfig,
-    doneCb,
-    logout,
-    redisClient,
-    samlConfig,
-    serviceProviderConfig,
-  }),
+  TE.tryCatch(() => redisClient.connect(), toError),
+  TE.fold(
+    () => T.of(void 0),
+    (_) => T.of(_)
+  ),
+  T.chain(() =>
+    withSpid({
+      acs,
+      app,
+      appConfig,
+      doneCb,
+      logout,
+      redisClient,
+      samlConfig,
+      serviceProviderConfig,
+    })
+  ),
   T.map(({ app: withSpidApp, idpMetadataRefresher }) => {
     withSpidApp.get("/success", (_, res) =>
       res.json({

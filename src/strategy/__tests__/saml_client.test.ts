@@ -1,7 +1,6 @@
 import * as jose from "jose";
 import { left, right } from "fp-ts/lib/Either";
 import { fromEither } from "fp-ts/lib/TaskEither";
-import { RedisClient } from "redis";
 import { Builder, parseStringPromise } from "xml2js";
 import mockReq from "../../__mocks__/request";
 import { IServiceProviderConfig } from "../../utils/middleware";
@@ -18,17 +17,20 @@ import { samlRequest, samlRequestWithID } from "../../utils/__mocks__/saml";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/lib/TaskEither";
 import { UserAgentSemver } from "@pagopa/ts-commons/lib/http-user-agent";
+import { RedisClientType } from "@redis/client";
 
 const mockSet = jest.fn();
 const mockGet = jest.fn();
 const mockDel = jest.fn();
 
-const mockRedisClient = {} as RedisClient;
-mockRedisClient.set = mockSet;
+const mockRedisClient = {} as RedisClientType;
+mockRedisClient.setEx = mockSet;
 mockRedisClient.get = mockGet;
 mockRedisClient.del = mockDel;
 
-const redisCacheProvider = getExtendedRedisCacheProvider(mockRedisClient);
+const redisCacheProvider = getExtendedRedisCacheProvider(
+  (mockRedisClient as unknown) as any
+);
 
 const serviceProviderConfig: IServiceProviderConfig = {
   IDPMetadataUrl:
@@ -200,7 +202,7 @@ describe("CustomSamlClient#validatePostResponse", () => {
       .mockImplementation((_, __, ___, ____, callback) => {
         callback(null, true, expectedAuthnRequestID);
       });
-    mockDel.mockImplementation((_, callback) => callback(null, 1));
+    mockDel.mockImplementation(_ => Promise.resolve(1));
     const customSamlClient = new CustomSamlClient(
       { validateInResponseTo: true },
       redisCacheProvider,
@@ -219,10 +221,7 @@ describe("CustomSamlClient#validatePostResponse", () => {
     // Before checking the execution of the callback we must await that the TaskEither execution is completed.
     await new Promise(resolve => {
       setTimeout(() => {
-        expect(mockDel).toBeCalledWith(
-          `SAML-EXT-${expectedAuthnRequestID}`,
-          expect.any(Function)
-        );
+        expect(mockDel).toBeCalledWith(`SAML-EXT-${expectedAuthnRequestID}`);
         expect(mockedCallback).toBeCalledWith(null, {}, false);
         resolve(undefined);
       }, 100);
@@ -237,7 +236,7 @@ describe("CustomSamlClient#validatePostResponse", () => {
       .mockImplementation((_, __, ___, ____, callback) => {
         callback(null, true, expectedAuthnRequestID);
       });
-    mockDel.mockImplementation((_, callback) => callback(expectedDelError));
+    mockDel.mockImplementation(_ => Promise.reject(expectedDelError));
     const customSamlClient = new CustomSamlClient(
       { validateInResponseTo: true },
       redisCacheProvider,
@@ -256,10 +255,7 @@ describe("CustomSamlClient#validatePostResponse", () => {
     // Before checking the execution of the callback we must await that the TaskEither execution is completed.
     await new Promise(resolve => {
       setTimeout(() => {
-        expect(mockDel).toBeCalledWith(
-          `SAML-EXT-${expectedAuthnRequestID}`,
-          expect.any(Function)
-        );
+        expect(mockDel).toBeCalledWith(`SAML-EXT-${expectedAuthnRequestID}`);
         expect(mockedCallback).toBeCalledWith(
           new Error(
             `SAML#ExtendedRedisCacheProvider: remove() error ${expectedDelError}`
@@ -307,9 +303,7 @@ describe("CustomSamlClient#generateAuthorizeRequest", () => {
       callback(null, SAMLRequest);
     });
     const req = mockReq();
-    mockSet.mockImplementation((_, __, ___, ____, callback) => {
-      callback(null, "OK");
-    });
+    mockSet.mockImplementation((_, __, ___) => Promise.resolve("OK"));
     const customSamlClient = new CustomSamlClient(
       {
         entryPoint: "https://localhost:3000/acs",
@@ -339,9 +333,7 @@ describe("CustomSamlClient#generateAuthorizeRequest", () => {
     mockWrapCallback.mockImplementation(callback => {
       callback(null, SAMLRequest);
     });
-    mockSet.mockImplementation((_, __, ___, ____, callback) => {
-      callback(null, "OK");
-    });
+    mockSet.mockImplementation((_, __, ___) => Promise.resolve("OK"));
     const customSamlClient = new CustomSamlClient(
       {
         entryPoint: "https://localhost:3000/acs",
@@ -388,9 +380,7 @@ describe("CustomSamlClient#generateAuthorizeRequest", () => {
     mockWrapCallback.mockImplementation(callback => {
       callback(null, samlRequest);
     });
-    mockSet.mockImplementation((_, __, ___, ____, callback) => {
-      callback(null, "OK");
-    });
+    mockSet.mockImplementation((_, __, ___) => Promise.resolve("OK"));
     const customSamlClient = new CustomSamlClient(
       {
         entryPoint: "https://localhost:3000/acs",
@@ -447,9 +437,7 @@ describe("CustomSamlClient#generateAuthorizeRequest", () => {
       callback(null, SAMLRequest);
     });
     const req = mockReq();
-    mockSet.mockImplementation((_, __, ___, ____, callback) => {
-      callback(null, "OK");
-    });
+    mockSet.mockImplementation((_, __, ___) => Promise.resolve("OK"));
     const customSamlClient = new CustomSamlClient(
       {
         entryPoint: "https://localhost:3000/acs",

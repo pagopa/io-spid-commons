@@ -1,6 +1,6 @@
+import { RedisClientType, RedisClusterType } from "@redis/client";
 import { isLeft, isRight } from "fp-ts/lib/Either";
 import { SamlConfig } from "passport-saml";
-import { RedisClient } from "redis";
 import {
   getExtendedRedisCacheProvider,
   noopCacheProvider,
@@ -11,8 +11,10 @@ const mockSet = jest.fn();
 const mockGet = jest.fn();
 const mockDel = jest.fn();
 
-const mockRedisClient: RedisClient = {} as RedisClient;
-mockRedisClient.set = mockSet;
+const mockRedisClient:
+  | RedisClientType
+  | RedisClusterType = {} as RedisClientType;
+mockRedisClient.setEx = mockSet;
 mockRedisClient.get = mockGet;
 mockRedisClient.del = mockDel;
 
@@ -64,18 +66,17 @@ describe("getExtendedRedisCacheProvider#save", () => {
     jest.clearAllMocks();
   });
   it("should return the saved SAML Request data", async () => {
-    mockSet.mockImplementation((_, __, ___, ____, callback) =>
-      callback(null, "OK")
+    mockSet.mockImplementation((_, __, ___) => Promise.resolve("OK"));
+    const redisCacheProvider = getExtendedRedisCacheProvider(
+      mockRedisClient as any
     );
-    const redisCacheProvider = getExtendedRedisCacheProvider(mockRedisClient);
     const cacheSAMLResponse = await redisCacheProvider.save(
       SAMLRequest,
       samlConfig
     )();
     expect(mockSet.mock.calls[0][0]).toBe(`SAML-EXT-${expectedRequestID}`);
-    expect(mockSet.mock.calls[0][1]).toEqual(expect.any(String));
-    expect(mockSet.mock.calls[0][2]).toBe("EX");
-    expect(mockSet.mock.calls[0][3]).toBe(keyExpirationPeriodSeconds);
+    expect(mockSet.mock.calls[0][1]).toBe(keyExpirationPeriodSeconds);
+    expect(mockSet.mock.calls[0][2]).toEqual(expect.any(String));
     expect(isRight(cacheSAMLResponse)).toBeTruthy();
     if (isRight(cacheSAMLResponse)) {
       expect(cacheSAMLResponse.right).toEqual({
@@ -87,18 +88,19 @@ describe("getExtendedRedisCacheProvider#save", () => {
   });
   it("should return an error if save on radis fail", async () => {
     const expectedRedisError = new Error("saveError");
-    mockSet.mockImplementation((_, __, ___, ____, callback) =>
-      callback(expectedRedisError)
+    mockSet.mockImplementation((_, __, ___) =>
+      Promise.reject(expectedRedisError)
     );
-    const redisCacheProvider = getExtendedRedisCacheProvider(mockRedisClient);
+    const redisCacheProvider = getExtendedRedisCacheProvider(
+      mockRedisClient as any
+    );
     const cacheSAMLResponse = await redisCacheProvider.save(
       SAMLRequest,
       samlConfig
     )();
     expect(mockSet.mock.calls[0][0]).toBe(`SAML-EXT-${expectedRequestID}`);
-    expect(mockSet.mock.calls[0][1]).toEqual(expect.any(String));
-    expect(mockSet.mock.calls[0][2]).toBe("EX");
-    expect(mockSet.mock.calls[0][3]).toBe(keyExpirationPeriodSeconds);
+    expect(mockSet.mock.calls[0][1]).toBe(keyExpirationPeriodSeconds);
+    expect(mockSet.mock.calls[0][2]).toEqual(expect.any(String));
     expect(isRight(cacheSAMLResponse)).toBeFalsy();
     if (isLeft(cacheSAMLResponse)) {
       expect(cacheSAMLResponse.left).toEqual(
@@ -109,7 +111,9 @@ describe("getExtendedRedisCacheProvider#save", () => {
     }
   });
   it("should return an error if idpIssuer is missing inside samlConfig", async () => {
-    const redisCacheProvider = getExtendedRedisCacheProvider(mockRedisClient);
+    const redisCacheProvider = getExtendedRedisCacheProvider(
+      mockRedisClient as any
+    );
     const cacheSAMLResponse = await redisCacheProvider.save(SAMLRequest, {})();
     expect(isRight(cacheSAMLResponse)).toBeFalsy();
     if (isLeft(cacheSAMLResponse)) {
@@ -123,7 +127,9 @@ describe("getExtendedRedisCacheProvider#save", () => {
       `ID="${expectedRequestID}"`,
       ""
     );
-    const redisCacheProvider = getExtendedRedisCacheProvider(mockRedisClient);
+    const redisCacheProvider = getExtendedRedisCacheProvider(
+      mockRedisClient as any
+    );
     const cacheSAMLResponse = await redisCacheProvider.save(
       SAMLRequestWithoutID,
       samlConfig
@@ -144,10 +150,12 @@ describe("getExtendedRedisCacheProvider#save", () => {
       createdAt: new Date(),
       idpIssuer: samlConfig.idpIssuer as string
     };
-    mockGet.mockImplementation((_, callback) =>
-      callback(null, JSON.stringify(expectedRequestData))
+    mockGet.mockImplementation(_ =>
+      Promise.resolve(JSON.stringify(expectedRequestData))
     );
-    const redisCacheProvider = getExtendedRedisCacheProvider(mockRedisClient);
+    const redisCacheProvider = getExtendedRedisCacheProvider(
+      mockRedisClient as any
+    );
     const cacheSAMLResponse = await redisCacheProvider.get(expectedRequestID)();
     expect(mockGet.mock.calls[0][0]).toBe(`SAML-EXT-${expectedRequestID}`);
     expect(isRight(cacheSAMLResponse)).toBeTruthy();
@@ -157,8 +165,10 @@ describe("getExtendedRedisCacheProvider#save", () => {
   });
   it("should return an error if the reading process on redis fail", async () => {
     const expectedRedisError = new Error("readError");
-    mockGet.mockImplementation((_, callback) => callback(expectedRedisError));
-    const redisCacheProvider = getExtendedRedisCacheProvider(mockRedisClient);
+    mockGet.mockImplementation(_ => Promise.reject(expectedRedisError));
+    const redisCacheProvider = getExtendedRedisCacheProvider(
+      mockRedisClient as any
+    );
     const cacheSAMLResponse = await redisCacheProvider.get(expectedRequestID)();
     expect(mockGet.mock.calls[0][0]).toBe(`SAML-EXT-${expectedRequestID}`);
     expect(isRight(cacheSAMLResponse)).toBeFalsy();
@@ -176,10 +186,12 @@ describe("getExtendedRedisCacheProvider#save", () => {
       createdAt: new Date(),
       idpIssuer: undefined
     };
-    mockGet.mockImplementation((_, callback) =>
-      callback(null, JSON.stringify(invalidCachedRequestData))
+    mockGet.mockImplementation(_ =>
+      Promise.resolve(JSON.stringify(invalidCachedRequestData))
     );
-    const redisCacheProvider = getExtendedRedisCacheProvider(mockRedisClient);
+    const redisCacheProvider = getExtendedRedisCacheProvider(
+      mockRedisClient as any
+    );
     const cacheSAMLResponse = await redisCacheProvider.get(expectedRequestID)();
     expect(mockGet.mock.calls[0][0]).toBe(`SAML-EXT-${expectedRequestID}`);
     expect(isRight(cacheSAMLResponse)).toBeFalsy();
@@ -187,9 +199,11 @@ describe("getExtendedRedisCacheProvider#save", () => {
       expect(cacheSAMLResponse.left).toEqual(expect.any(Error));
     }
   });
-  it("should return an error is the cached Request is missing", async () => {
-    mockGet.mockImplementation((_, callback) => callback(null, null));
-    const redisCacheProvider = getExtendedRedisCacheProvider(mockRedisClient);
+  it("should return an error if the cached Request is missing", async () => {
+    mockGet.mockImplementation(_ => Promise.resolve(null));
+    const redisCacheProvider = getExtendedRedisCacheProvider(
+      mockRedisClient as any
+    );
     const cacheSAMLResponse = await redisCacheProvider.get(expectedRequestID)();
     expect(mockGet.mock.calls[0][0]).toBe(`SAML-EXT-${expectedRequestID}`);
     expect(isRight(cacheSAMLResponse)).toBeFalsy();
@@ -201,8 +215,10 @@ describe("getExtendedRedisCacheProvider#save", () => {
 
 describe("getExtendedRedisCacheProvider#remove", () => {
   it("should return the RequestID if the deletion process succeded", async () => {
-    mockDel.mockImplementation((_, callback) => callback(null, 1));
-    const redisCacheProvider = getExtendedRedisCacheProvider(mockRedisClient);
+    mockDel.mockImplementation(_ => Promise.resolve(1));
+    const redisCacheProvider = getExtendedRedisCacheProvider(
+      mockRedisClient as any
+    );
     const maybeRequestId = await redisCacheProvider.remove(expectedRequestID)();
     expect(mockDel.mock.calls[0][0]).toBe(`SAML-EXT-${expectedRequestID}`);
     expect(isRight(maybeRequestId)).toBeTruthy();
@@ -213,10 +229,10 @@ describe("getExtendedRedisCacheProvider#remove", () => {
 
   it("should return an error if the cache's deletion fail", async () => {
     const expectedDelRedisError = new Error("delError");
-    mockDel.mockImplementation((_, callback) =>
-      callback(expectedDelRedisError)
+    mockDel.mockImplementation(_ => Promise.reject(expectedDelRedisError));
+    const redisCacheProvider = getExtendedRedisCacheProvider(
+      mockRedisClient as any
     );
-    const redisCacheProvider = getExtendedRedisCacheProvider(mockRedisClient);
     const maybeRequestId = await redisCacheProvider.remove(expectedRequestID)();
     expect(mockDel.mock.calls[0][0]).toBe(`SAML-EXT-${expectedRequestID}`);
     expect(isRight(maybeRequestId)).toBeFalsy();

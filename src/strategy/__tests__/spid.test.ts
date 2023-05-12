@@ -1,12 +1,11 @@
+import { RedisClientType } from "@redis/client";
 import * as express from "express";
 import { Profile, VerifiedCallback } from "passport-saml";
-import { RedisClient } from "redis";
-import { logger } from "../../utils/logger";
 import { getSamlOptions } from "../../utils/saml";
 import * as redisCacheProvider from "../redis_cache_provider";
 import { SpidStrategy } from "../spid";
 
-const mockRedisClient = {} as RedisClient;
+const mockRedisClient = {} as RedisClientType;
 
 describe("SamlStrategy prototype arguments check", () => {
   let OriginalPassportSaml: any;
@@ -48,7 +47,7 @@ describe("SamlStrategy#constructor", () => {
         // `done` is a passport callback that signals success
         done(null, profile);
       },
-      mockRedisClient
+      mockRedisClient as any
     );
 
     expect(spidStrategy["options"]).toHaveProperty(

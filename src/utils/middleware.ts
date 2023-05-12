@@ -9,7 +9,7 @@ import * as T from "fp-ts/lib/Task";
 import * as TE from "fp-ts/lib/TaskEither";
 import * as t from "io-ts";
 import { Profile, SamlConfig, VerifiedCallback } from "passport-saml";
-import { RedisClient } from "redis";
+import { RedisClientType, RedisClusterType } from "redis";
 import { DoneCallbackT } from "..";
 import { CIE_IDP_IDENTIFIERS, SPID_IDP_IDENTIFIERS } from "../config";
 import {
@@ -260,7 +260,7 @@ export const upsertSpidStrategyOption = (
 export const makeSpidStrategy = (
   options: ISpidStrategyOptions,
   getSamlOptions: SpidStrategy["getSamlOptions"],
-  redisClient: RedisClient,
+  redisClient: RedisClientType | RedisClusterType,
   tamperAuthorizeRequest?: XmlAuthorizeTamperer,
   tamperMetadata?: XmlTamperer,
   preValidateResponse?: PreValidateResponseT,
