@@ -114,7 +114,11 @@ const serviceProviderConfig: IServiceProviderConfig = {
   ],
 };
 
-const redisClient: redis.RedisClientType = redis.createClient({
+const redisClient = redis.createClient<
+  Record<string, never>,
+  Record<string, never>,
+  Record<string, never>
+>({
   url: "redis://redis",
 });
 
