@@ -9,7 +9,7 @@ import {
   IApplicationConfig,
   IServiceProviderConfig,
   SamlConfig,
-  withSpid
+  withSpid,
 } from "../";
 import { IDPEntityDescriptor } from "../types/IDPEntityDescriptor";
 import * as metadata from "../utils/metadata";
@@ -19,8 +19,9 @@ import {
   mockCIEIdpMetadata,
   mockCIETestIdpMetadata,
   mockIdpMetadata,
-  mockTestenvIdpMetadata
+  mockTestenvIdpMetadata,
 } from "../__mocks__/metadata";
+import * as t from "io-ts";
 
 const mockFetchIdpsMetadata = jest.spyOn(metadata, "fetchIdpsMetadata");
 
@@ -100,7 +101,7 @@ const appConfig: IApplicationConfig = {
   loginPath: expectedLoginPath,
   metadataPath,
   sloPath: expectedSloPath,
-  spidLevelsWhitelist: ["SpidL2", "SpidL3"]
+  spidLevelsWhitelist: ["SpidL2", "SpidL3"],
 };
 
 const samlConfig: SamlConfig = {
@@ -114,7 +115,7 @@ const samlConfig: SamlConfig = {
   issuer: "https://spid.agid.gov.it/cd",
   logoutCallbackUrl: "http://localhost:3000/slo",
   privateCert: samlKey,
-  validateInResponseTo: true
+  validateInResponseTo: true,
 };
 
 const serviceProviderConfig: IServiceProviderConfig = {
@@ -122,7 +123,7 @@ const serviceProviderConfig: IServiceProviderConfig = {
   organization: {
     URL: "https://example.com",
     displayName: "Organization display name",
-    name: "Organization name"
+    name: "Organization name",
   },
   publicCert: samlCert,
   requiredAttributes: {
@@ -132,16 +133,16 @@ const serviceProviderConfig: IServiceProviderConfig = {
       "name",
       "familyName",
       "fiscalNumber",
-      "mobilePhone"
+      "mobilePhone",
     ],
-    name: "Required attrs"
+    name: "Required attrs",
   },
   spidCieUrl,
   spidCieTestUrl,
   spidTestEnvUrl,
   strictResponseValidation: {
-    "http://localhost:8080": true
-  }
+    "http://localhost:8080": true,
+  },
 };
 
 const mockRedisClient = {} as RedisClientType;
@@ -186,7 +187,9 @@ describe("io-spid-commons withSpid", () => {
       acs: async () =>
         ResponsePermanentRedirect({ href: "/success?acs" } as ValidUrl),
       logout: async () =>
-        ResponsePermanentRedirect({ href: "/success?logout" } as ValidUrl)
+        ResponsePermanentRedirect({ href: "/success?logout" } as ValidUrl),
+      additionalPropsCodec: t.type({ test: t.number }),
+      requestToAdditionalProps: (req) => ({ test: 1 }),
     })();
     expect(mockFetchIdpsMetadata).toBeCalledTimes(4);
     const emptySpidStrategyOption = getSpidStrategyOption(spid.app);
@@ -221,7 +224,7 @@ describe("io-spid-commons withSpid", () => {
       ...mockIdpMetadata,
       ...mockCIEIdpMetadata,
       ...mockCIETestIdpMetadata,
-      ...mockTestenvIdpMetadata
+      ...mockTestenvIdpMetadata,
     });
   });
   it("should reject blacklisted spid levels", async () => {
@@ -236,7 +239,9 @@ describe("io-spid-commons withSpid", () => {
       acs: async () =>
         ResponsePermanentRedirect({ href: "/success?acs" } as ValidUrl),
       logout: async () =>
-        ResponsePermanentRedirect({ href: "/success?logout" } as ValidUrl)
+        ResponsePermanentRedirect({ href: "/success?logout" } as ValidUrl),
+      additionalPropsCodec: t.type({ test: t.number }),
+      requestToAdditionalProps: (req) => ({ test: 1 }),
     })();
     return request(spid.app)
       .get(`${appConfig.loginPath}?authLevel=SpidL1`)

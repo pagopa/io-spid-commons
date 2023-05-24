@@ -183,6 +183,10 @@ pipe(
       redisClient,
       samlConfig,
       serviceProviderConfig,
+
+      // eslint-disable-next-line sort-keys
+      additionalPropsCodec: t.type({ test: t.number }),
+      requestToAdditionalProps: (_req) => ({ test: 1 }),
     })
   ),
   T.map(({ app: withSpidApp, idpMetadataRefresher }) => {

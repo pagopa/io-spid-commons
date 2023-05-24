@@ -1,7 +1,7 @@
 import {
   SamlConfig,
   VerifyWithRequest,
-  VerifyWithoutRequest
+  VerifyWithoutRequest,
 } from "passport-saml";
 
 import * as express from "express";
@@ -13,7 +13,7 @@ declare module "passport-saml" {
 
     validatePostResponse(
       body: { SAMLResponse: string },
-      callback: (err: Error, profile?: unknown, loggedOut?: boolean) => void
+      callback: (err: Error, profile?: object, loggedOut?: boolean) => void
     ): void;
 
     generateAuthorizeRequest(

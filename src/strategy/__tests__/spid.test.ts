@@ -1,11 +1,15 @@
 import { RedisClientType } from "@redis/client";
 import * as express from "express";
+import * as t from "io-ts";
 import { Profile, VerifiedCallback } from "passport-saml";
 import { getSamlOptions } from "../../utils/saml";
 import * as redisCacheProvider from "../redis_cache_provider";
 import { SpidStrategy } from "../spid";
 
-const mockRedisClient = {} as RedisClientType;
+const mockExtendedRedisCacheProvider = {} as RedisClientType;
+
+const additionalPropsCodec = t.type({});
+const requestToAdditionalProps = (req: express.Request) => ({});
 
 describe("SamlStrategy prototype arguments check", () => {
   let OriginalPassportSaml: any;
@@ -34,7 +38,7 @@ describe("SamlStrategy#constructor", () => {
       },
       save: () => {
         return;
-      }
+      },
     };
     const mockNoopCacheProvider = jest
       .spyOn(redisCacheProvider, "noopCacheProvider")
@@ -47,12 +51,8 @@ describe("SamlStrategy#constructor", () => {
         // `done` is a passport callback that signals success
         done(null, profile);
       },
-      mockRedisClient as any
-    );
-
-    expect(spidStrategy["options"]).toHaveProperty(
-      "requestIdExpirationPeriodMs",
-      900000
+      mockExtendedRedisCacheProvider as any,
+      requestToAdditionalProps
     );
 
     expect(spidStrategy["options"]).toHaveProperty(
@@ -60,8 +60,6 @@ describe("SamlStrategy#constructor", () => {
       expectedNoopCacheProvider
     );
     expect(mockNoopCacheProvider).toBeCalledTimes(1);
-
-    expect(spidStrategy["extendedRedisCacheProvider"]).toBeTruthy();
   });
 });
 

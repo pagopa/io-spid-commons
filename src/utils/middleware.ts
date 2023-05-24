@@ -9,7 +9,6 @@ import * as T from "fp-ts/lib/Task";
 import * as TE from "fp-ts/lib/TaskEither";
 import * as t from "io-ts";
 import { Profile, SamlConfig, VerifiedCallback } from "passport-saml";
-import { RedisClientType, RedisClusterType } from "redis";
 import { DoneCallbackT } from "..";
 import { CIE_IDP_IDENTIFIERS, SPID_IDP_IDENTIFIERS } from "../config";
 import {
@@ -19,6 +18,7 @@ import {
   XmlTamperer,
 } from "../strategy/spid";
 import { IDPEntityDescriptor } from "../types/IDPEntityDescriptor";
+import { IExtendedCacheProvider } from "../strategy/redis_cache_provider";
 import { fetchIdpsMetadata } from "./metadata";
 import { logSamlCertExpiration, SamlAttributeT } from "./saml";
 
@@ -257,17 +257,18 @@ export const upsertSpidStrategyOption = (
 /**
  * SPID strategy factory function.
  */
-export const makeSpidStrategy = (
+export const makeSpidStrategy = <T extends Record<string, unknown>>(
   options: ISpidStrategyOptions,
-  getSamlOptions: SpidStrategy["getSamlOptions"],
-  redisClient: RedisClientType | RedisClusterType,
+  getSamlOptions: SpidStrategy<T>["getSamlOptions"],
+  extendedRedisCacheProvider: IExtendedCacheProvider<T>,
+  requestToAdditionalProps: (req: express.Request) => T,
   tamperAuthorizeRequest?: XmlAuthorizeTamperer,
   tamperMetadata?: XmlTamperer,
   preValidateResponse?: PreValidateResponseT,
   doneCb?: DoneCallbackT
   // eslint-disable-next-line max-params
-): SpidStrategy =>
-  new SpidStrategy(
+): SpidStrategy<T> =>
+  new SpidStrategy<T>(
     { ...options.sp, passReqToCallback: true },
     getSamlOptions,
     (_: express.Request, profile: Profile, done: VerifiedCallback) => {
@@ -275,7 +276,8 @@ export const makeSpidStrategy = (
       // `done` is a passport callback that signals success
       done(null, profile);
     },
-    redisClient,
+    extendedRedisCacheProvider,
+    requestToAdditionalProps,
     tamperAuthorizeRequest,
     tamperMetadata,
     preValidateResponse,

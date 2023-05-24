@@ -20,13 +20,18 @@ import * as express from "express";
 import { constVoid, pipe } from "fp-ts/lib/function";
 import * as O from "fp-ts/lib/Option";
 import * as T from "fp-ts/lib/Task";
+import * as E from "fp-ts/Either";
 import * as t from "io-ts";
 import * as passport from "passport";
 import { SamlConfig } from "passport-saml";
 import { RedisClientType, RedisClusterType } from "redis";
 import { Builder } from "xml2js";
+import { Second } from "@pagopa/ts-commons/lib/units";
 import { SPID_LEVELS } from "./config";
-import { noopCacheProvider } from "./strategy/redis_cache_provider";
+import {
+  getExtendedRedisCacheProvider,
+  noopCacheProvider,
+} from "./strategy/redis_cache_provider";
 import { logger } from "./utils/logger";
 import { parseStartupIdpsMetadata } from "./utils/metadata";
 import {
@@ -48,8 +53,9 @@ import {
 import { getMetadataTamperer } from "./utils/saml";
 
 // assertion consumer service express handler
-export type AssertionConsumerServiceT = (
-  userPayload: unknown
+export type AssertionConsumerServiceT = <T extends Record<string, unknown>>(
+  userPayload: unknown,
+  additionalProps: T
 ) => Promise<
   | IResponseErrorInternal
   | IResponseErrorValidation
@@ -101,7 +107,8 @@ export { noopCacheProvider, IServiceProviderConfig, SamlConfig };
  * with SPID authentication and redirects.
  */
 const withSpidAuthMiddleware =
-  (
+  <T extends Record<string, unknown>>(
+    additionalPropsCodec: t.Type<T>,
     acs: AssertionConsumerServiceT,
     clientLoginRedirectionUrl: string,
     clientErrorRedirectionUrl: string
@@ -111,7 +118,7 @@ const withSpidAuthMiddleware =
     res: express.Response,
     next: express.NextFunction
   ): void => {
-    passport.authenticate("spid", async (err: unknown, user: unknown) => {
+    passport.authenticate("spid", async (err: unknown, profile: unknown) => {
       const maybeDoc = getXmlFromSamlResponse(req.body);
       const issuer = pipe(
         maybeDoc,
@@ -135,14 +142,22 @@ const withSpidAuthMiddleware =
         );
         return res.redirect(redirectionUrl);
       }
-      if (!user) {
+      if (!profile) {
         logger.error(
           "Spid Authentication|Authentication Error|ERROR=user_not_found|ISSUER=%s",
           issuer
         );
         return res.redirect(clientLoginRedirectionUrl);
       }
-      const response = await acs(user);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { additionalData, ...user } = profile as any;
+      const errorOrCachedData = additionalPropsCodec.decode(additionalData);
+
+      if (E.isLeft(errorOrCachedData)) {
+        throw new Error("TODO1");
+      }
+      const response = await acs(user, errorOrCachedData.right);
       response.apply(res);
     })(req, res, next);
   };
@@ -152,7 +167,7 @@ type ExpressMiddleware = (
   res: express.Response,
   next: express.NextFunction
 ) => void;
-interface IWithSpidT {
+interface IWithSpidT<T> {
   readonly appConfig: IApplicationConfig;
   readonly samlConfig: SamlConfig;
   readonly serviceProviderConfig: IServiceProviderConfig;
@@ -162,6 +177,8 @@ interface IWithSpidT {
   readonly logout: LogoutT;
   readonly doneCb?: DoneCallbackT;
   readonly lollipopMiddleware?: ExpressMiddleware;
+  readonly additionalPropsCodec: t.Type<T>;
+  readonly requestToAdditionalProps: (req: express.Request) => T;
 }
 
 /**
@@ -169,7 +186,7 @@ interface IWithSpidT {
  * to an express application.
  */
 // eslint-disable-next-line max-params
-export const withSpid = ({
+export const withSpid = <T extends Record<string, unknown>>({
   acs,
   app,
   appConfig,
@@ -179,7 +196,9 @@ export const withSpid = ({
   samlConfig,
   serviceProviderConfig,
   lollipopMiddleware = (_, __, next): void => next(),
-}: IWithSpidT): T.Task<{
+  additionalPropsCodec,
+  requestToAdditionalProps,
+}: IWithSpidT<T>): T.Task<{
   readonly app: express.Express;
   readonly idpMetadataRefresher: () => T.Task<void>;
 }> => {
@@ -202,6 +221,7 @@ export const withSpid = ({
   const maybeStartupIdpsMetadata = O.fromNullable(
     appConfig.startupIdpsMetadata
   );
+
   // If `startupIdpsMetadata` is provided, IDP metadata
   // are initially taken from its value when the backend starts
   return pipe(
@@ -217,23 +237,42 @@ export const withSpid = ({
       )
     ),
     O.getOrElse(loadSpidStrategyOptions),
-    T.map((spidStrategyOptions) => {
-      upsertSpidStrategyOption(app, spidStrategyOptions);
-      return makeSpidStrategy(
-        spidStrategyOptions,
-        getSamlOptions,
+    T.bindTo("spidStrategyOptions"),
+    T.bind("extendedRedisCacheProvider", ({ spidStrategyOptions }) => {
+      // use our custom cache provider
+      const requestIdExpirationPeriodMs =
+        spidStrategyOptions.sp.requestIdExpirationPeriodMs ?? 15 * 60 * 1000;
+      const p = getExtendedRedisCacheProvider(
+        additionalPropsCodec,
         redisClient,
-        authorizeRequestTamperer,
-        metadataTamperer,
-        getPreValidateResponse(
-          serviceProviderConfig.strictResponseValidation,
-          appConfig.eventTraker,
-          appConfig.hasClockSkewLoggingEvent
-        ),
-        doneCb
+        Math.floor(requestIdExpirationPeriodMs / 1000) as Second
       );
+
+      return T.of(p);
     }),
-    T.map((spidStrategy) => {
+    T.bind(
+      "spidStrategy",
+      ({ spidStrategyOptions, extendedRedisCacheProvider }) => {
+        upsertSpidStrategyOption(app, spidStrategyOptions);
+        return T.of(
+          makeSpidStrategy(
+            spidStrategyOptions,
+            getSamlOptions,
+            extendedRedisCacheProvider,
+            requestToAdditionalProps,
+            authorizeRequestTamperer,
+            metadataTamperer,
+            getPreValidateResponse(
+              serviceProviderConfig.strictResponseValidation,
+              appConfig.eventTraker,
+              appConfig.hasClockSkewLoggingEvent
+            ),
+            doneCb
+          )
+        );
+      }
+    ),
+    T.map(({ spidStrategy }) => {
       // Even when `startupIdpsMetadata` is provided, we try to load
       // IDP metadata from the remote registries
       pipe(
@@ -329,6 +368,7 @@ export const withSpid = ({
         appConfig.assertionConsumerServicePath,
         middlewareCatchAsInternalError(
           withSpidAuthMiddleware(
+            additionalPropsCodec,
             acs,
             appConfig.clientLoginRedirectionUrl,
             appConfig.clientErrorRedirectionUrl

@@ -9,16 +9,13 @@ import {
   VerifyWithRequest,
 } from "passport-saml";
 import { Strategy as SamlStrategy } from "passport-saml";
-import { RedisClientType, RedisClusterType } from "redis";
 
 import { MultiSamlConfig } from "passport-saml/multiSamlStrategy";
 
-import { Second } from "@pagopa/ts-commons/lib/units";
 import { pipe } from "fp-ts/lib/function";
 import { DoneCallbackT } from "..";
 import { ILollipopParams } from "../types/lollipop";
 import {
-  getExtendedRedisCacheProvider,
   IExtendedCacheProvider,
   noopCacheProvider,
 } from "./redis_cache_provider";
@@ -35,10 +32,10 @@ export type PreValidateResponseDoneCallbackT = (
   response: string
 ) => void;
 
-export type PreValidateResponseT = (
+export type PreValidateResponseT = <T extends Record<string, unknown>>(
   samlConfig: SamlConfig,
   body: unknown,
-  extendedRedisCacheProvider: IExtendedCacheProvider,
+  extendedRedisCacheProvider: IExtendedCacheProvider<T>,
   doneCb: PreValidateResponseDoneCallbackT | undefined,
 
   callback: (
@@ -49,31 +46,22 @@ export type PreValidateResponseT = (
   ) => void
 ) => void;
 
-export class SpidStrategy extends SamlStrategy {
-  private readonly extendedRedisCacheProvider: IExtendedCacheProvider;
-
+export class SpidStrategy<
+  T extends Record<string, unknown>
+> extends SamlStrategy {
   // eslint-disable-next-line max-params
   constructor(
     private readonly options: SamlConfig,
     private readonly getSamlOptions: MultiSamlConfig["getSamlOptions"],
     verify: VerifyWithRequest | VerifyWithoutRequest,
-    private readonly redisClient: RedisClientType | RedisClusterType,
+    private readonly extendedRedisCacheProvider: IExtendedCacheProvider<T>,
+    private readonly requestToAdditionalProps: (req: express.Request) => T,
     private readonly tamperAuthorizeRequest?: XmlAuthorizeTamperer,
     private readonly tamperMetadata?: XmlTamperer,
     private readonly preValidateResponse?: PreValidateResponseT,
     private readonly doneCb?: DoneCallbackT
   ) {
     super(options, verify);
-    if (!options.requestIdExpirationPeriodMs) {
-      // 15 minutes
-      options.requestIdExpirationPeriodMs = 15 * 60 * 1000;
-    }
-
-    // use our custom cache provider
-    this.extendedRedisCacheProvider = getExtendedRedisCacheProvider(
-      this.redisClient,
-      Math.floor(options.requestIdExpirationPeriodMs / 1000) as Second
-    );
 
     // bypass passport-saml cache provider
     options.cacheProvider = noopCacheProvider();
@@ -93,6 +81,7 @@ export class SpidStrategy extends SamlStrategy {
           ...samlOptions,
         },
         this.extendedRedisCacheProvider,
+        this.requestToAdditionalProps,
         this.tamperAuthorizeRequest,
         this.preValidateResponse,
         (...args) => (this.doneCb ? this.doneCb(req.ip, ...args) : undefined)
@@ -123,7 +112,8 @@ export class SpidStrategy extends SamlStrategy {
           ...this.options,
           ...samlOptions,
         },
-        this.extendedRedisCacheProvider
+        this.extendedRedisCacheProvider,
+        this.requestToAdditionalProps
       );
       // we clone the original strategy to avoid race conditions
       // see https://github.com/bergie/passport-saml/pull/426/files
@@ -153,7 +143,8 @@ export class SpidStrategy extends SamlStrategy {
           ...this.options,
           ...samlOptions,
         },
-        this.extendedRedisCacheProvider
+        this.extendedRedisCacheProvider,
+        this.requestToAdditionalProps
       );
 
       // we clone the original strategy to avoid race conditions
