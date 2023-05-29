@@ -2,7 +2,6 @@ import { right, toError } from "fp-ts/lib/Either";
 import { isNone, isSome, tryCatch } from "fp-ts/lib/Option";
 import { fromEither } from "fp-ts/lib/TaskEither";
 import { SamlConfig } from "passport-saml";
-import { DOMParser } from "xmldom";
 import { EventTracker } from "../../index";
 import {
   getSamlAssertion,

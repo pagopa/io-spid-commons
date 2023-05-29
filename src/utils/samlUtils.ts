@@ -23,7 +23,7 @@ import { SamlConfig } from "passport-saml";
 import { MultiSamlConfig } from "passport-saml/multiSamlStrategy";
 import * as xmlCrypto from "xml-crypto";
 import { Builder, parseStringPromise } from "xml2js";
-import { DOMParser } from "xmldom";
+import { DOMParser } from "@xmldom/xmldom";
 import { SPID_LEVELS, SPID_URLS, SPID_USER_ATTRIBUTES } from "../config";
 import { EventTracker } from "..";
 import {
@@ -917,6 +917,7 @@ const notOnOrAfterValidation =
 
 export const assertionValidation =
   // eslint-disable-next-line max-lines-per-function, prettier/prettier
+
     (validationTimestamp: number) =>
     // eslint-disable-next-line max-lines-per-function
     (
