@@ -159,7 +159,9 @@ export const getPreValidateResponse =
       > = pipe(
         responsesCollection,
         E.fromPredicate(
-          (coll) => coll.length < 2,
+          // updated versions of xmldom will convert any additional root node in a text node(https://github.com/advisories/GHSA-crh6-fp67-6883)
+          // to check if more than one samlp:Response node was provided we must check if the childNodes length is >=2, returning an error afterwards
+          () => doc.childNodes.length < 2,
           (_) => new Error("SAML Response must have only one Response element")
         ),
         E.map((coll) => coll.item(0)),
