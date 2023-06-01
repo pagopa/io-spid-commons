@@ -105,7 +105,6 @@ const ISSUER_FORMAT_ERROR = new Error(
 
 export const getPreValidateResponse =
   // eslint-disable-next-line max-lines-per-function, prettier/prettier
-
     (
       strictValidationOptions?: StrictResponseValidationOptions,
       eventHandler?: EventTracker,
