@@ -156,19 +156,26 @@ export const getPreValidateResponse =
         Error,
         { readonly InResponseTo: NonEmptyString; readonly Response: Element }
       > = pipe(
-        responsesCollection,
-        E.fromPredicate(
-          // updated versions of xmldom will convert any additional root node in a text node(https://github.com/advisories/GHSA-crh6-fp67-6883)
-          // to check if more than one samlp:Response node was provided we must check if the childNodes length is >=2, returning an error afterwards
-          () => doc.childNodes.length < 2,
-          (_) => new Error("SAML Response must have only one Response element")
+        responsesCollection.item(0),
+        // this check is bound to the next one, because we can receive no Response based on the official validator guidelines
+        E.fromNullable(
+          new Error("Missing Response element inside SAML Response")
         ),
-        E.map((coll) => coll.item(0)),
-        // this check is bound to the previous one, because we can receive no Response based on the official validator guidelines
-        E.chain(
-          E.fromNullable(
-            new Error("Missing Response element inside SAML Response")
-          )
+        E.chainFirst(
+          // updated versions of xmldom will convert any additional root node in a text node(https://github.com/advisories/GHSA-crh6-fp67-6883)
+          // to ensure if more than one samlp:Response node was provided, we must check if the sibling node is present, returning an error afterwards
+          (item) =>
+            pipe(
+              item.nextSibling,
+              // if the node at the same level(root in this case) is null or undefined we can hop into the success rail,
+              // that's why an E.swap is present
+              E.fromNullable(true),
+              E.swap,
+              E.mapLeft(
+                (_) =>
+                  new Error("SAML Response must have only one Response element")
+              )
+            )
         ),
         E.chain((Response) =>
           pipe(
