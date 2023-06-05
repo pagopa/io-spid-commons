@@ -162,20 +162,14 @@ export const getPreValidateResponse =
           new Error("Missing Response element inside SAML Response")
         ),
         E.chainFirst(
-          // updated versions of xmldom will convert any additional root node in a text node(https://github.com/advisories/GHSA-crh6-fp67-6883)
-          // to ensure if more than one samlp:Response node was provided, we must check if the sibling node is present, returning an error afterwards
-          (item) =>
-            pipe(
-              item.nextSibling,
-              // if the node at the same level(root in this case) is null or undefined we can hop into the success rail,
-              // that's why an E.swap is present
-              E.fromNullable(true),
-              E.swap,
-              E.mapLeft(
-                (_) =>
-                  new Error("SAML Response must have only one Response element")
-              )
-            )
+          E.fromPredicate(
+            // updated versions of xmldom will convert any additional root node in a text node(https://github.com/advisories/GHSA-crh6-fp67-6883)
+            // to ensure if more than one samlp:Response node was provided, we must check if the sibling node is present, returning an error afterwards
+            (item) =>
+              item.nextSibling === null || item.nextSibling === undefined,
+            (_) =>
+              new Error("SAML Response must have only one Response element")
+          )
         ),
         E.chain((Response) =>
           pipe(
