@@ -14,7 +14,7 @@ import * as O from "fp-ts/lib/Option";
 import { Eq } from "fp-ts/lib/string";
 import * as TE from "fp-ts/lib/TaskEither";
 import { TaskEither } from "fp-ts/lib/TaskEither";
-import { XMLSerializer } from "xmldom";
+import { XMLSerializer } from "@xmldom/xmldom";
 import { SPID_LEVELS, SPID_USER_ATTRIBUTES } from "../config";
 import { EventTracker } from "../index";
 import { PreValidateResponseT } from "../strategy/spid";
@@ -156,16 +156,19 @@ export const getPreValidateResponse =
         Error,
         { readonly InResponseTo: NonEmptyString; readonly Response: Element }
       > = pipe(
-        responsesCollection,
-        E.fromPredicate(
-          (coll) => coll.length < 2,
-          (_) => new Error("SAML Response must have only one Response element")
+        responsesCollection.item(0),
+        // this check is bound to the next one, because we can receive no Response based on the official validator guidelines
+        E.fromNullable(
+          new Error("Missing Response element inside SAML Response")
         ),
-        E.map((coll) => coll.item(0)),
-        // this check is bound to the previous one, because we can receive no Response based on the official validator guidelines
-        E.chain(
-          E.fromNullable(
-            new Error("Missing Response element inside SAML Response")
+        E.chainFirst(
+          E.fromPredicate(
+            // updated versions of xmldom will convert any additional root node in a text node(https://github.com/advisories/GHSA-crh6-fp67-6883)
+            // to ensure if more than one samlp:Response node was provided, we must check if the sibling node is present, returning an error afterwards
+            ({ nextSibling }) =>
+              nextSibling === null || nextSibling === undefined,
+            (_) =>
+              new Error("SAML Response must have only one Response element")
           )
         ),
         E.chain((Response) =>

@@ -1,4 +1,4 @@
-import { DOMParser } from "xmldom";
+import { DOMParser } from "@xmldom/xmldom";
 
 import { ResponseErrorInternal } from "@pagopa/ts-commons/lib/responses";
 import { NextFunction, Request, Response } from "express";
