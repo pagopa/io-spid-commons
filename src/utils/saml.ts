@@ -165,8 +165,8 @@ export const getPreValidateResponse =
           E.fromPredicate(
             // updated versions of xmldom will convert any additional root node in a text node(https://github.com/advisories/GHSA-crh6-fp67-6883)
             // to ensure if more than one samlp:Response node was provided, we must check if the sibling node is present, returning an error afterwards
-            (item) =>
-              item.nextSibling === null || item.nextSibling === undefined,
+            ({ nextSibling }) =>
+              nextSibling === null || nextSibling === undefined,
             (_) =>
               new Error("SAML Response must have only one Response element")
           )
