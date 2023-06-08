@@ -1,6 +1,8 @@
+import * as t from "io-ts";
 import * as express from "express";
 import { pipe } from "fp-ts/lib/function";
 import * as O from "fp-ts/lib/Option";
+import * as E from "fp-ts/Either";
 import * as TE from "fp-ts/lib/TaskEither";
 import { SamlConfig } from "passport-saml";
 import * as PassportSaml from "passport-saml";
@@ -17,10 +19,14 @@ import {
   XmlAuthorizeTamperer,
 } from "./spid";
 
-export class CustomSamlClient extends PassportSaml.SAML {
+export class CustomSamlClient<
+  T extends Record<string, unknown>
+> extends PassportSaml.SAML {
+  // eslint-disable-next-line max-params
   constructor(
     private readonly config: SamlConfig,
-    private readonly extededCacheProvider: IExtendedCacheProvider,
+    private readonly extededCacheProvider: IExtendedCacheProvider<T>,
+    private readonly requestMapper?: (req: express.Request) => t.Validation<T>,
     private readonly tamperAuthorizeRequest?: XmlAuthorizeTamperer,
     private readonly preValidateResponse?: PreValidateResponseT,
     private readonly doneCb?: PreValidateResponseDoneCallbackT
@@ -53,16 +59,38 @@ export class CustomSamlClient extends PassportSaml.SAML {
             return callback(err);
           }
           // go on with checks in case no error is found
-          return super.validatePostResponse(body, (error, __, ___) => {
+          return super.validatePostResponse(body, (error, user, ___) => {
             if (!error && isValid && AuthnRequestID) {
               // eslint-disable-next-line @typescript-eslint/no-floating-promises
               pipe(
-                this.extededCacheProvider.remove(AuthnRequestID),
-                TE.map((_) => callback(error, __, ___)),
+                this.extededCacheProvider.get(AuthnRequestID),
+                TE.map((cachedData) => {
+                  const {
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    RequestXML,
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    createdAt,
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    idpIssuer,
+                    ...extraLoginRequestParams
+                  } = cachedData;
+                  return extraLoginRequestParams;
+                }),
+                TE.chainFirst(() =>
+                  this.extededCacheProvider.remove(AuthnRequestID)
+                ),
+                TE.map((extraLoginRequestParams) =>
+                  callback(
+                    error,
+                    user ? { ...user, extraLoginRequestParams } : user,
+                    ___
+                  )
+                ),
                 TE.mapLeft(callback)
               )();
             } else {
-              callback(error, __, ___);
+              // TODO: Remove from cache if AuthnRequestID exists
+              callback(error, user, ___);
             }
           });
         }
@@ -104,7 +132,16 @@ export class CustomSamlClient extends PassportSaml.SAML {
               O.toUndefined,
               (lollipopParams) => tamperAuthorizeRequest(xml, lollipopParams),
               TE.chain((tamperedXml) =>
-                this.extededCacheProvider.save(tamperedXml, this.config)
+                this.extededCacheProvider.save(
+                  tamperedXml,
+                  this.config,
+                  pipe(
+                    this.requestMapper,
+                    E.fromNullable(undefined),
+                    E.chainW((mapper) => mapper(req)),
+                    E.getOrElseW(() => undefined)
+                  )
+                )
               ),
               TE.mapLeft((error) => callback(error)),
               TE.map((cache) =>

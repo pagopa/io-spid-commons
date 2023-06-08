@@ -10,7 +10,7 @@ import * as TE from "fp-ts/lib/TaskEither";
 import * as t from "io-ts";
 import { Profile, SamlConfig, VerifiedCallback } from "passport-saml";
 import { RedisClientType, RedisClusterType } from "redis";
-import { DoneCallbackT } from "..";
+import { DoneCallbackT, IExtraLoginRequestParamConfig } from "..";
 import { CIE_IDP_IDENTIFIERS, SPID_IDP_IDENTIFIERS } from "../config";
 import {
   PreValidateResponseT,
@@ -257,17 +257,18 @@ export const upsertSpidStrategyOption = (
 /**
  * SPID strategy factory function.
  */
-export const makeSpidStrategy = (
+export const makeSpidStrategy = <T extends Record<string, unknown>>(
   options: ISpidStrategyOptions,
-  getSamlOptions: SpidStrategy["getSamlOptions"],
+  getSamlOptions: SpidStrategy<T>["getSamlOptions"],
   redisClient: RedisClientType | RedisClusterType,
   tamperAuthorizeRequest?: XmlAuthorizeTamperer,
   tamperMetadata?: XmlTamperer,
   preValidateResponse?: PreValidateResponseT,
-  doneCb?: DoneCallbackT
-  // eslint-disable-next-line max-params
-): SpidStrategy =>
-  new SpidStrategy(
+  doneCb?: DoneCallbackT,
+  extraLoginRequestParamConfig?: IExtraLoginRequestParamConfig<T>
+): // eslint-disable-next-line max-params
+SpidStrategy<T> =>
+  new SpidStrategy<T>(
     { ...options.sp, passReqToCallback: true },
     getSamlOptions,
     (_: express.Request, profile: Profile, done: VerifiedCallback) => {
@@ -279,5 +280,6 @@ export const makeSpidStrategy = (
     tamperAuthorizeRequest,
     tamperMetadata,
     preValidateResponse,
-    doneCb
+    doneCb,
+    extraLoginRequestParamConfig
   );

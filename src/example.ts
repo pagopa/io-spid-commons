@@ -15,6 +15,7 @@ import { SamlConfig } from "passport-saml";
 import * as redis from "redis";
 import { ValidUrl } from "@pagopa/ts-commons/lib/url";
 import * as TE from "fp-ts/lib/TaskEither";
+import * as E from "fp-ts/Either";
 import { toError } from "fp-ts/lib/Either";
 import { logger } from "./utils/logger";
 import {
@@ -52,10 +53,17 @@ export const SpidUser = t.intersection([
 
 export type SpidUser = t.TypeOf<typeof SpidUser>;
 
-const appConfig: IApplicationConfig = {
+export type ExtraParamsT = t.TypeOf<typeof ExtraParams>;
+export const ExtraParams = t.type({ test: t.number });
+
+const appConfig: IApplicationConfig<ExtraParamsT> = {
   assertionConsumerServicePath: "/acs",
   clientErrorRedirectionUrl: "/error",
   clientLoginRedirectionUrl: "/success",
+  extraLoginRequestParamConfig: {
+    codec: ExtraParams,
+    requestMapper: (_req) => E.of({ test: 1 }),
+  },
   loginPath: "/login",
   metadataPath: "/metadata",
   sloPath: "/logout",
@@ -136,8 +144,11 @@ const samlConfig: SamlConfig = {
   validateInResponseTo: true,
 };
 
-const acs: AssertionConsumerServiceT = async (payload) => {
-  logger.info("acs:%s", JSON.stringify(payload));
+const acs: AssertionConsumerServiceT<ExtraParamsT> = async (
+  payload,
+  extraParams
+) => {
+  logger.info("acs:%s%s", JSON.stringify(payload), JSON.stringify(extraParams));
   return ResponsePermanentRedirect({ href: "/success?acs" } as ValidUrl);
 };
 
