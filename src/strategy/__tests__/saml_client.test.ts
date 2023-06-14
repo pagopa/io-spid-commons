@@ -23,6 +23,7 @@ import * as TE from "fp-ts/lib/TaskEither";
 import * as E from "fp-ts/Either";
 import { RedisClientType } from "@redis/client";
 import { SamlConfig } from "../..";
+import { expectedExtraParams } from "../../__mocks__/extraParams";
 
 const expectedRequestID = "123456";
 const SAMLRequest = `<?xml version="1.0"?>
@@ -37,8 +38,6 @@ const SAMLRequest = `<?xml version="1.0"?>
   <saml:AuthnContextClassRef xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">https://www.spid.gov.it/SpidL2</saml:AuthnContextClassRef>
   </samlp:RequestedAuthnContext>
 </samlp:AuthnRequest>`;
-
-const expectedExtraParams = { aNewParam: "a new param", anotherParam: 2 };
 
 const samlConfig: SamlConfig = {
   idpIssuer: "http://localhost:8080/",

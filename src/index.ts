@@ -92,11 +92,11 @@ export interface IExtraLoginRequestParamConfig<
 
 // express endpoints configuration
 export interface IApplicationConfig<
-  T extends Record<string, unknown> | undefined = undefined,
-  R = T extends Record<string, unknown>
-    ? IExtraLoginRequestParamConfig<T>
-    : T extends undefined
+  T extends Record<string, unknown> = Record<string, never>,
+  R = T extends Record<string, never>
     ? undefined
+    : T extends Record<string, unknown>
+    ? IExtraLoginRequestParamConfig<T>
     : never
 > {
   readonly assertionConsumerServicePath: string;
@@ -119,7 +119,7 @@ export { noopCacheProvider, IServiceProviderConfig, SamlConfig };
  * Wraps assertion consumer service handler
  * with SPID authentication and redirects.
  */
-const withSpidAuthMiddleware =
+export const withSpidAuthMiddleware =
   <T extends Record<string, unknown>>(
     acs: AssertionConsumerServiceT<T>,
     clientLoginRedirectionUrl: string,
@@ -163,9 +163,11 @@ const withSpidAuthMiddleware =
         return res.redirect(clientLoginRedirectionUrl);
       }
 
-      // TODO
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { extraLoginRequestParams, ...userBaseProps } = user as any;
+      //
+      const { extraLoginRequestParams, ...userBaseProps } = user as Record<
+        "extraLoginRequestParams",
+        undefined
+      >;
 
       const response = await acs(
         userBaseProps,
@@ -186,7 +188,9 @@ type ExpressMiddleware = (
   res: express.Response,
   next: express.NextFunction
 ) => void;
-interface IWithSpidT<T extends Record<string, unknown>> {
+interface IWithSpidT<
+  T extends Record<string, unknown> = Record<string, never>
+> {
   readonly appConfig: IApplicationConfig<T>;
   readonly samlConfig: SamlConfig;
   readonly serviceProviderConfig: IServiceProviderConfig;
@@ -203,7 +207,9 @@ interface IWithSpidT<T extends Record<string, unknown>> {
  * to an express application.
  */
 // eslint-disable-next-line max-params
-export const withSpid = <T extends Record<string, unknown>>({
+export const withSpid = <
+  T extends Record<string, unknown> = Record<string, never>
+>({
   acs,
   app,
   appConfig,
@@ -367,8 +373,9 @@ export const withSpid = <T extends Record<string, unknown>>({
             acs,
             appConfig.clientLoginRedirectionUrl,
             appConfig.clientErrorRedirectionUrl,
-            // TODO
-            appConfig.extraLoginRequestParamConfig?.codec as t.Type<T>
+            appConfig.extraLoginRequestParamConfig?.codec as
+              | t.Type<T>
+              | undefined
           )
         )
       );

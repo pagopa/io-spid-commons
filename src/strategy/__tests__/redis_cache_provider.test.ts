@@ -1,4 +1,3 @@
-import * as t from "io-ts";
 import { RedisClientType, RedisClusterType } from "@redis/client";
 import { isLeft, isRight } from "fp-ts/lib/Either";
 import { SamlConfig } from "passport-saml";
@@ -7,6 +6,10 @@ import {
   noopCacheProvider,
   SAMLRequestCacheItem,
 } from "../redis_cache_provider";
+import {
+  expectedExtraParams,
+  expectedExtraParamsC,
+} from "../../__mocks__/extraParams";
 
 const mockSetEx = jest.fn();
 const mockGet = jest.fn();
@@ -32,12 +35,6 @@ NameQualifier="https://spid.agid.gov.it/cd" Format="urn:oasis:names:tc:SAML:2.0:
 <saml:AuthnContextClassRef xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">https://www.spid.gov.it/SpidL2</saml:AuthnContextClassRef>
 </samlp:RequestedAuthnContext>
 </samlp:AuthnRequest>`;
-
-const expectedExtraParams = { aNewParam: "a new param", anotherParam: 2 };
-const expectedExtraParamsC = t.type({
-  aNewParam: t.string,
-  anotherParam: t.number,
-});
 
 const samlConfig: SamlConfig = {
   idpIssuer: "http://localhost:8080/",
