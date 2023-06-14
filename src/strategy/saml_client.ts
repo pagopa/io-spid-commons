@@ -82,6 +82,8 @@ export class CustomSamlClient<
                 TE.map((extraLoginRequestParams) =>
                   callback(
                     error,
+                    // Do NOT change `extraLoginRequestParams` name, unless you change the one
+                    // used in `withSpidAuthMiddleware` accordingly
                     user ? { ...user, extraLoginRequestParams } : user,
                     ___
                   )
@@ -89,7 +91,6 @@ export class CustomSamlClient<
                 TE.mapLeft(callback)
               )();
             } else {
-              // TODO: Remove from cache if AuthnRequestID exists
               callback(error, user, ___);
             }
           });
