@@ -75,8 +75,8 @@ export class SpidStrategy<
     // use our custom cache provider
     this.extendedRedisCacheProvider = getExtendedRedisCacheProvider(
       this.redisClient,
-      Math.floor(options.requestIdExpirationPeriodMs / 1000) as Second,
-      this.extraLoginRequestParamConfig?.codec
+      this.extraLoginRequestParamConfig?.codec,
+      Math.floor(options.requestIdExpirationPeriodMs / 1000) as Second
     );
 
     // bypass passport-saml cache provider

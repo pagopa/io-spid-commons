@@ -57,12 +57,12 @@ export const noopCacheProvider = (): CacheProvider => ({
 });
 
 export const getExtendedRedisCacheProvider = <
-  T extends Record<string, unknown>
+  T extends Record<string, unknown> = Record<string, never>
 >(
   redisClient: redis.RedisClientType | redis.RedisClusterType,
+  extraLoginRequestParamsCodec?: t.Type<T, T, unknown>,
   // 1 hour by default
   keyExpirationPeriodSeconds: Second = 3600 as Second,
-  extraLoginRequestParamsCodec?: t.Type<T, T, unknown>,
   keyPrefix: string = "SAML-EXT-"
 ): IExtendedCacheProvider<T> => ({
   get: (

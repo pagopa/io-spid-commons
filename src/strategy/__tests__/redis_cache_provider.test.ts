@@ -1,3 +1,4 @@
+import * as t from "io-ts";
 import { RedisClientType, RedisClusterType } from "@redis/client";
 import { isLeft, isRight } from "fp-ts/lib/Either";
 import { SamlConfig } from "passport-saml";
@@ -7,13 +8,13 @@ import {
   SAMLRequestCacheItem,
 } from "../redis_cache_provider";
 
-const mockSet = jest.fn();
+const mockSetEx = jest.fn();
 const mockGet = jest.fn();
 const mockDel = jest.fn();
 
 const mockRedisClient: RedisClientType | RedisClusterType =
   {} as RedisClientType;
-mockRedisClient.setEx = mockSet;
+mockRedisClient.setEx = mockSetEx;
 mockRedisClient.get = mockGet;
 mockRedisClient.del = mockDel;
 
@@ -21,16 +22,22 @@ const keyExpirationPeriodSeconds = 3600;
 const expectedRequestID = "_ab0c7302158bde147963";
 const SAMLRequest = `<?xml version="1.0"?>
 <samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ID="${expectedRequestID}" Version="2.0" 
-  IssueInstant="2020-02-17T10:20:28.417Z"
-  ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Destination="http://localhost:8080/samlsso" ForceAuthn="true" 
-  AssertionConsumerServiceURL="http://localhost:3000/acs" AttributeConsumingServiceIndex="0">
-  <saml:Issuer xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"
-    NameQualifier="https://spid.agid.gov.it/cd" Format="urn:oasis:names:tc:SAML:2.0:nameid-format:entity">https://spid.agid.gov.it/cd</saml:Issuer>
-  <samlp:NameIDPolicy xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" Format="urn:oasis:names:tc:SAML:2.0:nameid-format:transient"/>
-  <samlp:RequestedAuthnContext xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" Comparison="exact">
-  <saml:AuthnContextClassRef xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">https://www.spid.gov.it/SpidL2</saml:AuthnContextClassRef>
-  </samlp:RequestedAuthnContext>
+IssueInstant="2020-02-17T10:20:28.417Z"
+ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Destination="http://localhost:8080/samlsso" ForceAuthn="true" 
+AssertionConsumerServiceURL="http://localhost:3000/acs" AttributeConsumingServiceIndex="0">
+<saml:Issuer xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"
+NameQualifier="https://spid.agid.gov.it/cd" Format="urn:oasis:names:tc:SAML:2.0:nameid-format:entity">https://spid.agid.gov.it/cd</saml:Issuer>
+<samlp:NameIDPolicy xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" Format="urn:oasis:names:tc:SAML:2.0:nameid-format:transient"/>
+<samlp:RequestedAuthnContext xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" Comparison="exact">
+<saml:AuthnContextClassRef xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">https://www.spid.gov.it/SpidL2</saml:AuthnContextClassRef>
+</samlp:RequestedAuthnContext>
 </samlp:AuthnRequest>`;
+
+const expectedExtraParams = { aNewParam: "a new param", anotherParam: 2 };
+const expectedExtraParamsC = t.type({
+  aNewParam: t.string,
+  anotherParam: t.number,
+});
 
 const samlConfig: SamlConfig = {
   idpIssuer: "http://localhost:8080/",
@@ -65,7 +72,7 @@ describe("getExtendedRedisCacheProvider#save", () => {
     jest.clearAllMocks();
   });
   it("should return the saved SAML Request data", async () => {
-    mockSet.mockImplementation((_, __, ___) => Promise.resolve("OK"));
+    mockSetEx.mockImplementation((_, __, ___) => Promise.resolve("OK"));
     const redisCacheProvider = getExtendedRedisCacheProvider(
       mockRedisClient as any
     );
@@ -74,9 +81,9 @@ describe("getExtendedRedisCacheProvider#save", () => {
       samlConfig,
       undefined
     )();
-    expect(mockSet.mock.calls[0][0]).toBe(`SAML-EXT-${expectedRequestID}`);
-    expect(mockSet.mock.calls[0][1]).toBe(keyExpirationPeriodSeconds);
-    expect(mockSet.mock.calls[0][2]).toEqual(expect.any(String));
+    expect(mockSetEx.mock.calls[0][0]).toBe(`SAML-EXT-${expectedRequestID}`);
+    expect(mockSetEx.mock.calls[0][1]).toBe(keyExpirationPeriodSeconds);
+    expect(mockSetEx.mock.calls[0][2]).toEqual(expect.any(String));
     expect(isRight(cacheSAMLResponse)).toBeTruthy();
     if (isRight(cacheSAMLResponse)) {
       expect(cacheSAMLResponse.right).toEqual({
@@ -86,9 +93,41 @@ describe("getExtendedRedisCacheProvider#save", () => {
       });
     }
   });
+
+  it("should return the saved SAML Request data with extra login parameters, if defined", async () => {
+    mockSetEx.mockImplementation((_, __, ___) => Promise.resolve("OK"));
+    const redisCacheProvider = getExtendedRedisCacheProvider(
+      mockRedisClient as any,
+      expectedExtraParamsC
+    );
+    const cacheSAMLResponse = await redisCacheProvider.save(
+      SAMLRequest,
+      samlConfig,
+      expectedExtraParams
+    )();
+    expect(mockSetEx.mock.calls[0][0]).toBe(`SAML-EXT-${expectedRequestID}`);
+    expect(mockSetEx.mock.calls[0][1]).toBe(keyExpirationPeriodSeconds);
+    expect(mockSetEx.mock.calls[0][2]).toEqual(expect.any(String));
+    expect(mockSetEx.mock.calls[0][2]).toEqual(
+      expect.stringContaining("aNewParam")
+    );
+    expect(mockSetEx.mock.calls[0][2]).toEqual(
+      expect.stringContaining("anotherParam")
+    );
+    expect(isRight(cacheSAMLResponse)).toBeTruthy();
+    if (isRight(cacheSAMLResponse)) {
+      expect(cacheSAMLResponse.right).toEqual({
+        RequestXML: SAMLRequest,
+        createdAt: expect.any(Date),
+        idpIssuer: samlConfig.idpIssuer,
+        ...expectedExtraParams,
+      });
+    }
+  });
+
   it("should return an error if save on radis fail", async () => {
     const expectedRedisError = new Error("saveError");
-    mockSet.mockImplementation((_, __, ___) =>
+    mockSetEx.mockImplementation((_, __, ___) =>
       Promise.reject(expectedRedisError)
     );
     const redisCacheProvider = getExtendedRedisCacheProvider(
@@ -99,9 +138,9 @@ describe("getExtendedRedisCacheProvider#save", () => {
       samlConfig,
       undefined
     )();
-    expect(mockSet.mock.calls[0][0]).toBe(`SAML-EXT-${expectedRequestID}`);
-    expect(mockSet.mock.calls[0][1]).toBe(keyExpirationPeriodSeconds);
-    expect(mockSet.mock.calls[0][2]).toEqual(expect.any(String));
+    expect(mockSetEx.mock.calls[0][0]).toBe(`SAML-EXT-${expectedRequestID}`);
+    expect(mockSetEx.mock.calls[0][1]).toBe(keyExpirationPeriodSeconds);
+    expect(mockSetEx.mock.calls[0][2]).toEqual(expect.any(String));
     expect(isRight(cacheSAMLResponse)).toBeFalsy();
     if (isLeft(cacheSAMLResponse)) {
       expect(cacheSAMLResponse.left).toEqual(
@@ -149,7 +188,7 @@ describe("getExtendedRedisCacheProvider#save", () => {
   });
 });
 
-describe("getExtendedRedisCacheProvider#save", () => {
+describe("getExtendedRedisCacheProvider#get", () => {
   it("should return the saved SAML Request data if exists", async () => {
     const expectedRequestData: SAMLRequestCacheItem = {
       RequestXML: SAMLRequest,
@@ -167,6 +206,33 @@ describe("getExtendedRedisCacheProvider#save", () => {
     expect(isRight(cacheSAMLResponse)).toBeTruthy();
     if (isRight(cacheSAMLResponse)) {
       expect(cacheSAMLResponse.right).toEqual(expectedRequestData);
+    }
+  });
+
+  it("should return the saved SAML Request data with extra login params, if exists", async () => {
+    const expectedRequestData: SAMLRequestCacheItem = {
+      RequestXML: SAMLRequest,
+      createdAt: new Date(),
+      idpIssuer: samlConfig.idpIssuer as string,
+    };
+    mockGet.mockImplementation((_) =>
+      Promise.resolve(
+        JSON.stringify({ ...expectedRequestData, ...expectedExtraParams })
+      )
+    );
+    const redisCacheProvider = getExtendedRedisCacheProvider(
+      mockRedisClient as any,
+      expectedExtraParamsC
+    );
+    const cacheSAMLResponse = await redisCacheProvider.get(expectedRequestID)();
+    expect(mockGet.mock.calls[0][0]).toBe(`SAML-EXT-${expectedRequestID}`);
+    expect(isRight(cacheSAMLResponse)).toBeTruthy();
+    if (isRight(cacheSAMLResponse)) {
+      expect(cacheSAMLResponse.right).toEqual(
+        expect.objectContaining({
+          ...expectedExtraParams,
+        })
+      );
     }
   });
   it("should return an error if the reading process on redis fail", async () => {
