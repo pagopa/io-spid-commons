@@ -86,7 +86,7 @@ export interface IExtraLoginRequestParamConfig<
 > {
   // The codec to decode extra params from Redis cache provider
   readonly codec: t.Type<T>;
-  // Extracts extra params from Login Request, that will be forwarded to the acs controller
+  // Extracts extra params from Login Request, that if valid will be forwarded to the acs controller
   readonly requestMapper: (req: express.Request) => t.Validation<T>;
 }
 
@@ -163,7 +163,6 @@ export const withSpidAuthMiddleware =
         return res.redirect(clientLoginRedirectionUrl);
       }
 
-      //
       const { extraLoginRequestParams, ...userBaseProps } = user as Record<
         "extraLoginRequestParams",
         undefined
