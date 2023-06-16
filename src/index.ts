@@ -25,6 +25,7 @@ import * as passport from "passport";
 import { SamlConfig } from "passport-saml";
 import { RedisClientType, RedisClusterType } from "redis";
 import { Builder } from "xml2js";
+import * as E from "fp-ts/Either";
 import { SPID_LEVELS } from "./config";
 import { noopCacheProvider } from "./strategy/redis_cache_provider";
 import { logger } from "./utils/logger";
@@ -48,8 +49,9 @@ import {
 import { getMetadataTamperer } from "./utils/saml";
 
 // assertion consumer service express handler
-export type AssertionConsumerServiceT = (
-  userPayload: unknown
+export type AssertionConsumerServiceT<T extends Record<string, unknown>> = (
+  userPayload: unknown,
+  extraLoginRequestParams?: T
 ) => Promise<
   | IResponseErrorInternal
   | IResponseErrorValidation
@@ -79,8 +81,24 @@ export interface IEventInfo {
 
 export type EventTracker = (params: IEventInfo) => void;
 
+export interface IExtraLoginRequestParamConfig<
+  T extends Record<string, unknown>
+> {
+  // The codec to decode extra params from Redis cache provider
+  readonly codec: t.Type<T>;
+  // Extracts extra params from Login Request, that if valid will be forwarded to the acs controller
+  readonly requestMapper: (req: express.Request) => t.Validation<T>;
+}
+
 // express endpoints configuration
-export interface IApplicationConfig {
+export interface IApplicationConfig<
+  T extends Record<string, unknown> = Record<string, never>,
+  R = T extends Record<string, never>
+    ? undefined
+    : T extends Record<string, unknown>
+    ? IExtraLoginRequestParamConfig<T>
+    : never
+> {
   readonly assertionConsumerServicePath: string;
   readonly clientErrorRedirectionUrl: string;
   readonly clientLoginRedirectionUrl: string;
@@ -91,6 +109,7 @@ export interface IApplicationConfig {
   readonly startupIdpsMetadata?: Record<string, string>;
   readonly eventTraker?: EventTracker;
   readonly hasClockSkewLoggingEvent?: boolean;
+  readonly extraLoginRequestParamConfig?: R;
 }
 
 // re-export
@@ -100,11 +119,12 @@ export { noopCacheProvider, IServiceProviderConfig, SamlConfig };
  * Wraps assertion consumer service handler
  * with SPID authentication and redirects.
  */
-const withSpidAuthMiddleware =
-  (
-    acs: AssertionConsumerServiceT,
+export const withSpidAuthMiddleware =
+  <T extends Record<string, unknown>>(
+    acs: AssertionConsumerServiceT<T>,
     clientLoginRedirectionUrl: string,
-    clientErrorRedirectionUrl: string
+    clientErrorRedirectionUrl: string,
+    extraRequestParamsCodec?: t.Type<T>
   ) =>
   (
     req: express.Request,
@@ -142,7 +162,22 @@ const withSpidAuthMiddleware =
         );
         return res.redirect(clientLoginRedirectionUrl);
       }
-      const response = await acs(user);
+
+      const { extraLoginRequestParams, ...userBaseProps } = user as Record<
+        "extraLoginRequestParams",
+        undefined
+      >;
+
+      const response = await acs(
+        userBaseProps,
+        pipe(
+          extraRequestParamsCodec,
+          E.fromNullable(undefined),
+          E.chainW((codec) => codec.decode(extraLoginRequestParams)),
+          E.getOrElseW(() => undefined)
+        )
+      );
+
       response.apply(res);
     })(req, res, next);
   };
@@ -152,13 +187,15 @@ type ExpressMiddleware = (
   res: express.Response,
   next: express.NextFunction
 ) => void;
-interface IWithSpidT {
-  readonly appConfig: IApplicationConfig;
+interface IWithSpidT<
+  T extends Record<string, unknown> = Record<string, never>
+> {
+  readonly appConfig: IApplicationConfig<T>;
   readonly samlConfig: SamlConfig;
   readonly serviceProviderConfig: IServiceProviderConfig;
   readonly redisClient: RedisClientType | RedisClusterType;
   readonly app: express.Express;
-  readonly acs: AssertionConsumerServiceT;
+  readonly acs: AssertionConsumerServiceT<T>;
   readonly logout: LogoutT;
   readonly doneCb?: DoneCallbackT;
   readonly lollipopMiddleware?: ExpressMiddleware;
@@ -169,7 +206,9 @@ interface IWithSpidT {
  * to an express application.
  */
 // eslint-disable-next-line max-params
-export const withSpid = ({
+export const withSpid = <
+  T extends Record<string, unknown> = Record<string, never>
+>({
   acs,
   app,
   appConfig,
@@ -179,7 +218,7 @@ export const withSpid = ({
   samlConfig,
   serviceProviderConfig,
   lollipopMiddleware = (_, __, next): void => next(),
-}: IWithSpidT): T.Task<{
+}: IWithSpidT<T>): T.Task<{
   readonly app: express.Express;
   readonly idpMetadataRefresher: () => T.Task<void>;
 }> => {
@@ -230,7 +269,8 @@ export const withSpid = ({
           appConfig.eventTraker,
           appConfig.hasClockSkewLoggingEvent
         ),
-        doneCb
+        doneCb,
+        appConfig.extraLoginRequestParamConfig
       );
     }),
     T.map((spidStrategy) => {
@@ -331,7 +371,10 @@ export const withSpid = ({
           withSpidAuthMiddleware(
             acs,
             appConfig.clientLoginRedirectionUrl,
-            appConfig.clientErrorRedirectionUrl
+            appConfig.clientErrorRedirectionUrl,
+            appConfig.extraLoginRequestParamConfig?.codec as
+              | t.Type<T>
+              | undefined
           )
         )
       );

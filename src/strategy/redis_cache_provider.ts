@@ -18,14 +18,15 @@ const SAMLRequestCacheItem = t.interface({
   idpIssuer: t.string,
 });
 
-export interface IExtendedCacheProvider {
+export interface IExtendedCacheProvider<T extends Record<string, unknown>> {
   readonly save: (
     RequestXML: string,
-    samlConfig: SamlConfig
-  ) => TaskEither<Error, SAMLRequestCacheItem>;
+    samlConfig: SamlConfig,
+    extraLoginRequestParams: T | undefined
+  ) => TaskEither<Error, SAMLRequestCacheItem | (SAMLRequestCacheItem & T)>;
   readonly get: (
     AuthnRequestID: string
-  ) => TaskEither<Error, SAMLRequestCacheItem>;
+  ) => TaskEither<Error, SAMLRequestCacheItem | (SAMLRequestCacheItem & T)>;
   readonly remove: (AuthnRequestID: string) => TaskEither<Error, string>;
 }
 
@@ -55,13 +56,18 @@ export const noopCacheProvider = (): CacheProvider => ({
   },
 });
 
-export const getExtendedRedisCacheProvider = (
+export const getExtendedRedisCacheProvider = <
+  T extends Record<string, unknown> = Record<string, never>
+>(
   redisClient: redis.RedisClientType | redis.RedisClusterType,
+  extraLoginRequestParamsCodec?: t.Type<T, T, unknown>,
   // 1 hour by default
   keyExpirationPeriodSeconds: Second = 3600 as Second,
   keyPrefix: string = "SAML-EXT-"
-): IExtendedCacheProvider => ({
-  get: (AuthnRequestID: string): TaskEither<Error, SAMLRequestCacheItem> =>
+): IExtendedCacheProvider<T> => ({
+  get: (
+    AuthnRequestID: string
+  ): TaskEither<Error, SAMLRequestCacheItem | (SAMLRequestCacheItem & T)> =>
     pipe(
       TE.tryCatch(
         () => redisClient.get(`${keyPrefix}${AuthnRequestID}`),
@@ -90,6 +96,15 @@ export const getExtendedRedisCacheProvider = (
             E.chain((_) =>
               pipe(
                 SAMLRequestCacheItem.decode(_),
+                E.map((samlRequestCacheItem) => ({
+                  ...samlRequestCacheItem,
+                  ...pipe(
+                    extraLoginRequestParamsCodec,
+                    E.fromNullable(undefined),
+                    E.chainW((codec) => codec.decode(_)),
+                    E.getOrElseW(() => ({}))
+                  ),
+                })),
                 E.mapLeft(
                   (__) =>
                     new Error(
@@ -118,8 +133,9 @@ export const getExtendedRedisCacheProvider = (
     ),
   save: (
     RequestXML: string,
-    samlConfig: SamlConfig
-  ): TaskEither<Error, SAMLRequestCacheItem> =>
+    samlConfig: SamlConfig,
+    extraLoginRequestParams: T | undefined
+  ): TaskEither<Error, SAMLRequestCacheItem | (SAMLRequestCacheItem & T)> =>
     pipe(
       TE.fromEither(
         E.fromOption(
@@ -140,7 +156,8 @@ export const getExtendedRedisCacheProvider = (
         )
       ),
       TE.chain((_) => {
-        const v: SAMLRequestCacheItem = {
+        const v: SAMLRequestCacheItem | (SAMLRequestCacheItem & T) = {
+          ...extraLoginRequestParams,
           RequestXML,
           createdAt: new Date(),
           idpIssuer: _.idpIssuer,

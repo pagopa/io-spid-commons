@@ -1,4 +1,5 @@
 import * as jose from "jose";
+import * as t from "io-ts";
 import { left, right } from "fp-ts/lib/Either";
 import { fromEither } from "fp-ts/lib/TaskEither";
 import { Builder, parseStringPromise } from "xml2js";
@@ -6,58 +7,24 @@ import mockReq from "../../__mocks__/request";
 import { IServiceProviderConfig } from "../../utils/middleware";
 import { getAuthorizeRequestTamperer } from "../../utils/saml";
 import { mockWrapCallback } from "../__mocks__/passport-saml";
-import { getExtendedRedisCacheProvider } from "../redis_cache_provider";
+import {
+  SAMLRequestCacheItem,
+  getExtendedRedisCacheProvider,
+} from "../redis_cache_provider";
 import { CustomSamlClient } from "../saml_client";
 import {
   DEFAULT_LOLLIPOP_HASH_ALGORITHM,
-  LOLLIPOP_PUB_KEY_HEADER_NAME
+  LOLLIPOP_PUB_KEY_HEADER_NAME,
 } from "../../types/lollipop";
 import { JwkPublicKey } from "@pagopa/ts-commons/lib/jwk";
 import { samlRequest, samlRequestWithID } from "../../utils/__mocks__/saml";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/lib/TaskEither";
-import { UserAgentSemver } from "@pagopa/ts-commons/lib/http-user-agent";
+import * as E from "fp-ts/Either";
 import { RedisClientType } from "@redis/client";
+import { SamlConfig } from "../..";
+import { expectedExtraParams } from "../../__mocks__/extraParams";
 
-const mockSet = jest.fn();
-const mockGet = jest.fn();
-const mockDel = jest.fn();
-
-const mockRedisClient = {} as RedisClientType;
-mockRedisClient.setEx = mockSet;
-mockRedisClient.get = mockGet;
-mockRedisClient.del = mockDel;
-
-const redisCacheProvider = getExtendedRedisCacheProvider(
-  (mockRedisClient as unknown) as any
-);
-
-const serviceProviderConfig: IServiceProviderConfig = {
-  IDPMetadataUrl:
-    "https://registry.spid.gov.it/metadata/idp/spid-entities-idps.xml",
-  organization: {
-    URL: "https://example.com",
-    displayName: "Organization display name",
-    name: "Organization name"
-  },
-  publicCert: "",
-  requiredAttributes: {
-    attributes: [
-      "address",
-      "email",
-      "name",
-      "familyName",
-      "fiscalNumber",
-      "mobilePhone"
-    ],
-    name: "Required attrs"
-  },
-  spidCieUrl: "https://idserver.servizicie.interno.gov.it:8443/idp/shibboleth",
-  spidCieTestUrl:
-    "https://collaudo.idserver.servizicie.interno.gov.it/idp/shibboleth",
-  spidTestEnvUrl: "https://spid-testenv2:8088",
-  spidValidatorUrl: "http://localhost:8080"
-};
 const expectedRequestID = "123456";
 const SAMLRequest = `<?xml version="1.0"?>
 <samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ID="${expectedRequestID}" Version="2.0" 
@@ -72,6 +39,57 @@ const SAMLRequest = `<?xml version="1.0"?>
   </samlp:RequestedAuthnContext>
 </samlp:AuthnRequest>`;
 
+const samlConfig: SamlConfig = {
+  idpIssuer: "http://localhost:8080/",
+};
+
+const mockSetEx = jest.fn();
+const mockGet = jest.fn();
+const mockDel = jest.fn();
+
+const mockRedisClient = {} as RedisClientType;
+mockRedisClient.setEx = mockSetEx;
+mockRedisClient.get = mockGet;
+mockRedisClient.del = mockDel;
+
+const expectedRequestData: SAMLRequestCacheItem = {
+  RequestXML: SAMLRequest,
+  createdAt: new Date(),
+  idpIssuer: samlConfig.idpIssuer as string,
+};
+mockGet.mockImplementation(async (_) => JSON.stringify(expectedRequestData));
+
+const redisCacheProvider = getExtendedRedisCacheProvider(
+  mockRedisClient as unknown as any
+);
+
+const serviceProviderConfig: IServiceProviderConfig = {
+  IDPMetadataUrl:
+    "https://registry.spid.gov.it/metadata/idp/spid-entities-idps.xml",
+  organization: {
+    URL: "https://example.com",
+    displayName: "Organization display name",
+    name: "Organization name",
+  },
+  publicCert: "",
+  requiredAttributes: {
+    attributes: [
+      "address",
+      "email",
+      "name",
+      "familyName",
+      "fiscalNumber",
+      "mobilePhone",
+    ],
+    name: "Required attrs",
+  },
+  spidCieUrl: "https://idserver.servizicie.interno.gov.it:8443/idp/shibboleth",
+  spidCieTestUrl:
+    "https://collaudo.idserver.servizicie.interno.gov.it/idp/shibboleth",
+  spidTestEnvUrl: "https://spid-testenv2:8088",
+  spidValidatorUrl: "http://localhost:8080",
+};
+
 const authReqTampener = getAuthorizeRequestTamperer(
   // spid-testenv does not accept an xml header with utf8 encoding
   new Builder({ xmldec: { encoding: undefined, version: "1.0" } }),
@@ -84,7 +102,7 @@ const aJwkPubKey: JwkPublicKey = {
   kty: "EC",
   crv: "secp256k1",
   x: "Q8K81dZcC4DdKl52iW7bT0ubXXm2amN835M_v5AgpSE",
-  y: "lLsw82Q414zPWPluI5BmdKHK6XbFfinc8aRqbZCEv0A"
+  y: "lLsw82Q414zPWPluI5BmdKHK6XbFfinc8aRqbZCEv0A",
 };
 
 describe("SAML prototype arguments check", () => {
@@ -119,7 +137,8 @@ describe("CustomSamlClient#constructor", () => {
   it("should CustomSamlClient constructor call SAML constructor with overrided validateInResponseTo", () => {
     const customSamlClient = new CustomSamlClient(
       { validateInResponseTo: true },
-      redisCacheProvider
+      redisCacheProvider,
+      undefined
     );
     expect(customSamlClient).toBeTruthy();
 
@@ -138,7 +157,8 @@ describe("CustomSamlClient#validatePostResponse", () => {
   it("should validatePostResponse call SAML validatePostResponse", () => {
     const customSamlClient = new CustomSamlClient(
       { validateInResponseTo: true },
-      redisCacheProvider
+      redisCacheProvider,
+      undefined
     );
     expect(customSamlClient).toBeTruthy();
     customSamlClient.validatePostResponse({ SAMLResponse: "" }, mockedCallback);
@@ -154,6 +174,7 @@ describe("CustomSamlClient#validatePostResponse", () => {
     const customSamlClient = new CustomSamlClient(
       { validateInResponseTo: true },
       redisCacheProvider,
+      undefined,
       authReqTampener,
       mockPreValidate
     );
@@ -179,6 +200,7 @@ describe("CustomSamlClient#validatePostResponse", () => {
     const customSamlClient = new CustomSamlClient(
       { validateInResponseTo: true },
       redisCacheProvider,
+      undefined,
       authReqTampener,
       mockPreValidate
     );
@@ -202,13 +224,18 @@ describe("CustomSamlClient#validatePostResponse", () => {
       .mockImplementation((_, __, ___, ____, callback) => {
         callback(null, true, expectedAuthnRequestID);
       });
-    mockDel.mockImplementation(_ => Promise.resolve(1));
+    mockDel.mockImplementation((_) => Promise.resolve(1));
     const customSamlClient = new CustomSamlClient(
       { validateInResponseTo: true },
       redisCacheProvider,
+      undefined,
       authReqTampener,
       mockPreValidate
     );
+    mockGet.mockImplementation(async (_) =>
+      JSON.stringify(expectedRequestData)
+    );
+
     expect(customSamlClient).toBeTruthy();
     customSamlClient.validatePostResponse({ SAMLResponse: "" }, mockedCallback);
     expect(mockPreValidate).toBeCalledWith(
@@ -219,10 +246,58 @@ describe("CustomSamlClient#validatePostResponse", () => {
       expect.any(Function)
     );
     // Before checking the execution of the callback we must await that the TaskEither execution is completed.
-    await new Promise(resolve => {
+    await new Promise((resolve) => {
       setTimeout(() => {
+        expect(mockGet).toBeCalledWith(`SAML-EXT-${expectedAuthnRequestID}`);
         expect(mockDel).toBeCalledWith(`SAML-EXT-${expectedAuthnRequestID}`);
-        expect(mockedCallback).toBeCalledWith(null, {}, false);
+        expect(mockedCallback).toBeCalledWith(
+          null,
+          { extraLoginRequestParams: {} },
+          false
+        );
+        resolve(undefined);
+      }, 100);
+    });
+  });
+
+  it("should return extra login parameters stored in cache if preValidateResponse and validatePostResponse succeded", async () => {
+    const expectedAuthnRequestID = "123456";
+    const mockPreValidate = jest
+      .fn()
+      .mockImplementation((_, __, ___, ____, callback) => {
+        callback(null, true, expectedAuthnRequestID);
+      });
+    mockDel.mockImplementation((_) => Promise.resolve(1));
+    const customSamlClient = new CustomSamlClient(
+      { validateInResponseTo: true },
+      redisCacheProvider,
+      undefined,
+      authReqTampener,
+      mockPreValidate
+    );
+    mockGet.mockImplementation(async (_) =>
+      JSON.stringify({ ...expectedRequestData, ...expectedExtraParams })
+    );
+
+    expect(customSamlClient).toBeTruthy();
+    customSamlClient.validatePostResponse({ SAMLResponse: "" }, mockedCallback);
+    expect(mockPreValidate).toBeCalledWith(
+      { validateInResponseTo: true },
+      { SAMLResponse: "" },
+      redisCacheProvider,
+      undefined,
+      expect.any(Function)
+    );
+    // Before checking the execution of the callback we must await that the TaskEither execution is completed.
+    await new Promise((resolve) => {
+      setTimeout(() => {
+        expect(mockGet).toBeCalledWith(`SAML-EXT-${expectedAuthnRequestID}`);
+        expect(mockDel).toBeCalledWith(`SAML-EXT-${expectedAuthnRequestID}`);
+        expect(mockedCallback).toBeCalledWith(
+          null,
+          { extraLoginRequestParams: { ...expectedExtraParams } },
+          false
+        );
         resolve(undefined);
       }, 100);
     });
@@ -236,10 +311,15 @@ describe("CustomSamlClient#validatePostResponse", () => {
       .mockImplementation((_, __, ___, ____, callback) => {
         callback(null, true, expectedAuthnRequestID);
       });
-    mockDel.mockImplementation(_ => Promise.reject(expectedDelError));
+    mockDel.mockImplementation((_) => Promise.reject(expectedDelError));
+    mockGet.mockImplementation(async (_) =>
+      JSON.stringify(expectedRequestData)
+    );
+
     const customSamlClient = new CustomSamlClient(
       { validateInResponseTo: true },
       redisCacheProvider,
+      undefined,
       authReqTampener,
       mockPreValidate
     );
@@ -253,8 +333,9 @@ describe("CustomSamlClient#validatePostResponse", () => {
       expect.any(Function)
     );
     // Before checking the execution of the callback we must await that the TaskEither execution is completed.
-    await new Promise(resolve => {
+    await new Promise((resolve) => {
       setTimeout(() => {
+        expect(mockGet).toBeCalledWith(`SAML-EXT-${expectedAuthnRequestID}`);
         expect(mockDel).toBeCalledWith(`SAML-EXT-${expectedAuthnRequestID}`);
         expect(mockedCallback).toBeCalledWith(
           new Error(
@@ -274,52 +355,54 @@ describe("CustomSamlClient#generateAuthorizeRequest", () => {
   });
 
   const samlConfigMock = {
-    issuer: "ISSUER"
+    issuer: "ISSUER",
   } as any;
 
   const builder = new Builder({
-    xmldec: { encoding: undefined, version: "1.0" }
+    xmldec: { encoding: undefined, version: "1.0" },
   });
 
   it("should generateAuthorizeRequest call super generateAuthorizeRequest if tamperAuthorizeRequest is not provided", () => {
     const req = mockReq();
     const expectedXML = "<xml></xml>";
-    mockWrapCallback.mockImplementation(callback => {
+    mockWrapCallback.mockImplementation((callback) => {
       callback(null, expectedXML);
     });
     const customSamlClient = new CustomSamlClient(
       { validateInResponseTo: true },
-      redisCacheProvider
+      redisCacheProvider,
+      undefined
     );
     customSamlClient.generateAuthorizeRequest(req, false, true, mockCallback);
     expect(mockCallback).toBeCalledWith(null, expectedXML);
   });
 
   it("should generateAuthorizeRequest save the SAML Request if tamperAuthorizeRequest is not provided", async () => {
-    const mockAuthReqTampener = jest.fn().mockImplementation(xml => {
+    const mockAuthReqTampener = jest.fn().mockImplementation((xml) => {
       return fromEither(right(xml));
     });
-    mockWrapCallback.mockImplementation(callback => {
+    mockWrapCallback.mockImplementation((callback) => {
       callback(null, SAMLRequest);
     });
     const req = mockReq();
-    mockSet.mockImplementation((_, __, ___) => Promise.resolve("OK"));
+    mockSetEx.mockImplementation((_, __, ___) => Promise.resolve("OK"));
     const customSamlClient = new CustomSamlClient(
       {
         entryPoint: "https://localhost:3000/acs",
         idpIssuer: "https://localhost:8080",
         issuer: "https://localhost:3000",
-        validateInResponseTo: true
+        validateInResponseTo: true,
       },
       redisCacheProvider,
+      undefined,
       mockAuthReqTampener
     );
     customSamlClient.generateAuthorizeRequest(req, false, true, mockCallback);
     expect(mockAuthReqTampener).toBeCalledWith(SAMLRequest, undefined);
     // Before checking the execution of the callback we must await that the TaskEither execution is completed.
-    await new Promise(resolve => {
+    await new Promise((resolve) => {
       setTimeout(() => {
-        expect(mockSet).toBeCalled();
+        expect(mockSetEx).toBeCalled();
         expect(mockCallback).toBeCalledWith(null, SAMLRequest);
         resolve(undefined);
       }, 100);
@@ -327,21 +410,22 @@ describe("CustomSamlClient#generateAuthorizeRequest", () => {
   });
 
   it("should call tamperAuthorizeRequest with lollipop params if client send lollipop headers", async () => {
-    const mockAuthReqTampener = jest.fn().mockImplementation(_ => {
+    const mockAuthReqTampener = jest.fn().mockImplementation((_) => {
       return fromEither(right(SAMLRequest));
     });
-    mockWrapCallback.mockImplementation(callback => {
+    mockWrapCallback.mockImplementation((callback) => {
       callback(null, SAMLRequest);
     });
-    mockSet.mockImplementation((_, __, ___) => Promise.resolve("OK"));
+    mockSetEx.mockImplementation((_, __, ___) => Promise.resolve("OK"));
     const customSamlClient = new CustomSamlClient(
       {
         entryPoint: "https://localhost:3000/acs",
         idpIssuer: "https://localhost:8080",
         issuer: "https://localhost:3000",
-        validateInResponseTo: true
+        validateInResponseTo: true,
       },
       redisCacheProvider,
+      undefined,
       mockAuthReqTampener
     );
 
@@ -356,12 +440,12 @@ describe("CustomSamlClient#generateAuthorizeRequest", () => {
       mockCallback
     );
     expect(mockAuthReqTampener).toBeCalledWith(SAMLRequest, {
-      pubKey: aJwkPubKey
+      pubKey: aJwkPubKey,
     });
     // Before checking the execution of the callback we must await that the TaskEither execution is completed.
-    await new Promise(resolve => {
+    await new Promise((resolve) => {
       setTimeout(() => {
-        expect(mockSet).toBeCalled();
+        expect(mockSetEx).toBeCalled();
         expect(mockCallback).toBeCalledWith(null, SAMLRequest);
         resolve(undefined);
       }, 100);
@@ -377,18 +461,19 @@ describe("CustomSamlClient#generateAuthorizeRequest", () => {
     const lollipopSamlRequest = samlRequestWithID(
       `${DEFAULT_LOLLIPOP_HASH_ALGORITHM}-${jwkThumbprint}`
     );
-    mockWrapCallback.mockImplementation(callback => {
+    mockWrapCallback.mockImplementation((callback) => {
       callback(null, samlRequest);
     });
-    mockSet.mockImplementation((_, __, ___) => Promise.resolve("OK"));
+    mockSetEx.mockImplementation((_, __, ___) => Promise.resolve("OK"));
     const customSamlClient = new CustomSamlClient(
       {
         entryPoint: "https://localhost:3000/acs",
         idpIssuer: "https://localhost:8080",
         issuer: "https://localhost:3000",
-        validateInResponseTo: true
+        validateInResponseTo: true,
       },
       redisCacheProvider,
+      undefined,
       authReqTamperer
     );
 
@@ -405,7 +490,7 @@ describe("CustomSamlClient#generateAuthorizeRequest", () => {
 
     const expectedSamlRequest = await pipe(
       authReqTamperer(lollipopSamlRequest, {
-        pubKey: aJwkPubKey
+        pubKey: aJwkPubKey,
       }),
       TE.mapLeft(() => fail("Cannot tamper saml request")),
       TE.toUnion
@@ -416,9 +501,9 @@ describe("CustomSamlClient#generateAuthorizeRequest", () => {
     );
 
     // Before checking the execution of the callback we must await that the TaskEither execution is completed.
-    await new Promise(resolve => {
+    await new Promise((resolve) => {
       setTimeout(() => {
-        expect(mockSet).toBeCalled();
+        expect(mockSetEx).toBeCalled();
         expect(mockCallback).toBeCalledWith(null, expectedSamlRequest);
         expect(`${DEFAULT_LOLLIPOP_HASH_ALGORITHM}-${jwkThumbprint}`).toEqual(
           expectedSamlRequestXML["samlp:AuthnRequest"].$.ID
@@ -428,32 +513,115 @@ describe("CustomSamlClient#generateAuthorizeRequest", () => {
     });
   });
 
-  it("should generateAuthorizeRequest return an error if tamperAuthorizeRequest fail", async () => {
-    const expectedTamperError = new Error("tamperAuthorizeRequest Error");
-    const mockAuthReqTampener = jest.fn().mockImplementation(_ => {
-      return fromEither(left(expectedTamperError));
+  it("should generateAuthorizeRequest save the SAML Request and extra login parameters, if requestMapper is provided", async () => {
+    const mockAuthReqTampener = jest.fn().mockImplementation((xml) => {
+      return fromEither(right(xml));
     });
-    mockWrapCallback.mockImplementation(callback => {
+
+    const mockrequestMapper = jest
+      .fn()
+      .mockImplementation((_req) => E.of(expectedExtraParams));
+
+    mockWrapCallback.mockImplementation((callback) => {
       callback(null, SAMLRequest);
     });
     const req = mockReq();
-    mockSet.mockImplementation((_, __, ___) => Promise.resolve("OK"));
+    mockSetEx.mockImplementation((_, __, ___) => Promise.resolve("OK"));
     const customSamlClient = new CustomSamlClient(
       {
         entryPoint: "https://localhost:3000/acs",
         idpIssuer: "https://localhost:8080",
         issuer: "https://localhost:3000",
-        validateInResponseTo: true
+        validateInResponseTo: true,
       },
       redisCacheProvider,
+      mockrequestMapper,
+      mockAuthReqTampener
+    );
+    customSamlClient.generateAuthorizeRequest(req, false, true, mockCallback);
+    expect(mockAuthReqTampener).toBeCalledWith(SAMLRequest, undefined);
+
+    // Before checking the execution of the callback we must await that the TaskEither execution is completed.
+    await new Promise((resolve) => {
+      setTimeout(() => {
+        expect(mockSetEx).toHaveBeenCalledWith(
+          `SAML-EXT-${expectedRequestID}`,
+          expect.any(Number),
+          expect.stringContaining("aNewParam")
+        );
+        expect(mockrequestMapper).toHaveBeenCalled();
+        expect(mockCallback).toBeCalledWith(null, SAMLRequest);
+        resolve(undefined);
+      }, 100);
+    });
+  });
+
+  it("should generateAuthorizeRequest save the SAML Request and no extra login parameters, if requestMapper returns a validation Error", async () => {
+    const mockAuthReqTampener = jest.fn().mockImplementation((xml) => {
+      return fromEither(right(xml));
+    });
+
+    const mockrequestMapper = jest
+      .fn()
+      .mockImplementation((_req) => E.left({}));
+
+    mockWrapCallback.mockImplementation((callback) => {
+      callback(null, SAMLRequest);
+    });
+    const req = mockReq();
+    mockSetEx.mockImplementation((_, __, ___) => Promise.resolve("OK"));
+    const customSamlClient = new CustomSamlClient(
+      {
+        entryPoint: "https://localhost:3000/acs",
+        idpIssuer: "https://localhost:8080",
+        issuer: "https://localhost:3000",
+        validateInResponseTo: true,
+      },
+      redisCacheProvider,
+      mockrequestMapper,
+      mockAuthReqTampener
+    );
+    customSamlClient.generateAuthorizeRequest(req, false, true, mockCallback);
+    expect(mockAuthReqTampener).toBeCalledWith(SAMLRequest, undefined);
+
+    // Before checking the execution of the callback we must await that the TaskEither execution is completed.
+    await new Promise((resolve) => {
+      setTimeout(() => {
+        expect(mockSetEx).toHaveBeenCalled();
+        expect(mockrequestMapper).toHaveBeenCalled();
+        expect(mockCallback).toBeCalledWith(null, SAMLRequest);
+        resolve(undefined);
+      }, 100);
+    });
+  });
+
+  it("should generateAuthorizeRequest return an error if tamperAuthorizeRequest fail", async () => {
+    const expectedTamperError = new Error("tamperAuthorizeRequest Error");
+    const mockAuthReqTampener = jest.fn().mockImplementation((_) => {
+      return fromEither(left(expectedTamperError));
+    });
+    mockWrapCallback.mockImplementation((callback) => {
+      callback(null, SAMLRequest);
+    });
+    const req = mockReq();
+    mockSetEx.mockImplementation((_, __, ___) => Promise.resolve("OK"));
+    const customSamlClient = new CustomSamlClient(
+      {
+        entryPoint: "https://localhost:3000/acs",
+        idpIssuer: "https://localhost:8080",
+        issuer: "https://localhost:3000",
+        validateInResponseTo: true,
+      },
+      redisCacheProvider,
+      undefined,
       mockAuthReqTampener
     );
     customSamlClient.generateAuthorizeRequest(req, false, true, mockCallback);
     expect(mockAuthReqTampener).toBeCalledWith(SAMLRequest, undefined);
     // Before checking the execution of the callback we must await that the TaskEither execution is completed.
-    await new Promise(resolve => {
+    await new Promise((resolve) => {
       setTimeout(() => {
-        expect(mockSet).not.toBeCalled();
+        expect(mockSetEx).not.toBeCalled();
         expect(mockCallback).toBeCalledWith(expectedTamperError);
         resolve(undefined);
       }, 100);

@@ -15,7 +15,7 @@ import { MultiSamlConfig } from "passport-saml/multiSamlStrategy";
 
 import { Second } from "@pagopa/ts-commons/lib/units";
 import { pipe } from "fp-ts/lib/function";
-import { DoneCallbackT } from "..";
+import { DoneCallbackT, IExtraLoginRequestParamConfig } from "..";
 import { ILollipopParams } from "../types/lollipop";
 import {
   getExtendedRedisCacheProvider,
@@ -35,10 +35,10 @@ export type PreValidateResponseDoneCallbackT = (
   response: string
 ) => void;
 
-export type PreValidateResponseT = (
+export type PreValidateResponseT = <T extends Record<string, unknown>>(
   samlConfig: SamlConfig,
   body: unknown,
-  extendedRedisCacheProvider: IExtendedCacheProvider,
+  extendedRedisCacheProvider: IExtendedCacheProvider<T>,
   doneCb: PreValidateResponseDoneCallbackT | undefined,
 
   callback: (
@@ -49,8 +49,10 @@ export type PreValidateResponseT = (
   ) => void
 ) => void;
 
-export class SpidStrategy extends SamlStrategy {
-  private readonly extendedRedisCacheProvider: IExtendedCacheProvider;
+export class SpidStrategy<
+  T extends Record<string, unknown>
+> extends SamlStrategy {
+  private readonly extendedRedisCacheProvider: IExtendedCacheProvider<T>;
 
   // eslint-disable-next-line max-params
   constructor(
@@ -61,7 +63,8 @@ export class SpidStrategy extends SamlStrategy {
     private readonly tamperAuthorizeRequest?: XmlAuthorizeTamperer,
     private readonly tamperMetadata?: XmlTamperer,
     private readonly preValidateResponse?: PreValidateResponseT,
-    private readonly doneCb?: DoneCallbackT
+    private readonly doneCb?: DoneCallbackT,
+    private readonly extraLoginRequestParamConfig?: IExtraLoginRequestParamConfig<T>
   ) {
     super(options, verify);
     if (!options.requestIdExpirationPeriodMs) {
@@ -72,6 +75,7 @@ export class SpidStrategy extends SamlStrategy {
     // use our custom cache provider
     this.extendedRedisCacheProvider = getExtendedRedisCacheProvider(
       this.redisClient,
+      this.extraLoginRequestParamConfig?.codec,
       Math.floor(options.requestIdExpirationPeriodMs / 1000) as Second
     );
 
@@ -93,6 +97,7 @@ export class SpidStrategy extends SamlStrategy {
           ...samlOptions,
         },
         this.extendedRedisCacheProvider,
+        this.extraLoginRequestParamConfig?.requestMapper,
         this.tamperAuthorizeRequest,
         this.preValidateResponse,
         (...args) => (this.doneCb ? this.doneCb(req.ip, ...args) : undefined)
