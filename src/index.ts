@@ -51,7 +51,6 @@ import { getMetadataTamperer } from "./utils/saml";
 // assertion consumer service express handler
 export type AssertionConsumerServiceT<T extends Record<string, unknown>> = (
   userPayload: unknown,
-  req: express.Request,
   extraLoginRequestParams?: T
 ) => Promise<
   | IResponseErrorInternal
@@ -170,8 +169,10 @@ export const withSpidAuthMiddleware =
       >;
 
       const response = await acs(
-        userBaseProps,
-        req,
+        {
+          ...userBaseProps,
+          getAcsOriginalRequest: () => req,
+        },
         pipe(
           extraRequestParamsCodec,
           E.fromNullable(undefined),
