@@ -169,7 +169,10 @@ export const withSpidAuthMiddleware =
       >;
 
       const response = await acs(
-        userBaseProps,
+        {
+          ...userBaseProps,
+          getAcsOriginalRequest: () => req,
+        },
         pipe(
           extraRequestParamsCodec,
           E.fromNullable(undefined),
