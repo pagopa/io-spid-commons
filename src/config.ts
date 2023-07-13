@@ -22,24 +22,28 @@ export const CIE_IDP_IDENTIFIERS = {
     "xx_servizicie_test",
 };
 
-export enum IDP_NAMES {
-  // SPID IdP
-  "https://id.eht.eu" = "Etna ID",
-  "https://id.lepida.it/idp/shibboleth" = "Lepida ID",
-  "https://identity.infocert.it" = "InfoCert ID",
-  "https://identity.sieltecloud.it" = "Sielte ID",
-  "https://idp.namirialtsp.com/idp" = "Namirial ID",
-  "https://login.id.tim.it/affwebservices/public/saml2sso" = "Tim ID",
-  "https://loginspid.aruba.it" = "Aruba ID",
-  "https://loginspid.infocamere.it" = "ID Infocamere",
-  "https://posteid.poste.it" = "Poste ID",
-  "https://spid.register.it" = "SpidItalia",
-  "https://spid.teamsystem.com/idp" = "TeamSystem ID",
+export const IDP_NAMES: Record<string, string | undefined> = {
   // CIE IdP
-  "https://idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SSO" = "CIE ID",
-  "https://collaudo.idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SSO" = "CIE ID collaudo",
-  "https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SSO" = "CIE ID test",
-}
+  "https://collaudo.idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SSO":
+    "CIE ID collaudo",
+  "https://idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SSO":
+    "CIE ID",
+  "https://preproduzione.idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SSO":
+    "CIE ID test",
+  // SPID IdP
+  // eslint-disable-next-line sort-keys
+  "https://id.eht.eu": "Etna ID",
+  "https://id.lepida.it/idp/shibboleth": "Lepida ID",
+  "https://identity.infocert.it": "InfoCert ID",
+  "https://identity.sieltecloud.it": "Sielte ID",
+  "https://idp.namirialtsp.com/idp": "Namirial ID",
+  "https://login.id.tim.it/affwebservices/public/saml2sso": "Tim ID",
+  "https://loginspid.aruba.it": "Aruba ID",
+  "https://loginspid.infocamere.it": "ID Infocamere",
+  "https://posteid.poste.it": "Poste ID",
+  "https://spid.register.it": "SpidItalia",
+  "https://spid.teamsystem.com/idp": "TeamSystem ID",
+};
 
 /*
  * @see https://www.agid.gov.it/sites/default/files/repository_files/regole_tecniche/tabella_attributi_idp.pdf
