@@ -1,3 +1,4 @@
+import * as t from "io-ts";
 /* eslint-disable @typescript-eslint/naming-convention */
 export const SPID_IDP_IDENTIFIERS = {
   "https://id.eht.eu": "ehtid",
@@ -22,7 +23,13 @@ export const CIE_IDP_IDENTIFIERS = {
     "xx_servizicie_test",
 };
 
-export const IDP_NAMES: Record<string, string | undefined> = {
+export const Issuer = t.union([
+  t.keyof(SPID_IDP_IDENTIFIERS),
+  t.keyof(CIE_IDP_IDENTIFIERS),
+]);
+export type Issuer = t.TypeOf<typeof Issuer>;
+
+export const IDP_NAMES: Record<Issuer, string | undefined> = {
   // CIE IdP
   "https://collaudo.idserver.servizicie.interno.gov.it/idp/profile/SAML2/POST/SSO":
     "CIE ID collaudo",
