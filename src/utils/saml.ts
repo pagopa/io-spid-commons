@@ -1,3 +1,4 @@
+/* eslint-disable max-lines-per-function */
 /**
  * Methods used to tamper passport-saml generated SAML XML.
  *
@@ -43,6 +44,7 @@ import {
   SAML_NAMESPACE,
   InfoNotAvailable,
 } from "./samlUtils";
+import { IExtendedCacheProviderExtraParams } from "../strategy/redis_cache_provider";
 
 export {
   SAML_NAMESPACE,
@@ -103,14 +105,23 @@ const ISSUER_FORMAT_ERROR = new Error(
   "Format attribute of Issuer element is invalid"
 );
 
+const hasExtraParams = <T extends object>(
+  t: T | Record<string, never>
+): t is T => Object.keys(t).length > 0;
+
+const getExtraParamsOrUndefined = <T extends object>(
+  t: T | Record<string, never>
+): T | undefined => (hasExtraParams(t) ? t : undefined);
+
 export const getPreValidateResponse =
-  // eslint-disable-next-line max-lines-per-function, prettier/prettier
+  // eslint-disable-next-line prettier/prettier
+
+
     (
       strictValidationOptions?: StrictResponseValidationOptions,
       eventHandler?: EventTracker,
       hasClockSkewLoggingEvent?: boolean
     ): PreValidateResponseT =>
-    // eslint-disable-next-line max-lines-per-function
     (
       samlConfig,
       body,
@@ -346,14 +357,36 @@ export const getPreValidateResponse =
       ): TaskEither<Error, IRequestAndResponseStep> =>
         pipe(
           extendedCacheProvider.get(_.InResponseTo),
-          TE.map((SAMLRequestCache) => ({ ..._, SAMLRequestCache })),
+          TE.map((SAMLRequestCache) => {
+            const {
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              RequestXML,
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              createdAt,
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              idpIssuer,
+              ...extraLoginRequestParams
+            } = SAMLRequestCache;
+
+            return {
+              ..._,
+              SAMLRequestCache,
+              // Cast needed to bypass Omit type inference
+              extraLoginRequestParams: extraLoginRequestParams as
+                | IExtendedCacheProviderExtraParams<
+                    typeof extendedCacheProvider
+                  >
+                | Record<string, never>,
+            };
+          }),
           TE.map(
             (__) => (
               doneCb &&
                 O.tryCatch(() =>
                   doneCb(
                     __.SAMLRequestCache.RequestXML,
-                    new XMLSerializer().serializeToString(doc)
+                    new XMLSerializer().serializeToString(doc),
+                    getExtraParamsOrUndefined(__.extraLoginRequestParams)
                   )
                 ),
               __
