@@ -19,6 +19,7 @@ import { XMLSerializer } from "@xmldom/xmldom";
 import { SPID_LEVELS, SPID_USER_ATTRIBUTES } from "../config";
 import { EventTracker } from "../index";
 import { PreValidateResponseT } from "../strategy/spid";
+import { IExtendedCacheProviderExtraParams } from "../strategy/redis_cache_provider";
 import { StrictResponseValidationOptions } from "./middleware";
 import {
   assertionValidation,
@@ -44,7 +45,6 @@ import {
   SAML_NAMESPACE,
   InfoNotAvailable,
 } from "./samlUtils";
-import { IExtendedCacheProviderExtraParams } from "../strategy/redis_cache_provider";
 
 export {
   SAML_NAMESPACE,
@@ -364,7 +364,7 @@ export const getPreValidateResponse =
               // eslint-disable-next-line @typescript-eslint/no-unused-vars
               createdAt,
               // eslint-disable-next-line @typescript-eslint/no-unused-vars
-              idpIssuer,
+              idpIssuer: _idpIssuer,
               ...extraLoginRequestParams
             } = SAMLRequestCache;
 

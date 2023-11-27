@@ -301,14 +301,12 @@ describe("preValidateResponse", () => {
       { ...samlConfig, acceptedClockSkewMs: 0 },
       mockBody,
       mockRedisCacheProvider,
-      mockDoneCallback,
+      undefined,
       mockCallback
     );
 
-    asyncExpectOnCallback(mockDoneCallback);
-
     expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
-    asyncExpectOnCallback(mockCallback);
+    await asyncExpectOnCallback(mockCallback);
   });
 
   it.each`
@@ -338,7 +336,7 @@ describe("preValidateResponse", () => {
         mockBody,
         mockRedisCacheProvider,
         mockDoneCallback,
-        mockCallback
+        () => {}
       );
     }
   );
