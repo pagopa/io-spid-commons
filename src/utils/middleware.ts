@@ -264,7 +264,7 @@ export const makeSpidStrategy = <T extends Record<string, unknown>>(
   tamperAuthorizeRequest?: XmlAuthorizeTamperer,
   tamperMetadata?: XmlTamperer,
   preValidateResponse?: PreValidateResponseT,
-  doneCb?: DoneCallbackT,
+  doneCb?: DoneCallbackT<T>,
   extraLoginRequestParamConfig?: IExtraLoginRequestParamConfig<T>
 ): // eslint-disable-next-line max-params
 SpidStrategy<T> =>
