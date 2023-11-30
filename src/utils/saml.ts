@@ -19,7 +19,6 @@ import { XMLSerializer } from "@xmldom/xmldom";
 import { SPID_LEVELS, SPID_USER_ATTRIBUTES } from "../config";
 import { EventTracker } from "../index";
 import { PreValidateResponseT } from "../strategy/spid";
-import { IExtendedCacheProviderExtraParams } from "../strategy/redis_cache_provider";
 import { StrictResponseValidationOptions } from "./middleware";
 import {
   assertionValidation,
@@ -105,23 +104,22 @@ const ISSUER_FORMAT_ERROR = new Error(
   "Format attribute of Issuer element is invalid"
 );
 
-const hasExtraParams = <T extends object>(
-  t: T | Record<string, never>
-): t is T => Object.keys(t).length > 0;
+const hasExtraParams = <T extends Record<string, unknown>>(t: T): t is T =>
+  Object.keys(t).length > 0;
 
-const getExtraParamsOrUndefined = <T extends object>(
-  t: T | Record<string, never>
+const getExtraParamsOrUndefined = <T extends Record<string, unknown>>(
+  t: T
 ): T | undefined => (hasExtraParams(t) ? t : undefined);
 
 export const getPreValidateResponse =
   // eslint-disable-next-line prettier/prettier
 
 
-    (
+    <T extends Record<string, unknown>>(
       strictValidationOptions?: StrictResponseValidationOptions,
       eventHandler?: EventTracker,
       hasClockSkewLoggingEvent?: boolean
-    ): PreValidateResponseT =>
+    ): PreValidateResponseT<T> =>
     (
       samlConfig,
       body,
@@ -372,11 +370,7 @@ export const getPreValidateResponse =
               ..._,
               SAMLRequestCache,
               // Cast needed to bypass Omit type inference
-              extraLoginRequestParams: extraLoginRequestParams as
-                | IExtendedCacheProviderExtraParams<
-                    typeof extendedCacheProvider
-                  >
-                | Record<string, never>,
+              extraLoginRequestParams: extraLoginRequestParams as T,
             };
           }),
           TE.map(

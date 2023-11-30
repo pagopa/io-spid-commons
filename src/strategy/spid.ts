@@ -34,7 +34,7 @@ export type PreValidateResponseDoneCallbackT<
   T extends Record<string, unknown>
 > = (request: string, response: string, extraLoginRequestParams?: T) => void;
 
-export type PreValidateResponseT = <T extends Record<string, unknown>>(
+export type PreValidateResponseT<T extends Record<string, unknown>> = (
   samlConfig: SamlConfig,
   body: unknown,
   extendedRedisCacheProvider: IExtendedCacheProvider<T>,
@@ -61,7 +61,7 @@ export class SpidStrategy<
     private readonly redisClient: RedisClientType | RedisClusterType,
     private readonly tamperAuthorizeRequest?: XmlAuthorizeTamperer,
     private readonly tamperMetadata?: XmlTamperer,
-    private readonly preValidateResponse?: PreValidateResponseT,
+    private readonly preValidateResponse?: PreValidateResponseT<T>,
     private readonly doneCb?: DoneCallbackT<T>,
     private readonly extraLoginRequestParamConfig?: IExtraLoginRequestParamConfig<T>
   ) {

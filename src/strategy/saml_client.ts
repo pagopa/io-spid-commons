@@ -28,7 +28,7 @@ export class CustomSamlClient<
     private readonly extededCacheProvider: IExtendedCacheProvider<T>,
     private readonly requestMapper?: (req: express.Request) => t.Validation<T>,
     private readonly tamperAuthorizeRequest?: XmlAuthorizeTamperer,
-    private readonly preValidateResponse?: PreValidateResponseT,
+    private readonly preValidateResponse?: PreValidateResponseT<T>,
     private readonly doneCb?: PreValidateResponseDoneCallbackT<T>
   ) {
     // validateInResponseTo must be set to false to disable
