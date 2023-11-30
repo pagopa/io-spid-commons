@@ -18,9 +18,6 @@ const SAMLRequestCacheItem = t.interface({
   idpIssuer: t.string,
 });
 
-export type IExtendedCacheProviderExtraParams<M> =
-  M extends IExtendedCacheProvider<infer T> ? T : never;
-
 export interface IExtendedCacheProvider<T extends Record<string, unknown>> {
   readonly save: (
     RequestXML: string,
