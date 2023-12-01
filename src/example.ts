@@ -169,13 +169,20 @@ proxyApp.get("*", (req, res) => {
 proxyApp.listen(8080);
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-const doneCb = (ip: string | null, request: string, response: string) => {
+const doneCb = (
+  ip: string | null,
+  request: string,
+  response: string,
+  extraParams?: ExtraParamsT
+) => {
   // eslint-disable-next-line no-console
   console.log("*************** done", ip);
   // eslint-disable-next-line no-console
   console.log(request);
   // eslint-disable-next-line no-console
   console.log(response);
+  // eslint-disable-next-line no-console
+  console.log(extraParams?.test);
 };
 
 pipe(

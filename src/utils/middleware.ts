@@ -263,8 +263,8 @@ export const makeSpidStrategy = <T extends Record<string, unknown>>(
   redisClient: RedisClientType | RedisClusterType,
   tamperAuthorizeRequest?: XmlAuthorizeTamperer,
   tamperMetadata?: XmlTamperer,
-  preValidateResponse?: PreValidateResponseT,
-  doneCb?: DoneCallbackT,
+  preValidateResponse?: PreValidateResponseT<T>,
+  doneCb?: DoneCallbackT<T>,
   extraLoginRequestParamConfig?: IExtraLoginRequestParamConfig<T>
 ): // eslint-disable-next-line max-params
 SpidStrategy<T> =>

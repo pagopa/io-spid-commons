@@ -30,16 +30,15 @@ export type XmlAuthorizeTamperer = (
   lollipopParams?: ILollipopParams
 ) => TaskEither<Error, string>;
 
-export type PreValidateResponseDoneCallbackT = (
-  request: string,
-  response: string
-) => void;
+export type PreValidateResponseDoneCallbackT<
+  T extends Record<string, unknown>
+> = (request: string, response: string, extraLoginRequestParams?: T) => void;
 
-export type PreValidateResponseT = <T extends Record<string, unknown>>(
+export type PreValidateResponseT<T extends Record<string, unknown>> = (
   samlConfig: SamlConfig,
   body: unknown,
   extendedRedisCacheProvider: IExtendedCacheProvider<T>,
-  doneCb: PreValidateResponseDoneCallbackT | undefined,
+  doneCb: PreValidateResponseDoneCallbackT<T> | undefined,
 
   callback: (
     err: Error | null,
@@ -62,8 +61,8 @@ export class SpidStrategy<
     private readonly redisClient: RedisClientType | RedisClusterType,
     private readonly tamperAuthorizeRequest?: XmlAuthorizeTamperer,
     private readonly tamperMetadata?: XmlTamperer,
-    private readonly preValidateResponse?: PreValidateResponseT,
-    private readonly doneCb?: DoneCallbackT,
+    private readonly preValidateResponse?: PreValidateResponseT<T>,
+    private readonly doneCb?: DoneCallbackT<T>,
     private readonly extraLoginRequestParamConfig?: IExtraLoginRequestParamConfig<T>
   ) {
     super(options, verify);

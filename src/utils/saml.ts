@@ -1,3 +1,4 @@
+/* eslint-disable max-lines-per-function */
 /**
  * Methods used to tamper passport-saml generated SAML XML.
  *
@@ -103,14 +104,22 @@ const ISSUER_FORMAT_ERROR = new Error(
   "Format attribute of Issuer element is invalid"
 );
 
+const hasExtraParams = <T extends Record<string, unknown>>(t: T): t is T =>
+  Object.keys(t).length > 0;
+
+const getExtraParamsOrUndefined = <T extends Record<string, unknown>>(
+  t: T
+): T | undefined => (hasExtraParams(t) ? t : undefined);
+
 export const getPreValidateResponse =
-  // eslint-disable-next-line max-lines-per-function, prettier/prettier
-    (
+  // eslint-disable-next-line prettier/prettier
+
+
+    <T extends Record<string, unknown>>(
       strictValidationOptions?: StrictResponseValidationOptions,
       eventHandler?: EventTracker,
       hasClockSkewLoggingEvent?: boolean
-    ): PreValidateResponseT =>
-    // eslint-disable-next-line max-lines-per-function
+    ): PreValidateResponseT<T> =>
     (
       samlConfig,
       body,
@@ -346,14 +355,32 @@ export const getPreValidateResponse =
       ): TaskEither<Error, IRequestAndResponseStep> =>
         pipe(
           extendedCacheProvider.get(_.InResponseTo),
-          TE.map((SAMLRequestCache) => ({ ..._, SAMLRequestCache })),
+          TE.map((SAMLRequestCache) => {
+            const {
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              RequestXML,
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              createdAt,
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              idpIssuer: _idpIssuer,
+              ...extraLoginRequestParams
+            } = SAMLRequestCache;
+
+            return {
+              ..._,
+              SAMLRequestCache,
+              // Cast needed to bypass Omit type inference
+              extraLoginRequestParams: extraLoginRequestParams as T,
+            };
+          }),
           TE.map(
             (__) => (
               doneCb &&
                 O.tryCatch(() =>
                   doneCb(
                     __.SAMLRequestCache.RequestXML,
-                    new XMLSerializer().serializeToString(doc)
+                    new XMLSerializer().serializeToString(doc),
+                    getExtraParamsOrUndefined(__.extraLoginRequestParams)
                   )
                 ),
               __

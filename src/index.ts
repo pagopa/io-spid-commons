@@ -64,10 +64,11 @@ export type LogoutT = () => Promise<IResponsePermanentRedirect>;
 
 // invoked for each request / response
 // to pass SAML payload to the caller
-export type DoneCallbackT = (
+export type DoneCallbackT<T extends Record<string, unknown>> = (
   sourceIp: string | null,
   request: string,
-  response: string
+  response: string,
+  extraLoginRequest?: T
 ) => void;
 
 export interface IEventInfo {
@@ -200,7 +201,7 @@ interface IWithSpidT<
   readonly app: express.Express;
   readonly acs: AssertionConsumerServiceT<T>;
   readonly logout: LogoutT;
-  readonly doneCb?: DoneCallbackT;
+  readonly doneCb?: DoneCallbackT<T>;
   readonly lollipopMiddleware?: ExpressMiddleware;
 }
 

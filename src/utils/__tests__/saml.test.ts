@@ -68,6 +68,8 @@ describe("getXmlFromSamlResponse", () => {
 
 describe("preValidateResponse", () => {
   const mockCallback = jest.fn();
+  const mockDoneCallback = jest.fn();
+
   let mockGetXmlFromSamlResponse: jest.SpyInstance<
     O.Option<Document>,
     [body: unknown],
@@ -90,6 +92,12 @@ describe("preValidateResponse", () => {
   const expectedTransformEventName = "spid.error.transformOccurenceOverflow";
   const expectedSignatureErrorName = "spid.error.signature";
 
+  const baseCachedData = {
+    RequestXML: samlRequest,
+    createdAt: "2020-02-26T07:27:42Z",
+    idpIssuer: mockTestIdpIssuer,
+  };
+
   const asyncExpectOnCallback = (
     callback: jest.Mock,
     error?: Error | TransformError
@@ -106,13 +114,7 @@ describe("preValidateResponse", () => {
   beforeEach(() => {
     jest.resetAllMocks();
     mockGet.mockImplementation(() => {
-      return fromEither(
-        right({
-          RequestXML: samlRequest,
-          createdAt: "2020-02-26T07:27:42Z",
-          idpIssuer: mockTestIdpIssuer,
-        })
-      );
+      return fromEither(right(baseCachedData));
     });
     mockGetXmlFromSamlResponse = jest
       .spyOn(saml, "getXmlFromSamlResponse")
@@ -302,9 +304,42 @@ describe("preValidateResponse", () => {
       undefined,
       mockCallback
     );
+
     expect(mockGetXmlFromSamlResponse).toBeCalledWith(mockBody);
     await asyncExpectOnCallback(mockCallback);
   });
+
+  it.each`
+    title                         | extraCachedData
+    ${"no extra data is defined"} | ${undefined}
+    ${"extra data is defined"}    | ${{ anotherValue: 42 }}
+  `(
+    "should preValidate succeded calling doneCb when $title",
+    ({ extraCachedData }, done) => {
+      mockGet.mockImplementationOnce(() => {
+        return fromEither(right({ ...baseCachedData, ...extraCachedData }));
+      });
+
+      mockDoneCallback.mockImplementationOnce((_arg1, _arg2, arg3) => {
+        expect(arg3).toEqual(extraCachedData);
+        done();
+      });
+
+      mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
+        saml.safeXMLParseFromString(getSamlResponse())
+      );
+      const strictValidationOption: StrictResponseValidationOptions = {
+        mockTestIdpIssuer: true,
+      };
+      getPreValidateResponse(strictValidationOption)(
+        { ...samlConfig, acceptedClockSkewMs: 0 },
+        mockBody,
+        mockRedisCacheProvider,
+        mockDoneCallback,
+        () => {}
+      );
+    }
+  );
 
   it("should preValidate succeded and send an Event on valid Response with missing Signature", async () => {
     mockGetXmlFromSamlResponse.mockImplementationOnce(() =>
