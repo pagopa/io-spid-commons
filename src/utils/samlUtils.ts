@@ -918,8 +918,6 @@ const notOnOrAfterValidation =
 
 export const assertionValidation =
   // eslint-disable-next-line max-lines-per-function, prettier/prettier
-
-
     (validationTimestamp: number) =>
     // eslint-disable-next-line max-lines-per-function
     (
