@@ -11,6 +11,7 @@ import {
   SamlConfig,
   withSpid,
 } from "../";
+import { DOMParser } from "@xmldom/xmldom";
 import { IDPEntityDescriptor } from "../types/IDPEntityDescriptor";
 import * as metadata from "../utils/metadata";
 import { getSpidStrategyOption } from "../utils/middleware";
@@ -248,6 +249,32 @@ describe("io-spid-commons withSpid", () => {
 describe("Custom errors", () => {
   beforeEach(() => {
     initMockFetchIDPMetadata();
+  });
+
+  it("during acs it should redirect to error if the request body is empty", async () => {
+    const app = express();
+    const spid = await withSpid({
+      appConfig,
+      samlConfig,
+      serviceProviderConfig,
+      redisClient: mockRedisClient as any,
+      app,
+      acs: async () =>
+        ResponsePermanentRedirect({ href: "/success?acs" } as ValidUrl),
+      logout: async () =>
+        ResponsePermanentRedirect({ href: "/success?logout" } as ValidUrl),
+    })();
+    const result = await request(spid.app)
+      .post(`${appConfig.assertionConsumerServicePath}`)
+      .set("Content-Type", "application/json")
+      .expect(302);
+
+    if (result.error !== false) fail();
+    expect(result.headers.location).toEqual(
+      expect.stringContaining(
+        `errorMessage=${encodeURI(ERROR_SAML_RESPONSE_MISSING)}`
+      )
+    );
   });
 
   it.each`
