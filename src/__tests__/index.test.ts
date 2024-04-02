@@ -278,9 +278,10 @@ describe("Custom errors", () => {
   });
 
   it.each`
-    title          | SAMLResponse
-    ${"undefined"} | ${undefined}
-    ${"null"}      | ${null}
+    title             | SAMLResponse
+    ${"undefined"}    | ${undefined}
+    ${"null"}         | ${null}
+    ${"empty string"} | ${""}
   `(
     "during acs it should redirect to error if SAMLResponse is $title",
     async ({ SAMLResponse }) => {
