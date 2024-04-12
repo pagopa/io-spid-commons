@@ -80,6 +80,7 @@ const cleanCert = (cert: string): string =>
     .replace(/-+END CERTIFICATE-+\r?\n?/, "")
     .replace(/\r\n/g, "\n");
 
+export const ERROR_SAML_RESPONSE_MISSING = "Missing SAMLResponse in ACS";
 const SAMLResponse = t.type({
   SAMLResponse: t.string,
 });
