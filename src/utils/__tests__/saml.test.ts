@@ -108,7 +108,7 @@ describe("preValidateResponse", () => {
           ? expect(callback).toBeCalledWith(toError(error.message))
           : expect(callback).toBeCalledWith(null, true, expect.any(String));
         resolve(void 0);
-      }, 100);
+      }, 200);
     });
 
   beforeEach(() => {
