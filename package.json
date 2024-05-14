@@ -43,7 +43,7 @@
     "io-ts": "^2.2.21",
     "auto-changelog": "^2.2.1",
     "eslint-plugin-prettier": "^4.2.1",
-    "express": "4.17.0",
+    "express": "4.19.2",
     "jest": "^29.5.0",
     "nock": "^11.7.1",
     "nodemon": "^2.0.2",
