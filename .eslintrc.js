@@ -21,6 +21,9 @@ module.exports = {
         "@pagopa/eslint-config/strong",
     ],
     "rules": {
-        
+        "jsdoc/newline-after-description": "off",
+        // this rule is a replacement for the above one which got removed but it's still
+        // mentioned in @pagopa/eslint-config@3.0.0
+        "jsdoc/tag-lines": ["error", "any", {"startLines": 1}]
     }
 }
