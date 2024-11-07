@@ -2,7 +2,7 @@
 # 
 
 variables:
-  NODE_VERSION: '18.13.0'
+  NODE_VERSION: '20.12.2'
   YARN_CACHE_FOLDER: $(Pipeline.Workspace)/.yarn
   setupTemplateName: azure-templates/setup-project.yml
 
