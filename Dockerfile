@@ -23,4 +23,6 @@ COPY --from=builder /usr/src/app/node_modules /usr/src/app/node_modules
 
 EXPOSE 3000
 
+USER node
+
 CMD ["yarn", "dev"]
