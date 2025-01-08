@@ -1,4 +1,4 @@
-FROM node:18.13.0 as builder
+FROM node:20.12.2 AS builder
 
 WORKDIR /usr/src/app
 
@@ -11,7 +11,7 @@ RUN chmod -R 777 /usr/src/app \
   && yarn install \
   && yarn build
 
-FROM node:18.13.0-alpine
+FROM node:20.12.2-alpine
 LABEL maintainer="https://pagopa.gov.it"
 
 WORKDIR /usr/src/app
@@ -22,5 +22,7 @@ COPY --from=builder /usr/src/app/dist /usr/src/app/dist
 COPY --from=builder /usr/src/app/node_modules /usr/src/app/node_modules
 
 EXPOSE 3000
+
+USER node
 
 CMD ["yarn", "dev"]
