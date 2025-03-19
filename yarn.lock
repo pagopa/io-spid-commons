@@ -1123,9 +1123,9 @@
   integrity sha512-txGIh+0eDFzKGC25zORnswy+br1Ha7hj5cMVwKIU7+s0U2AxxJru/jZSMU6OC9MJWP6+pc/hc6ZjyZShpsyY2g==
 
 "@types/xml-crypto@^1.4.1":
-  version "1.4.2"
-  resolved "https://registry.yarnpkg.com/@types/xml-crypto/-/xml-crypto-1.4.2.tgz#5ea7ef970f525ae8fe1e2ce0b3d40da1e3b279ae"
-  integrity sha512-1kT+3gVkeBDg7Ih8NefxGYfCApwZViMIs5IEs5AXF6Fpsrnf9CLAEIRh0DYb1mIcRcvysVbe27cHsJD6rJi36w==
+  version "1.4.6"
+  resolved "https://registry.yarnpkg.com/@types/xml-crypto/-/xml-crypto-1.4.6.tgz#6d1fd7d41c91554f2aed97c2ba273af0388fa5cf"
+  integrity sha512-A6jEW2FxLZo1CXsRWnZHUX2wzR3uDju2Bozt6rDbSmU/W8gkilaVbwFEVN0/NhnUdMVzwYobWtM6bU1QJJFb7Q==
   dependencies:
     "@types/node" "*"
     xpath "0.0.27"
@@ -1240,10 +1240,10 @@
     "@typescript-eslint/types" "5.59.1"
     eslint-visitor-keys "^3.3.0"
 
-"@xmldom/xmldom@^0.7.0":
-  version "0.7.10"
-  resolved "https://registry.yarnpkg.com/@xmldom/xmldom/-/xmldom-0.7.10.tgz#b1f4a7dc63ac35b2750847644d5dacf5b4ead12f"
-  integrity sha512-hb9QhOg5MGmpVkFcoZ9XJMe1em5gd0e2eqqjK87O1dwULedXsnY/Zg/Ju6lcohA+t6jVkmKpe7I1etqhvdRdrQ==
+"@xmldom/xmldom@^0.7.9":
+  version "0.7.13"
+  resolved "https://registry.yarnpkg.com/@xmldom/xmldom/-/xmldom-0.7.13.tgz#ff34942667a4e19a9f4a0996a76814daac364cf3"
+  integrity sha512-lm2GW5PkosIzccsaZIz7tp8cPADSIlIHWDFTR1N0SzfinhhYgeIQjFMz4rYzanCScr3DqQLeomUDArp6MWKm+g==
 
 "@xmldom/xmldom@^0.8.7":
   version "0.8.7"
@@ -5402,12 +5402,12 @@ write-file-atomic@^4.0.2:
     imurmurhash "^0.1.4"
     signal-exit "^3.0.7"
 
-xml-crypto@^1.4.0:
-  version "1.5.6"
-  resolved "https://registry.yarnpkg.com/xml-crypto/-/xml-crypto-1.5.6.tgz#e8122f0fe8489d7f444a32a45388798684aa7315"
-  integrity sha512-LCLvc59uItSD3QZprq+XaJWXb0umi3g8Ks3pZis1qZ9OYzQuHb4U//u5+vHr4gjn2KFAAAzFlja6OnS2LG/gRw==
+xml-crypto@2.1.6, xml-crypto@^1.4.0:
+  version "2.1.6"
+  resolved "https://registry.yarnpkg.com/xml-crypto/-/xml-crypto-2.1.6.tgz#c51a016cc8391fc1d9ebd9abc589e4c08b62d652"
+  integrity sha512-jjvpO8vHNV8QFhW5bMypP+k4BjBqHe/HrpIwpPcdUnUTIJakSIuN96o3Sdah4tKu2z64kM/JHEH8iEHGCc6Gyw==
   dependencies:
-    "@xmldom/xmldom" "^0.7.0"
+    "@xmldom/xmldom" "^0.7.9"
     xpath "0.0.32"
 
 xml-encryption@1.2.1:
