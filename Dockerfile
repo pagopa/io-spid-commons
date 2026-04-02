@@ -1,4 +1,4 @@
-FROM node:20.12.2 AS builder
+FROM node:22.22.2 AS builder
 
 WORKDIR /usr/src/app
 
@@ -11,7 +11,7 @@ RUN chmod -R 777 /usr/src/app \
   && yarn install \
   && yarn build
 
-FROM node:20.12.2-alpine
+FROM node:22.22.2-alpine
 LABEL maintainer="https://pagopa.gov.it"
 
 WORKDIR /usr/src/app
