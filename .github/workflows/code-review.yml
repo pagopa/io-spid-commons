@@ -9,7 +9,7 @@ on:
     paths:
       - package.json
       - src/**.ts
-      - .github/workflows/code-review.yaml
+      - .github/workflows/code-review.yml
   workflow_dispatch:
 
 jobs:
