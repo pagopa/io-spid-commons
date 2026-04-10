@@ -19,7 +19,9 @@
     "dev": "nodemon --inspect=0.0.0.0 dist/example.js",
     "hot-reload": "nodemon --legacy-watch --watch ./dist --inspect=0.0.0.0 --nolazy dist/example.js",
     "test": "jest -i",
-    "lint": "eslint . -c .eslintrc.js --ext .ts,.tsx"
+    "lint": "eslint . -c .eslintrc.js --ext .ts,.tsx",
+    "version": "changeset version",
+    "release": "yarn build && changeset publish"
   },
   "devDependencies": {
     "@changesets/changelog-github": "^0.6.0",
@@ -97,9 +99,16 @@
     "registry": "https://registry.npmjs.org/",
     "access": "public"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
   "resolutions": {
     "@types/express-serve-static-core": "4.17.34",
     "eslint-plugin-jsdoc": "^50",
     "xml-crypto": "2.1.6"
-  }
+  },
+  "packageManager": "yarn@4.13.0"
 }
