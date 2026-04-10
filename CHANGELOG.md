@@ -1,5 +1,11 @@
 # @pagopa/io-spid-commons
 
+## 15.0.0
+
+### Major Changes
+
+- [#174](https://github.com/pagopa/io-spid-commons/pull/174) [`1894a9a`](https://github.com/pagopa/io-spid-commons/commit/1894a9a1a0716c7a4f4a94bf4dc61429a756cdfe) Thanks [@arcogabbo](https://github.com/arcogabbo)! - Upgrade to Node 22
+
 ## 14.0.1
 
 ### Patch Changes
@@ -34,7 +40,7 @@
 
 ### Minor Changes
 
-- [#IOPID-1156]  Include additional params in doneCb, if any [#153](https://github.com/pagopa/io-spid-commons/pull/153)
+- [#IOPID-1156] Include additional params in doneCb, if any [#153](https://github.com/pagopa/io-spid-commons/pull/153)
 
 ## 13.2.2
 
