@@ -5,7 +5,7 @@ type SignatureMethod =
 export const transforms = `<ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/><ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>`;
 
 export const getSamlAssertion = (
-  clockSkewMs: number = 0,
+  clockSkewMs: number = -1000,
   signatureMethod: SignatureMethod = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256",
   repeatTransforms?: number
 ) => `<saml:Assertion ID="_43568006-96d4-4dcc-84da-d98e01ea3a28" IssueInstant="${new Date(
@@ -48,12 +48,14 @@ export const getSamlAssertion = (
                     _61c0122d-5e8e-48e5-98ce-d43bb3903404
             </saml:NameID>
             <saml:SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer">
-                <saml:SubjectConfirmationData InResponseTo="_2d2a89e99c7583e221b4" NotOnOrAfter="${new Date().getFullYear() +
-                  1}-02-26T07:32:05Z" Recipient="https://app-backend.dev.io.italia.it/assertionConsumerService"/>
+                <saml:SubjectConfirmationData InResponseTo="_2d2a89e99c7583e221b4" NotOnOrAfter="${
+                  new Date().getFullYear() + 1
+                }-02-26T07:32:05Z" Recipient="https://app-backend.dev.io.italia.it/assertionConsumerService"/>
             </saml:SubjectConfirmation>
         </saml:Subject>
-        <saml:Conditions NotBefore="2020-02-26T07:27:42Z" NotOnOrAfter="${new Date().getFullYear() +
-          1}-02-26T07:32:05Z">
+        <saml:Conditions NotBefore="2020-02-26T07:27:42Z" NotOnOrAfter="${
+          new Date().getFullYear() + 1
+        }-02-26T07:32:05Z">
             <saml:AudienceRestriction>
                 <saml:Audience>
                   https://app-backend.dev.io.italia.it
@@ -111,7 +113,7 @@ export const samlEncryptedAssertion = `
 </saml:EncryptedAssertion>`;
 
 interface IGetSAMLResponseParams {
-  /** @default 0 */
+  /** @default -1000 */
   clockSkewMs?: number;
 
   customAssertion?: string;
@@ -128,7 +130,7 @@ interface IGetSAMLResponseParams {
 export const getSamlResponse: (params?: IGetSAMLResponseParams) => string = (
   params = {}
 ) => {
-  const { clockSkewMs = 0, customAssertion, hasResponseSignature } = params;
+  const { clockSkewMs = -1000, customAssertion, hasResponseSignature } = params;
   return `<samlp:Response Destination="https://app-backend.dev.io.italia.it/assertionConsumerService" ID="_7080f453-78cb-4f57-9692-62dc8a5c23e8" InResponseTo="_2d2a89e99c7583e221b4" IssueInstant="${new Date(
     Date.now() + clockSkewMs
   ).toISOString()}" Version="2.0" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol">
@@ -140,8 +142,10 @@ ${
     ? `<ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
     <ds:SignedInfo>
         <ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
-        <ds:SignatureMethod Algorithm="${params.signatureMethod ||
-          "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"}"/>
+        <ds:SignatureMethod Algorithm="${
+          params.signatureMethod ||
+          "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"
+        }"/>
         <ds:Reference URI="#_7080f453-78cb-4f57-9692-62dc8a5c23e8">
             <ds:Transforms>
                 ${
@@ -256,12 +260,14 @@ UJ23xMKOYhCcRVunnDgor2WLqHEgYeyaAhHr16+kkO6poPog2a9PoiqGUU0Dg+YMvHRJVq0h0sKz M1z
     <saml2:Subject>
       <saml2:NameID Format="urn:oasis:names:tc:SAML:2.0:nameid-format:transient" NameQualifier="https://idserver.servizicie.interno.gov.it:8443/idp/profile/SAML2/POST/SSO" SPNameQualifier="https://app-backend.dev.io.italia.it">AAdzZWNyZXQxqDU6XhTO1MGlMAoXjWFIOcPfK4AhIPsnBAoTNelku/jA7/XaogQJhOrgxCiAIqavL2GUQqQ7VMYPRryyteifD34fsyrHmbPNr1Tz2YJe8wgENUlDvaY31unC/P1kwqTZ17jQYw3qoVZs4neWi9ZUo9j8BoiDAHdoyOOoTiVbDA==</saml2:NameID>
       <saml2:SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer">
-        <saml2:SubjectConfirmationData Address="85.44.51.73" InResponseTo="_61395d807fb9fe6a869b" NotOnOrAfter="${new Date().getFullYear() +
-          1}-02-26T07:32:05Z" Recipient="https://app-backend.dev.io.italia.it/assertionConsumerService"/>
+        <saml2:SubjectConfirmationData Address="85.44.51.73" InResponseTo="_61395d807fb9fe6a869b" NotOnOrAfter="${
+          new Date().getFullYear() + 1
+        }-02-26T07:32:05Z" Recipient="https://app-backend.dev.io.italia.it/assertionConsumerService"/>
       </saml2:SubjectConfirmation>
     </saml2:Subject>
-    <saml2:Conditions NotBefore="2020-02-27T13:40:57.746Z" NotOnOrAfter="${new Date().getFullYear() +
-      1}-02-26T07:32:05Z">
+    <saml2:Conditions NotBefore="2020-02-27T13:40:57.746Z" NotOnOrAfter="${
+      new Date().getFullYear() + 1
+    }-02-26T07:32:05Z">
       <saml2:AudienceRestriction>
         <saml2:Audience>https://app-backend.dev.io.italia.it</saml2:Audience>
       </saml2:AudienceRestriction>

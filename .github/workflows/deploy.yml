@@ -1,0 +1,18 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  release:
+    permissions:
+      contents: write
+      id-token: write
+      pull-requests: write
+    uses: pagopa/dx/.github/workflows/release-v1.yaml@main
+    with:
+      environment: npm-prod-cd
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}

@@ -10,6 +10,10 @@ coverage
 .npmrc
 .DS_Store
 
+# Yarn Berry
+.yarn/cache
+.yarn/install-state.gz
+
 # eslint section
 !.eslintrc.js
 .eslintcache

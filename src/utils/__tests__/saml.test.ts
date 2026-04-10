@@ -1,5 +1,5 @@
 import { right, toError } from "fp-ts/lib/Either";
-import { isNone, isSome, tryCatch } from "fp-ts/lib/Option";
+import { isNone, isSome } from "fp-ts/lib/Option";
 import { fromEither } from "fp-ts/lib/TaskEither";
 import { SamlConfig } from "passport-saml";
 import { EventTracker } from "../../index";
@@ -18,7 +18,6 @@ import {
 } from "../saml";
 import * as saml from "../samlUtils";
 import * as O from "fp-ts/Option";
-import { pipe } from "fp-ts/lib/function";
 
 const samlConfig: SamlConfig = {
   attributes: {
@@ -42,11 +41,12 @@ const aResponseSignedWithHMAC = getSamlResponse({
   signatureMethod: hMacSignatureMethod,
 });
 const aResponseWithOneAssertionSignedWithHMAC = getSamlResponse({
-  customAssertion: getSamlAssertion(0, hMacSignatureMethod),
+  customAssertion: getSamlAssertion(-1000, hMacSignatureMethod),
 });
 const aResponseSignedWithHMACWithOneAssertionSignedWithHMAC = getSamlResponse({
-  customAssertion: getSamlAssertion(0, hMacSignatureMethod),
+  customAssertion: getSamlAssertion(-1000, hMacSignatureMethod),
   signatureMethod: hMacSignatureMethod,
+  clockSkewMs: -1000,
 });
 
 describe("getXmlFromSamlResponse", () => {
@@ -222,7 +222,7 @@ describe("preValidateResponse", () => {
       saml.safeXMLParseFromString(
         getSamlResponse({
           customAssertion: getSamlAssertion(
-            0,
+            undefined,
             "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256",
             2
           ),
@@ -400,7 +400,10 @@ describe("preValidateResponse", () => {
       mockTestIdpIssuer: true,
     };
     getPreValidateResponse(strictValidationOption)(
-      { ...samlConfig, acceptedClockSkewMs: 2000 },
+      {
+        ...samlConfig,
+        acceptedClockSkewMs: expectedDesynResponseValueMs + 1000,
+      },
       mockBody,
       mockRedisCacheProvider,
       undefined,
