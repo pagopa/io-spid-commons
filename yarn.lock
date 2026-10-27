@@ -2,7 +2,7 @@
 # Manual changes might be lost - proceed with caution!
 
 __metadata:
-  version: 8
+  version: 10
   cacheKey: 10c0
 
 "@ampproject/remapping@npm:^2.2.0":
@@ -1445,7 +1445,7 @@ __metadata:
     node-forge: "npm:^1.0.0"
     nodemon: "npm:^2.0.2"
     passport: "npm:^0.6.0"
-    passport-saml: "npm:1.3.5"
+    passport-saml: "npm:3.2.2"
     prettier: "npm:^2.8.8"
     redis: "npm:^4.5.1"
     request-ip: "npm:^2.1.3"
@@ -2069,7 +2069,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@xmldom/xmldom@npm:^0.7.9":
+"@xmldom/xmldom@npm:^0.7.0, @xmldom/xmldom@npm:^0.7.5, @xmldom/xmldom@npm:^0.7.9":
   version: 0.7.13
   resolution: "@xmldom/xmldom@npm:0.7.13"
   checksum: 10c0/cb02e4e8d986acf18578a5f25d1bce5e18d08718f40d8a0cdd922a4c112c8e00daf94de4e43f9556ed147c696b135f2ab81fa9a2a8a0416f60af15d156b60e40
@@ -6216,13 +6216,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"node-forge@npm:^0.10.0":
-  version: 0.10.0
-  resolution: "node-forge@npm:0.10.0"
-  checksum: 10c0/9cbf9ac8fc3889a5a46b0248f7238ee4014770bf31d22e04c0c7f04ed91c8be4584c5f534cdf6037e99f236c636c925cba960501ed2b850e077512e152760663
-  languageName: node
-  linkType: hard
-
 "node-forge@npm:^1.0.0":
   version: 1.3.1
   resolution: "node-forge@npm:1.3.1"
@@ -6568,23 +6561,22 @@ __metadata:
   languageName: node
   linkType: hard
 
-"passport-saml@npm:1.3.5":
-  version: 1.3.5
-  resolution: "passport-saml@npm:1.3.5"
+"passport-saml@npm:3.2.2":
+  version: 3.2.2
+  resolution: "passport-saml@npm:3.2.2"
   dependencies:
-    debug: "npm:^3.1.0"
-    passport-strategy: "npm:*"
-    q: "npm:^1.5.0"
-    xml-crypto: "npm:^1.4.0"
-    xml-encryption: "npm:1.2.1"
-    xml2js: "npm:0.4.x"
-    xmlbuilder: "npm:^11.0.0"
-    xmldom: "npm:0.1.x"
-  checksum: 10c0/a593074b28a74641b66db58aa3047ca0911c29d1abccbdb213121b551253e214d783fd98dace51cbab7ff327da9df6dbd5f6e7464a9fb2b13ede943f7b3cdedb
+    "@xmldom/xmldom": "npm:^0.7.5"
+    debug: "npm:^4.3.2"
+    passport-strategy: "npm:^1.0.0"
+    xml-crypto: "npm:^2.1.3"
+    xml-encryption: "npm:^2.0.0"
+    xml2js: "npm:^0.4.23"
+    xmlbuilder: "npm:^15.1.1"
+  checksum: 10c0/f43f3042fbeb8c9ff5e9f7cb0d9965cb9d69044b94f37e7d5034a1d219929550c3007a59146ac3160f96fe856decf8369ba4d9a6dd58c2afb1bf20656a685ebe
   languageName: node
   linkType: hard
 
-"passport-strategy@npm:*, passport-strategy@npm:1.x.x":
+"passport-strategy@npm:1.x.x, passport-strategy@npm:^1.0.0":
   version: 1.0.0
   resolution: "passport-strategy@npm:1.0.0"
   checksum: 10c0/cf4cd32e1bf2538a239651581292fbb91ccc83973cde47089f00d2014c24bed63d3e65af21da8ddef649a8896e089eb9c3ac9ca639f36c797654ae9ee4ed65e1
@@ -6818,13 +6810,6 @@ __metadata:
   version: 6.0.2
   resolution: "pure-rand@npm:6.0.2"
   checksum: 10c0/0556bee2e16a8d081a2b7630d9cb4e5dafd4e6bd6e4c61de1cf1ef5974f127847523e3d0e62884f6f5d64b66a5e93b05bd8f37ed009f3a4fe5089899e05914aa
-  languageName: node
-  linkType: hard
-
-"q@npm:^1.5.0":
-  version: 1.5.1
-  resolution: "q@npm:1.5.1"
-  checksum: 10c0/7855fbdba126cb7e92ef3a16b47ba998c0786ec7fface236e3eb0135b65df36429d91a86b1fff3ab0927b4ac4ee88a2c44527c7c3b8e2a37efbec9fe34803df4
   languageName: node
   linkType: hard
 
@@ -8288,19 +8273,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"xml-encryption@npm:1.2.1":
-  version: 1.2.1
-  resolution: "xml-encryption@npm:1.2.1"
+"xml-encryption@npm:^2.0.0":
+  version: 2.0.0
+  resolution: "xml-encryption@npm:2.0.0"
   dependencies:
+    "@xmldom/xmldom": "npm:^0.7.0"
     escape-html: "npm:^1.0.3"
-    node-forge: "npm:^0.10.0"
-    xmldom: "npm:~0.1.15"
-    xpath: "npm:0.0.27"
-  checksum: 10c0/95b039d2d881dbf3461356defd0df71aa38c1d02f2101f204612b1a607d99aaad917c1003b8b6f1021dd27ff37e5c443d91587c13e3ee8119363ac32a17cac61
+    xpath: "npm:0.0.32"
+  checksum: 10c0/74546bb558e49ba3a19cc3e5622975b0b10631812825e1fb45e0b30fae4a4c82a6322de6addcd74cff53cb4b6084f8e37457c362112f687e7a69accd97b4acb5
   languageName: node
   linkType: hard
 
-"xml2js@npm:0.4.x, xml2js@npm:^0.4.23":
+"xml2js@npm:^0.4.23":
   version: 0.4.23
   resolution: "xml2js@npm:0.4.23"
   dependencies:
@@ -8310,17 +8294,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"xmlbuilder@npm:^11.0.0, xmlbuilder@npm:~11.0.0":
-  version: 11.0.1
-  resolution: "xmlbuilder@npm:11.0.1"
-  checksum: 10c0/74b979f89a0a129926bc786b913459bdbcefa809afaa551c5ab83f89b1915bdaea14c11c759284bb9b931e3b53004dbc2181e21d3ca9553eeb0b2a7b4e40c35b
+"xmlbuilder@npm:^15.1.1":
+  version: 15.1.1
+  resolution: "xmlbuilder@npm:15.1.1"
+  checksum: 10c0/665266a8916498ff8d82b3d46d3993913477a254b98149ff7cff060d9b7cc0db7cf5a3dae99aed92355254a808c0e2e3ec74ad1b04aa1061bdb8dfbea26c18b8
   languageName: node
   linkType: hard
 
-"xmldom@npm:0.1.x, xmldom@npm:~0.1.15":
-  version: 0.1.31
-  resolution: "xmldom@npm:0.1.31"
-  checksum: 10c0/7f20d4f0cb314dbdcf86f392690b4323762fe0a57d3fe84a7878da8b9fa651d0d73e3bd7225f97bafb9077cb3627021c05cf9c14ddda507619c6c5940eed3e42
+"xmlbuilder@npm:~11.0.0":
+  version: 11.0.1
+  resolution: "xmlbuilder@npm:11.0.1"
+  checksum: 10c0/74b979f89a0a129926bc786b913459bdbcefa809afaa551c5ab83f89b1915bdaea14c11c759284bb9b931e3b53004dbc2181e21d3ca9553eeb0b2a7b4e40c35b
   languageName: node
   linkType: hard
 
