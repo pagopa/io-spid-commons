@@ -2,7 +2,7 @@
 # Manual changes might be lost - proceed with caution!
 
 __metadata:
-  version: 8
+  version: 10
   cacheKey: 10c0
 
 "@ampproject/remapping@npm:^2.2.0":
@@ -2077,9 +2077,9 @@ __metadata:
   linkType: hard
 
 "@xmldom/xmldom@npm:^0.8.7":
-  version: 0.8.7
-  resolution: "@xmldom/xmldom@npm:0.8.7"
-  checksum: 10c0/1bde6fcfe4e3db3a4fad721954de3da9fc1004cde532bf5f3f514182dbf991283300c1fdb0097d6c6c7f8642380a48e2346edd917edc38a2e79163a0a03ef596
+  version: 0.8.15
+  resolution: "@xmldom/xmldom@npm:0.8.15"
+  checksum: 10c0/59d09b85824b684fba5a0a224d5b43abea1a0d745e8d8b8136a7013e996eb6da122fdbb3deb32ed1621923a10e1937b1f7917cea43481d9d5b976e8c1ff836c1
   languageName: node
   linkType: hard
 
