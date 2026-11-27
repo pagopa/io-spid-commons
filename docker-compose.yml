@@ -25,7 +25,7 @@ services:
       - spid-testenv2
 
   spid-testenv2:
-    image: italia/spid-testenv2:latest
+    image: italia/spid-testenv2:latest@sha256:196c9121f6e50d197e251704518ec487c24579f2e3e9c88e7094d9c2ea7c4ded
     ports:
       - "8088:8088"
     volumes:
@@ -34,7 +34,7 @@ services:
       - io-spid-commons
 
   redis:
-    image: wodby/redis:3.2-2.1.5
+    image: wodby/redis:3.2-2.1.5@sha256:09a82ade1f06069201c4d055e7ed759702880e34653222ae677375019e6ebd41
     environment:
       REDIS_TIMEOUT: 300
       REDIS_TCP_KEEPALIVE: 60
